@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 $user = utilisateurCourant();
 $flash = getFlash();
+$useAppShell = $useAppShell ?? false;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -46,6 +47,8 @@ $flash = getFlash();
             <?php endif; ?>
         </div>
     </header>
+
+    <?php if (!$useAppShell): ?>
     <main class="main-content">
         <?php if ($flash): ?>
         <div class="alert alert-<?= e($flash['type']) ?>">
@@ -54,3 +57,13 @@ $flash = getFlash();
             <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
         </div>
         <?php endif; ?>
+    <?php else: ?>
+        <?php if ($flash): ?>
+        <div class="alert alert-<?= e($flash['type']) ?>" style="margin:0.75rem 1rem 0;">
+            <i class="fas fa-<?= $flash['type'] === 'success' ? 'check-circle' : 'exclamation-circle' ?>"></i>
+            <?= e($flash['message']) ?>
+            <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
+        <?php endif; ?>
+        <main>
+    <?php endif; ?>
