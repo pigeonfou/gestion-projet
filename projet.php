@@ -3,6 +3,7 @@ $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/settings_helper.php';
+require_once __DIR__ . '/includes/cahier_specs.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 
@@ -80,9 +81,9 @@ require __DIR__ . '/includes/header.php';
             <!-- ===== EXPRESSION DE BESOIN & CAHIER DES CHARGES ===== -->
             <div class="phase-title">
                 Expression de besoin & Cahier des charges
-                <?php if (estAdmin() || $projet['createur_id'] == $user['id']): ?>
-                <a href="<?= url('cahier.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Éditer</a>
-                <?php endif; ?>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit"></i> Rédiger / éditer le CDC
+                </a>
             </div>
 
             <div class="workflow-bar">
@@ -97,68 +98,62 @@ require __DIR__ . '/includes/header.php';
                 <div class="workflow-step"><span class="box"></span> Étude</div>
             </div>
 
-            <div class="section-label">Fonction</div>
-            <div class="cdc-block">
-                <div class="cdc-body" style="padding:0;">
-                    <?php if (empty($fonctions)): ?>
-                        <div class="fn-row text-muted">Aucune fonction définie</div>
-                    <?php else: ?>
-                        <?php foreach ($fonctions as $f): ?>
-                        <div class="fn-row">
-                            <div>
-                                <strong>#<?= (int)$f['id'] ?></strong>
-                                <?= e($f['nom']) ?>
-                                <?php if ($f['description']): ?>
-                                    <span class="text-muted"> — <?= e($f['description']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <span class="opt-check <?= $f['obligatoire'] ? '' : 'checked' ?>" title="<?= $f['obligatoire'] ? 'Obligatoire' : 'Optionnelle' ?>">
-                                <?= $f['obligatoire'] ? '' : '✗' ?>
-                            </span>
-                            <span class="text-muted text-sm"><?= $f['obligatoire'] ? 'Oblig.' : 'Opt.' ?></span>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <?php
+            $specs = loadSpecs($cahier_id);
+            $hasSpecs = trim($specs['objectifs'] ?? '') !== '' || !empty($specs['contexte_utilisation']);
+            ?>
 
-            <div class="section-label">Matériel</div>
+            <?php if (!$hasSpecs): ?>
+            <div class="empty-state">
+                <i class="fas fa-file-alt"></i>
+                <p>Aucun cahier des charges structuré pour ce projet.</p>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary mt-2">
+                    <i class="fas fa-plus"></i> Commencer la rédaction
+                </a>
+            </div>
+            <?php else: ?>
             <div class="cdc-block">
-                <div class="cdc-body" style="padding:0;">
-                    <?php if (empty($materiels)): ?>
-                        <div class="fn-row text-muted">Aucun matériel</div>
-                    <?php else: ?>
-                        <?php foreach ($materiels as $m): ?>
-                        <div class="fn-row">
-                            <div><strong>#<?= (int)$m['id'] ?></strong> <?= e($m['description']) ?></div>
-                            <span class="opt-check"></span>
-                            <span></span>
-                        </div>
-                        <?php endforeach; ?>
+                <div class="cdc-header"><span class="cdc-id">1.</span> Contexte & objectifs</div>
+                <div class="cdc-body">
+                    <p class="text-sm"><strong>Contexte :</strong> <?= e(implode(', ', $specs['contexte_utilisation'] ?: ['—'])) ?></p>
+                    <p class="text-sm mt-1"><strong>Objectifs :</strong> <?= e(mb_strimwidth($specs['objectifs'], 0, 200, '…')) ?></p>
+                </div>
+            </div>
+            <div class="cdc-block">
+                <div class="cdc-header"><span class="cdc-id">4.</span> Environnement & durcissement</div>
+                <div class="cdc-body">
+                    <p class="text-sm">
+                        IP : <strong><?= e($specs['ip'] ?: '—') ?></strong> ·
+                        Durcissement : <strong><?= e($specs['niveau_durcissement'] ?: '—') ?></strong> ·
+                        Chute : <strong><?= e($specs['chute_metres'] ? $specs['chute_metres'].' m' : '—') ?></strong>
+                    </p>
+                    <?php if ($specs['temp_fonc_min'] !== '' || $specs['temp_fonc_max'] !== ''): ?>
+                    <p class="text-sm mt-1">Temp. fonc. : <?= e($specs['temp_fonc_min']) ?> à <?= e($specs['temp_fonc_max']) ?> °C</p>
+                    <?php endif; ?>
+                    <?php if (!empty($specs['normes'])): ?>
+                    <p class="text-sm mt-1">Normes : <?= e(implode(', ', $specs['normes'])) ?></p>
                     <?php endif; ?>
                 </div>
             </div>
-
-            <div class="section-label">Environnement</div>
             <div class="cdc-block">
-                <div class="cdc-body" style="padding:0;">
-                    <?php if (empty($environnements)): ?>
-                        <div class="fn-row text-muted">Aucun élément</div>
-                    <?php else: ?>
-                        <?php foreach ($environnements as $en): ?>
-                        <div class="fn-row">
-                            <div><strong>#<?= (int)$en['id'] ?></strong> <?= e($en['element']) ?></div>
-                            <span class="opt-check"></span>
-                            <span></span>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                <div class="cdc-header"><span class="cdc-id">7.</span> Planning</div>
+                <div class="cdc-body">
+                    <p class="text-sm"><?= e(mb_strimwidth($specs['delais'] ?: 'Non renseigné', 0, 180, '…')) ?></p>
                 </div>
             </div>
+            <div class="submit-bar">
+                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Modifier le formulaire complet
+                </a>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary" onclick="document.getElementById('formAction')?.setAttribute('value','generate')">
+                    <i class="fas fa-file-export"></i> Ouvrir pour générer le document
+                </a>
+            </div>
+            <?php endif; ?>
 
             <?php if (estAdmin()): ?>
-            <div class="submit-bar">
-                <button class="btn btn-primary" onclick="alert('Fonctionnalité de validation à connecter au workflow.')">
+            <div class="submit-bar" style="margin-top:.75rem;">
+                <button class="btn btn-secondary" type="button" onclick="alert('Workflow de validation DIR à connecter.')">
                     <i class="fas fa-paper-plane"></i> Soumettre CDC à validation DIR
                 </button>
             </div>
