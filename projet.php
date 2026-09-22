@@ -2,7 +2,9 @@
 $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/settings_helper.php';
 requerirConnexion();
+seedSettingsIfEmpty();
 
 $db = getDB();
 $user = utilisateurCourant();
@@ -56,6 +58,12 @@ $jalons = $jalons->fetchAll();
 $taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id');
 $taches->execute([$id]);
 $taches = $taches->fetchAll();
+
+ensureSettingsTable();
+$stmtDocs = $db->prepare('SELECT * FROM documents WHERE projet_id = ? AND phase = ? ORDER BY date_upload DESC');
+$stmtDocs->execute([$id, $phase]);
+$documents = $stmtDocs->fetchAll();
+$ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
 
 $phaseActive = $phase;
 $pageTitle = $projet['nom'];
@@ -391,30 +399,47 @@ require __DIR__ . '/includes/header.php';
     <aside class="docs-panel">
         <h3>
             Documents
-            <a href="#" class="btn-add" title="Ajouter un document" onclick="alert('Upload document à venir');return false;">+</a>
-        </h3>
-        <ul class="docs-list">
-            <?php if ($cahier['contexte'] || $cahier['objectifs']): ?>
-            <li><i class="fas fa-file-pdf"></i> <span>Expression_besoins.pdf</span></li>
+            <?php if ($ncEnabled): ?>
+            <label for="fileUpload" class="btn-add" title="Uploader un fichier" style="cursor:pointer;">+</label>
             <?php endif; ?>
-            <li><i class="fas fa-file-pdf"></i> <span>CDC_projet_<?= (int)$id ?>.pdf</span></li>
-            <?php if (!empty($livrables)): ?>
-            <li><i class="fas fa-file-pdf"></i> <span>Livrables.pdf</span></li>
+        </h3>
+
+        <?php if ($ncEnabled): ?>
+        <form class="upload-form" action="<?= url('actions/upload.php') ?>" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
+            <input type="hidden" name="phase" value="<?= e($phase) ?>">
+            <input type="file" name="fichier" id="fileUpload" required onchange="this.form.submit()">
+            <p class="text-muted text-sm">Dossier : <code><?= e(phaseFolderName($phase)) ?></code></p>
+        </form>
+        <?php else: ?>
+        <p class="text-muted text-sm">Nextcloud désactivé — configurez-le dans Paramètres.</p>
+        <?php endif; ?>
+
+        <ul class="docs-list" style="margin-top:.75rem;">
+            <?php if (empty($documents)): ?>
+            <li class="text-muted text-sm">Aucun document pour cette phase</li>
+            <?php else: ?>
+                <?php foreach ($documents as $doc): ?>
+                <li>
+                    <i class="fas fa-file"></i>
+                    <span>
+                        <?= e($doc['nom_fichier']) ?>
+                        <span class="doc-meta"><?= date('d/m/Y H:i', strtotime($doc['date_upload'])) ?>
+                        <?php if ($doc['taille']): ?> — <?= number_format($doc['taille']/1024, 1) ?> Ko<?php endif; ?></span>
+                    </span>
+                </li>
+                <?php endforeach; ?>
             <?php endif; ?>
         </ul>
 
         <?php if ($phase === 'cahier'): ?>
         <div class="docs-section">
             <h3>Cahier des charges validé DIR</h3>
-            <ul class="docs-list">
-                <li class="text-muted text-sm">En attente de validation</li>
-            </ul>
+            <ul class="docs-list"><li class="text-muted text-sm">En attente de validation</li></ul>
         </div>
         <div class="docs-section">
             <h3>Cahier des charges validé Client</h3>
-            <ul class="docs-list">
-                <li class="text-muted text-sm">En attente de validation</li>
-            </ul>
+            <ul class="docs-list"><li class="text-muted text-sm">En attente de validation</li></ul>
         </div>
         <?php endif; ?>
 
@@ -425,12 +450,6 @@ require __DIR__ . '/includes/header.php';
                 <div class="row"><span>Coûts :</span> <strong><?= e($cahier['budget'] ?: '—') ?></strong></div>
                 <div class="row"><span>Délais :</span> <strong><?= e($cahier['dates_info'] ?: '—') ?></strong></div>
             </div>
-        </div>
-        <div class="docs-section">
-            <h3>Devis</h3>
-            <ul class="docs-list">
-                <li class="text-muted text-sm">Aucun devis importé</li>
-            </ul>
         </div>
         <?php endif; ?>
 

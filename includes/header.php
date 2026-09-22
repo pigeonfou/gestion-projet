@@ -1,15 +1,18 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/settings_helper.php';
 $user = utilisateurCourant();
 $flash = getFlash();
 $useAppShell = $useAppShell ?? false;
+seedSettingsIfEmpty();
+$siteNom = getSetting('site_nom', 'ProjectFlow');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - ProjectFlow</title>
+    <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - <?= e($siteNom) ?></title>
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -18,7 +21,7 @@ $useAppShell = $useAppShell ?? false;
         <div class="header-container">
             <a href="<?= url('index.php') ?>" class="logo">
                 <i class="fas fa-project-diagram"></i>
-                <span>ProjectFlow</span>
+                <span><?= e($siteNom) ?></span>
             </a>
             <?php if ($user): ?>
             <nav class="nav">
@@ -35,14 +38,22 @@ $useAppShell = $useAppShell ?? false;
                 <?php endif; ?>
             </nav>
             <div class="user-menu">
-                <span class="user-info">
-                    <i class="fas fa-user-circle"></i>
-                    <?= e($user['identifiant']) ?>
-                    <span class="badge-role"><?= e($user['role']) ?></span>
-                </span>
-                <a href="<?= url('logout.php') ?>" class="btn btn-outline btn-sm" title="Déconnexion">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <div class="user-dropdown">
+                    <button type="button" class="user-dropdown-toggle" id="userMenuBtn" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i>
+                        <?= e($user['identifiant']) ?>
+                        <span class="badge-role"><?= e($user['role']) ?></span>
+                        <i class="fas fa-caret-down" style="font-size:.75rem;opacity:.7;"></i>
+                    </button>
+                    <div class="user-dropdown-menu" id="userMenu">
+                        <?php if (estAdmin()): ?>
+                        <a href="<?= url('admin/settings.php') ?>"><i class="fas fa-cog"></i> Paramètres</a>
+                        <a href="<?= url('admin/utilisateurs.php') ?>"><i class="fas fa-users"></i> Utilisateurs</a>
+                        <div class="dropdown-divider"></div>
+                        <?php endif; ?>
+                        <a href="<?= url('logout.php') ?>"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                    </div>
+                </div>
             </div>
             <?php endif; ?>
         </div>

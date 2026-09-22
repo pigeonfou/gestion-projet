@@ -16,3 +16,15 @@ document.querySelectorAll('[data-confirm]').forEach(el => {
 document.querySelectorAll('.alert').forEach(alert => {
     setTimeout(() => { alert.style.opacity='0'; alert.style.transition='opacity .4s'; setTimeout(()=>alert.remove(),400); }, 5000);
 });
+
+// User menu dropdown
+const userBtn = document.getElementById('userMenuBtn');
+const userMenu = document.getElementById('userMenu');
+if (userBtn && userMenu) {
+    userBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        userMenu.classList.toggle('show');
+        userBtn.setAttribute('aria-expanded', userMenu.classList.contains('show'));
+    });
+    document.addEventListener('click', () => userMenu.classList.remove('show'));
+}
