@@ -21,7 +21,7 @@ function estAdmin(): bool {
 function requerirAdmin(): void {
     requerirConnexion();
     if (!estAdmin()) {
-        redirect('index.php?erreur=acces_refuse');
+        redirect('projets.php?erreur=acces_refuse');
     }
 }
 

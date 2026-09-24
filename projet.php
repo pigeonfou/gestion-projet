@@ -1,18 +1,19 @@
 <?php
-$pageTitle = 'Projet';
+$pageTitle = 'Processus R1b';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/settings_helper.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
+require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 seedSettingsIfEmpty();
+ensureProjectProcessColumns();
 
 $db = getDB();
 $user = utilisateurCourant();
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-$phase = $_GET['phase'] ?? 'cahier';
-$phasesValides = ['cahier','capacite','investissement','proto','tests','production','livraison'];
-if (!in_array($phase, $phasesValides)) $phase = 'cahier';
+$view = $_GET['view'] ?? 'processus'; // processus | taches | documents
+$stepGet = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 
 if ($id <= 0) redirect('projets.php');
 
@@ -24,7 +25,56 @@ if (!$projet) {
     redirect('projets.php');
 }
 
-// Charger cahier + données associées
+$currentStep = max(1, min(8, (int)($projet['current_step'] ?? 1)));
+if ($stepGet >= 1 && $stepGet <= 8) {
+    $currentStep = $stepGet;
+}
+$phase = r1bPhaseFromStep($currentStep);
+$steps = r1bSteps();
+
+// Actions POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    if ($action === 'save_notes') {
+        $notes = trim($_POST['step_notes'] ?? '');
+        $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
+        setFlash('success', 'Notes enregistrées.');
+        redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
+    }
+    if ($action === 'set_step') {
+        $n = (int)($_POST['step'] ?? 1);
+        $n = max(1, min(8, $n));
+        $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$n, $id]);
+        setFlash('success', 'Étape mise à jour.');
+        redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
+    }
+    if ($action === 'decide') {
+        $decision = $_POST['decision'] ?? '';
+        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
+            if ($decision === 'GO' || $decision === 'NO_GO') {
+                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ? WHERE id = ?')
+                   ->execute([$decision, $decision === 'NO_GO' ? 8 : min(8, $currentStep + 1), $id]);
+            } elseif ($decision === 'DONE' || $decision === 'CONFORME') {
+                $next = min(8, $currentStep + 1);
+                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$next, $id]);
+            } elseif ($decision === 'NON_CONFORME') {
+                // rester sur tests
+                $db->prepare('UPDATE projets SET current_step = 6 WHERE id = ?')->execute([$id]);
+            }
+            setFlash('success', 'Décision enregistrée : ' . $decision);
+        }
+        redirect('projet.php?id=' . $id . '&view=processus');
+    }
+}
+
+// Reload after possible updates
+$stmt->execute([$id]);
+$projet = $stmt->fetch();
+$currentStep = max(1, min(8, (int)($projet['current_step'] ?? 1)));
+if ($stepGet >= 1 && $stepGet <= 8) $currentStep = $stepGet;
+$phase = r1bPhaseFromStep($currentStep);
+
+// Cahier
 $stmt = $db->prepare('SELECT * FROM cahiers WHERE projet_id = ?');
 $stmt->execute([$id]);
 $cahier = $stmt->fetch();
@@ -34,439 +84,300 @@ if (!$cahier) {
     $cahier = $stmt->fetch();
 }
 $cahier_id = (int)$cahier['id'];
+$specs = loadSpecs($cahier_id);
 
-$fonctions = $db->prepare('SELECT * FROM fonctions WHERE cahier_id = ? ORDER BY obligatoire DESC, nom');
-$fonctions->execute([$cahier_id]);
-$fonctions = $fonctions->fetchAll();
-
-$materiels = $db->prepare('SELECT * FROM materiel WHERE cahier_id = ? ORDER BY id');
-$materiels->execute([$cahier_id]);
-$materiels = $materiels->fetchAll();
-
-$environnements = $db->prepare('SELECT * FROM environnement WHERE cahier_id = ? ORDER BY id');
-$environnements->execute([$cahier_id]);
-$environnements = $environnements->fetchAll();
-
-$livrables = $db->prepare('SELECT * FROM livrables WHERE cahier_id = ? ORDER BY date_livraison IS NULL, date_livraison');
-$livrables->execute([$cahier_id]);
-$livrables = $livrables->fetchAll();
-
-$jalons = $db->prepare('SELECT * FROM jalons WHERE cahier_id = ? ORDER BY date_prevue IS NULL, date_prevue');
-$jalons->execute([$cahier_id]);
-$jalons = $jalons->fetchAll();
-
-// Tâches groupées pour étude capacité / investissement
-$taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id');
+$taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id DESC');
 $taches->execute([$id]);
 $taches = $taches->fetchAll();
 
 ensureSettingsTable();
-$stmtDocs = $db->prepare('SELECT * FROM documents WHERE projet_id = ? AND phase = ? ORDER BY date_upload DESC');
-$stmtDocs->execute([$id, $phase]);
-$documents = $stmtDocs->fetchAll();
+$documents = $db->prepare('SELECT * FROM documents WHERE projet_id = ? ORDER BY date_upload DESC');
+$documents->execute([$id]);
+$documents = $documents->fetchAll();
 $ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
 
-$phaseActive = $phase;
 $pageTitle = $projet['nom'];
 $useAppShell = true;
-
 require __DIR__ . '/includes/header.php';
+
+function stepClass(int $n, int $current): string {
+    if ($n < $current) return 'r1b-step done';
+    if ($n === $current) return 'r1b-step active';
+    return 'r1b-step';
+}
 ?>
 
-<div class="app-shell">
-    <?php require __DIR__ . '/includes/phase_sidebar.php'; ?>
-
-    <div class="main-workspace">
-        <?php if ($phase === 'cahier'): ?>
-            <!-- ===== EXPRESSION DE BESOIN & CAHIER DES CHARGES ===== -->
-            <div class="phase-title">
-                Expression de besoin & Cahier des charges
-                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm">
-                    <i class="fas fa-edit"></i> Rédiger / éditer le CDC
-                </a>
-            </div>
-
-            <div class="workflow-bar">
-                <div class="workflow-step"><span class="box done"></span> Exp. B</div>
-                <span class="workflow-arrow">→</span>
-                <div class="workflow-step"><span class="box current"></span> CDC</div>
-                <span class="workflow-arrow">→</span>
-                <div class="workflow-step"><span class="box"></span> V.Dir.</div>
-                <span class="workflow-arrow">→</span>
-                <div class="workflow-step"><span class="box"></span> V.Client</div>
-                <span class="workflow-arrow">→</span>
-                <div class="workflow-step"><span class="box"></span> Étude</div>
-            </div>
-
-            <?php
-            $specs = loadSpecs($cahier_id);
-            $hasSpecs = trim($specs['objectifs'] ?? '') !== '' || !empty($specs['contexte_utilisation']);
-            ?>
-
-            <?php if (!$hasSpecs): ?>
-            <div class="empty-state">
-                <i class="fas fa-file-alt"></i>
-                <p>Aucun cahier des charges structuré pour ce projet.</p>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary mt-2">
-                    <i class="fas fa-plus"></i> Commencer la rédaction
-                </a>
-            </div>
-            <?php else: ?>
-            <div class="cdc-block">
-                <div class="cdc-header"><span class="cdc-id">1.</span> Contexte & objectifs</div>
-                <div class="cdc-body">
-                    <p class="text-sm"><strong>Contexte :</strong> <?= e(implode(', ', $specs['contexte_utilisation'] ?: ['—'])) ?></p>
-                    <p class="text-sm mt-1"><strong>Objectifs :</strong> <?= e(mb_strimwidth($specs['objectifs'], 0, 200, '…')) ?></p>
-                </div>
-            </div>
-            <div class="cdc-block">
-                <div class="cdc-header"><span class="cdc-id">4.</span> Environnement & durcissement</div>
-                <div class="cdc-body">
-                    <p class="text-sm">
-                        IP : <strong><?= e($specs['ip'] ?: '—') ?></strong> ·
-                        Durcissement : <strong><?= e($specs['niveau_durcissement'] ?: '—') ?></strong> ·
-                        Chute : <strong><?= e($specs['chute_metres'] ? $specs['chute_metres'].' m' : '—') ?></strong>
-                    </p>
-                    <?php if ($specs['temp_fonc_min'] !== '' || $specs['temp_fonc_max'] !== ''): ?>
-                    <p class="text-sm mt-1">Temp. fonc. : <?= e($specs['temp_fonc_min']) ?> à <?= e($specs['temp_fonc_max']) ?> °C</p>
-                    <?php endif; ?>
-                    <?php if (!empty($specs['normes'])): ?>
-                    <p class="text-sm mt-1">Normes : <?= e(implode(', ', $specs['normes'])) ?></p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <div class="cdc-block">
-                <div class="cdc-header"><span class="cdc-id">7.</span> Planning</div>
-                <div class="cdc-body">
-                    <p class="text-sm"><?= e(mb_strimwidth($specs['delais'] ?: 'Non renseigné', 0, 180, '…')) ?></p>
-                </div>
-            </div>
-            <div class="submit-bar">
-                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary">
-                    <i class="fas fa-edit"></i> Modifier le formulaire complet
-                </a>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary" onclick="document.getElementById('formAction')?.setAttribute('value','generate')">
-                    <i class="fas fa-file-export"></i> Ouvrir pour générer le document
-                </a>
-            </div>
-            <?php endif; ?>
-
-            <?php if (estAdmin()): ?>
-            <div class="submit-bar" style="margin-top:.75rem;">
-                <button class="btn btn-secondary" type="button" onclick="alert('Workflow de validation DIR à connecter.')">
-                    <i class="fas fa-paper-plane"></i> Soumettre CDC à validation DIR
-                </button>
-            </div>
-            <?php endif; ?>
-
-        <?php elseif ($phase === 'capacite'): ?>
-            <!-- ===== ÉTUDE DE CAPACITÉ ===== -->
-            <div class="phase-title">Étude de capacité</div>
-
-            <?php
-            // Grouper les tâches comme des "CDC" pour l'affichage capacité
-            if (empty($taches) && empty($fonctions)):
-            ?>
-                <div class="empty-state">
-                    <i class="fas fa-users-cog"></i>
-                    <p>Aucune ressource planifiée.</p>
-                    <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary mt-2">Ajouter une ressource / tâche</a>
-                </div>
-            <?php else: ?>
-                <?php if (!empty($fonctions)): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header">
-                        <span class="cdc-id">CDC — Fonctions</span>
-                        <span style="flex:1"></span>
-                        <a href="<?= url('cahier.php?projet_id=' . $id . '&tab=fonctions') ?>" class="btn-add" title="Ajouter">+</a>
-                    </div>
-                    <div class="cdc-body">
-                        <div class="cdc-sub">
-                            <div>
-                                <div class="cdc-sub-title">DEV LOGICIEL / ÉQUIPE DEV</div>
-                                <ul class="cdc-items">
-                                    <?php foreach ($fonctions as $idx => $f): ?>
-                                    <li>
-                                        <span class="item-num">#<?= $idx + 1 ?></span>
-                                        <?= e($f['nom']) ?>
-                                        <?php if ($f['description']): ?> — <span class="text-muted"><?= e($f['description']) ?></span><?php endif; ?>
-                                    </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                            <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn-add">+</a>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($materiels)): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header">
-                        <span class="cdc-id">CDC — Matériel</span>
-                        <span style="flex:1"></span>
-                        <a href="<?= url('cahier.php?projet_id=' . $id . '&tab=materiel') ?>" class="btn-add">+</a>
-                    </div>
-                    <div class="cdc-body">
-                        <div class="cdc-sub">
-                            <div>
-                                <div class="cdc-sub-title">APPRO MATÉRIEL</div>
-                                <ul class="cdc-items">
-                                    <?php foreach ($materiels as $idx => $m): ?>
-                                    <li><span class="item-num">#<?= $idx + 1 ?></span> <?= e($m['description']) ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                            <a href="<?= url('cahier.php?projet_id=' . $id . '&tab=materiel') ?>" class="btn-add">+</a>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php foreach ($taches as $t): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header">
-                        <span class="cdc-id">Tâche #<?= (int)$t['id'] ?></span>
-                        <?= e($t['titre']) ?>
-                        <span style="flex:1"></span>
-                        <span class="badge badge-<?= e($t['priorite']) ?>"><?= e($t['priorite']) ?></span>
-                        <span class="badge badge-<?= e($t['statut']) ?>">
-                            <?= match($t['statut']) { 'a_faire'=>'À faire','en_cours'=>'En cours','terminee'=>'Terminée', default=>$t['statut'] } ?>
-                        </span>
-                    </div>
-                    <div class="cdc-body">
-                        <?php if ($t['description']): ?>
-                        <p class="text-sm text-muted"><?= e($t['description']) ?></p>
-                        <?php endif; ?>
-                        <div class="flex gap-1 mt-1">
-                            <a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>" class="btn btn-secondary btn-sm"><i class="fas fa-edit"></i></a>
-                        </div>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-
-                <div style="margin-top:.75rem;">
-                    <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Ajouter une ressource</a>
-                </div>
-            <?php endif; ?>
-
-        <?php elseif ($phase === 'investissement'): ?>
-            <!-- ===== BESOIN INVESTISSEMENT ===== -->
-            <div class="phase-title">Besoin investissement</div>
-
-            <?php if (empty($taches) && empty($materiels)): ?>
-                <div class="empty-state">
-                    <i class="fas fa-coins"></i>
-                    <p>Aucun besoin d'investissement saisi.</p>
-                </div>
-            <?php else: ?>
-                <?php if (!empty($taches)): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header"><span class="cdc-id">Charges de travail</span></div>
-                    <div class="cdc-body">
-                        <ul class="cdc-items">
-                            <?php foreach ($taches as $idx => $t): ?>
-                            <li>
-                                <span class="item-num">#<?= $idx + 1 ?></span>
-                                <strong><?= e($t['titre']) ?></strong>
-                                <?php if ($t['description']): ?> — <?= e($t['description']) ?><?php endif; ?>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($materiels)): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header"><span class="cdc-id">Matériel / Appro</span></div>
-                    <div class="cdc-body">
-                        <ul class="cdc-items">
-                            <?php foreach ($materiels as $idx => $m): ?>
-                            <li><span class="item-num">#<?= $idx + 1 ?></span> <?= e($m['description']) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($cahier['budget']): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header"><span class="cdc-id">Budget</span></div>
-                    <div class="cdc-body"><?= nl2br(e($cahier['budget'])) ?></div>
-                </div>
-                <?php endif; ?>
-            <?php endif; ?>
-
-        <?php elseif ($phase === 'proto'): ?>
-            <div class="phase-title">Prototype</div>
-            <div class="cdc-block">
-                <div class="cdc-body">
-                    <p class="text-muted">Phase prototype — utilisez les tâches et livrables pour suivre les itérations.</p>
-                    <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Nouvelle tâche proto</a>
-                </div>
-            </div>
-            <?php
-            $tachesProto = array_filter($taches, fn($t) => str_contains(strtolower($t['titre'] . ' ' . ($t['description']??'')), 'proto'));
-            foreach ($taches as $t):
-            ?>
-            <div class="cdc-block">
-                <div class="cdc-header">
-                    <?= e($t['titre']) ?>
-                    <span style="flex:1"></span>
-                    <span class="badge badge-<?= e($t['statut']) ?>">
-                        <?= match($t['statut']) { 'a_faire'=>'À faire','en_cours'=>'En cours','terminee'=>'Terminée', default=>$t['statut'] } ?>
-                    </span>
-                </div>
-                <?php if ($t['description']): ?><div class="cdc-body text-sm"><?= e($t['description']) ?></div><?php endif; ?>
-            </div>
-            <?php endforeach; ?>
-
-        <?php elseif ($phase === 'tests'): ?>
-            <div class="phase-title">Tests conformité</div>
-            <?php if (!empty($environnements)): ?>
-            <div class="cdc-block">
-                <div class="cdc-header">Environnement de test</div>
-                <div class="cdc-body">
-                    <ul class="cdc-items">
-                        <?php foreach ($environnements as $en): ?>
-                        <li><?= e($en['element']) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
-            <?php endif; ?>
-            <?php foreach ($taches as $t): ?>
-            <div class="cdc-block">
-                <div class="cdc-header">
-                    <?= e($t['titre']) ?>
-                    <span style="flex:1"></span>
-                    <span class="badge badge-<?= e($t['statut']) ?>">
-                        <?= match($t['statut']) { 'a_faire'=>'À faire','en_cours'=>'En cours','terminee'=>'Terminée', default=>$t['statut'] } ?>
-                    </span>
-                </div>
-            </div>
-            <?php endforeach; ?>
-            <?php if (empty($taches)): ?>
-            <div class="empty-state"><i class="fas fa-check-double"></i><p>Aucun test planifié.</p></div>
-            <?php endif; ?>
-
-        <?php elseif ($phase === 'production'): ?>
-            <div class="phase-title">Production</div>
-            <?php if (!empty($jalons)): ?>
-            <div class="cdc-block">
-                <div class="cdc-header">Jalons de production</div>
-                <div class="cdc-body">
-                    <ul class="cdc-items">
-                        <?php foreach ($jalons as $j): ?>
-                        <li>
-                            <strong><?= e($j['nom']) ?></strong>
-                            <?php if ($j['date_prevue']): ?> — <?= date('d/m/Y', strtotime($j['date_prevue'])) ?><?php endif; ?>
-                        </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
-            <?php endif; ?>
-            <div class="empty-state" style="padding:1.5rem;"><p class="text-muted">Suivi de production — jalons et tâches associés.</p></div>
-
-        <?php elseif ($phase === 'livraison'): ?>
-            <div class="phase-title">Livraison</div>
-            <?php if (!empty($livrables)): ?>
-                <?php foreach ($livrables as $l): ?>
-                <div class="cdc-block">
-                    <div class="cdc-header">
-                        <?= e($l['description']) ?>
-                        <span style="flex:1"></span>
-                        <?php if ($l['date_livraison']): ?>
-                        <span class="badge-h"><?= date('d/m/Y', strtotime($l['date_livraison'])) ?></span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="empty-state"><i class="fas fa-truck"></i><p>Aucun livrable défini.</p></div>
-            <?php endif; ?>
-        <?php endif; ?>
+<div class="r1b-layout">
+  <!-- Sidebar projet -->
+  <aside class="r1b-sidebar">
+    <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
+    <nav class="r1b-nav">
+      <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
+        <i class="fas fa-route"></i> Processus R1b
+      </a>
+      <a href="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="<?= $view === 'taches' ? 'active' : '' ?>">
+        <i class="fas fa-tasks"></i> Tâches
+      </a>
+      <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
+        <i class="fas fa-folder-open"></i> Documents
+      </a>
+      <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>">
+        <i class="fas fa-file-alt"></i> Cahier des charges
+      </a>
+    </nav>
+    <div class="r1b-sidebar-foot">
+      <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>
     </div>
+  </aside>
 
-    <!-- ===== PANNEAU DOCUMENTS ===== -->
-    <aside class="docs-panel">
-        <h3>
-            Documents
-            <?php if ($ncEnabled): ?>
-            <label for="fileUpload" class="btn-add" title="Uploader un fichier" style="cursor:pointer;">+</label>
+  <div class="r1b-main">
+    <?php if ($view === 'processus'): ?>
+      <div class="r1b-page-head">
+        <div>
+          <h2>Processus R1b – Conception</h2>
+          <p class="text-muted text-sm">Projet : <strong><?= e($projet['nom']) ?></strong>
+            <?php if ($projet['go_decision']): ?>
+              · Décision : <strong><?= e($projet['go_decision']) ?></strong>
             <?php endif; ?>
-        </h3>
+          </p>
+        </div>
+      </div>
 
-        <?php if ($ncEnabled): ?>
-        <form class="upload-form" action="<?= url('actions/upload.php') ?>" method="POST" enctype="multipart/form-data" id="uploadForm">
-            <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
-            <input type="hidden" name="phase" value="<?= e($phase) ?>">
-            <input type="file" name="fichier" id="fileUpload" required onchange="this.form.submit()">
-            <p class="text-muted text-sm">Dossier : <code><?= e(phaseFolderName($phase)) ?></code></p>
-        </form>
+      <!-- Stepper horizontal -->
+      <div class="r1b-stepper-wrap">
+        <div class="r1b-stepper">
+          <?php foreach ($steps as $n => $s): ?>
+            <?php if ($n > 1): ?><div class="r1b-step-line <?= $n <= $currentStep ? 'on' : '' ?>"></div><?php endif; ?>
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep) ?>">
+              <div class="r1b-step-circle"><?= $n < $currentStep ? '✓' : $n ?></div>
+              <div class="r1b-step-label"><?= e($s['title']) ?></div>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- Contenu étape -->
+      <div class="r1b-card">
+        <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title']) ?></h3>
+
+        <?php if ($currentStep === 1): ?>
+          <p class="text-sm text-muted mb-2">Formaliser le besoin et le cahier des charges.</p>
+          <?php $hasSpecs = trim($specs['objectifs'] ?? '') !== ''; ?>
+          <?php if ($hasSpecs): ?>
+            <div class="r1b-info-box">
+              <p><strong>Objectifs :</strong> <?= e(mb_strimwidth($specs['objectifs'], 0, 220, '…')) ?></p>
+              <p class="mt-1"><strong>Contexte :</strong> <?= e(implode(', ', $specs['contexte_utilisation'] ?: ['—'])) ?></p>
+              <p class="mt-1"><strong>Durcissement :</strong> <?= e($specs['niveau_durcissement'] ?: '—') ?> · IP <?= e($specs['ip'] ?: '—') ?></p>
+            </div>
+          <?php else: ?>
+            <p class="text-muted text-sm">Aucun CDC structuré renseigné.</p>
+          <?php endif; ?>
+          <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Rédiger / éditer le CDC</a>
+
+        <?php elseif ($currentStep === 2): ?>
+          <p class="text-sm text-muted mb-2">Études de capacité et besoins d'investissement.</p>
+          <div class="r1b-info-box">
+            <p><strong>Tâches / ressources :</strong> <?= count($taches) ?></p>
+            <p><strong>Budget (cahier) :</strong> <?= e($cahier['budget'] ?: '—') ?></p>
+          </div>
+          <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter une charge</a>
+
+        <?php elseif ($currentStep === 3): ?>
+          <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
+          <?php if ($projet['go_decision']): ?>
+            <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
+          <?php endif; ?>
+
+        <?php elseif ($currentStep === 4): ?>
+          <p class="text-sm text-muted mb-2">Recherche et sélection des composants / matériels.</p>
+          <?php
+          $materiels = $db->prepare('SELECT * FROM materiel WHERE cahier_id = ?');
+          $materiels->execute([$cahier_id]);
+          $materiels = $materiels->fetchAll();
+          ?>
+          <ul class="r1b-list">
+            <?php foreach ($materiels as $m): ?>
+              <li><?= e($m['description']) ?></li>
+            <?php endforeach; ?>
+            <?php if (!$materiels): ?><li class="text-muted">Aucun matériel listé — renseignez le CDC ou les tâches.</li><?php endif; ?>
+          </ul>
+
+        <?php elseif ($currentStep === 5): ?>
+          <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
+          <?php foreach ($taches as $t): ?>
+            <div class="r1b-task-line">
+              <span><?= e($t['titre']) ?></span>
+              <span class="badge badge-<?= e($t['statut']) ?>"><?= e($t['statut']) ?></span>
+            </div>
+          <?php endforeach; ?>
+          <?php if (!$taches): ?><p class="text-muted text-sm">Aucune tâche.</p><?php endif; ?>
+
+        <?php elseif ($currentStep === 6): ?>
+          <p class="text-sm text-muted mb-2">Tests de conformité du prototype.</p>
+          <div class="r1b-info-box">Validez la conformité ou signalez une non-conformité pour reboucler.</div>
+
+        <?php elseif ($currentStep === 7): ?>
+          <p class="text-sm text-muted mb-2">Livraison à la direction générale.</p>
+          <?php
+          $livrables = $db->prepare('SELECT * FROM livrables WHERE cahier_id = ?');
+          $livrables->execute([$cahier_id]);
+          $livrables = $livrables->fetchAll();
+          ?>
+          <ul class="r1b-list">
+            <?php foreach ($livrables as $l): ?>
+              <li><?= e($l['description']) ?><?= $l['date_livraison'] ? ' — ' . date('d/m/Y', strtotime($l['date_livraison'])) : '' ?></li>
+            <?php endforeach; ?>
+            <?php if (!$livrables): ?><li class="text-muted">Aucun livrable défini.</li><?php endif; ?>
+          </ul>
+
         <?php else: ?>
-        <p class="text-muted text-sm">Nextcloud désactivé — configurez-le dans Paramètres.</p>
+          <p class="text-sm text-muted mb-2">Archivage du dossier et passage vers R2 Vente.</p>
+          <div class="r1b-info-box">Projet en phase d'archivage<?= $projet['go_decision'] === 'NO_GO' ? ' (NO GO)' : '' ?>.</div>
         <?php endif; ?>
 
-        <ul class="docs-list" style="margin-top:.75rem;">
-            <?php if (empty($documents)): ?>
-            <li class="text-muted text-sm">Aucun document pour cette phase</li>
-            <?php else: ?>
-                <?php foreach ($documents as $doc): ?>
-                <li>
-                    <i class="fas fa-file"></i>
-                    <span>
-                        <?= e($doc['nom_fichier']) ?>
-                        <span class="doc-meta"><?= date('d/m/Y H:i', strtotime($doc['date_upload'])) ?>
-                        <?php if ($doc['taille']): ?> — <?= number_format($doc['taille']/1024, 1) ?> Ko<?php endif; ?></span>
-                    </span>
-                </li>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </ul>
+        <form method="POST" class="mt-2">
+          <input type="hidden" name="action" value="save_notes">
+          <label class="text-sm font-medium">Notes / résultats de l'étape</label>
+          <textarea name="step_notes" class="form-control" rows="3" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
+          <button type="submit" class="btn btn-secondary btn-sm mt-1"><i class="fas fa-save"></i> Enregistrer les notes</button>
+        </form>
 
-        <?php if ($phase === 'cahier'): ?>
-        <div class="docs-section">
-            <h3>Cahier des charges validé DIR</h3>
-            <ul class="docs-list"><li class="text-muted text-sm">En attente de validation</li></ul>
+        <div class="r1b-actions">
+          <?php if ($currentStep === 3): ?>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="GO">
+              <button class="btn btn-success">GO</button></form>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NO_GO">
+              <button class="btn btn-danger">NO GO → Archivage</button></form>
+          <?php elseif ($currentStep === 6): ?>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="CONFORME">
+              <button class="btn btn-success">✓ Conforme</button></form>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NON_CONFORME">
+              <button class="btn btn-danger">Non conforme</button></form>
+          <?php elseif ($currentStep < 8): ?>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="DONE">
+              <button class="btn btn-primary">Valider l'étape</button></form>
+          <?php endif; ?>
+          <?php if ($currentStep > 1): ?>
+            <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
+          <?php endif; ?>
         </div>
-        <div class="docs-section">
-            <h3>Cahier des charges validé Client</h3>
-            <ul class="docs-list"><li class="text-muted text-sm">En attente de validation</li></ul>
-        </div>
-        <?php endif; ?>
+      </div>
 
-        <?php if ($phase === 'investissement'): ?>
-        <div class="docs-section">
-            <h3>Estimation</h3>
-            <div class="estimation-box">
-                <div class="row"><span>Coûts :</span> <strong><?= e($cahier['budget'] ?: '—') ?></strong></div>
-                <div class="row"><span>Délais :</span> <strong><?= e($cahier['dates_info'] ?: '—') ?></strong></div>
+    <?php elseif ($view === 'taches'): ?>
+      <div class="r1b-page-head">
+        <div>
+          <h2>Gestion des tâches</h2>
+          <p class="text-muted text-sm">Tâches du projet <?= e($projet['nom']) ?></p>
+        </div>
+        <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
+      </div>
+      <?php
+      $cols = [
+        'a_faire' => ['title' => 'À faire', 'items' => []],
+        'en_cours' => ['title' => 'En cours', 'items' => []],
+        'terminee' => ['title' => 'Terminé', 'items' => []],
+      ];
+      foreach ($taches as $t) {
+        $st = $t['statut'] ?? 'a_faire';
+        if (!isset($cols[$st])) $st = 'a_faire';
+        $cols[$st]['items'][] = $t;
+      }
+      ?>
+      <div class="r1b-kanban">
+        <?php foreach ($cols as $key => $col): ?>
+        <div class="r1b-kanban-col">
+          <div class="r1b-kanban-head"><?= e($col['title']) ?> <span><?= count($col['items']) ?></span></div>
+          <?php foreach ($col['items'] as $t): ?>
+          <div class="r1b-kanban-card">
+            <strong><?= e($t['titre']) ?></strong>
+            <div class="text-muted text-sm mt-1">
+              <span class="badge badge-<?= e($t['priorite']) ?>"><?= e($t['priorite']) ?></span>
+              <a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>">Modifier</a>
             </div>
+          </div>
+          <?php endforeach; ?>
         </div>
-        <?php endif; ?>
+        <?php endforeach; ?>
+      </div>
 
-        <div class="docs-section">
-            <h3>Infos projet</h3>
-            <div class="estimation-box">
-                <div class="row"><span>Créateur</span> <strong><?= e($projet['createur']) ?></strong></div>
-                <div class="row"><span>Créé le</span> <strong><?= date('d/m/Y', strtotime($projet['date_creation'])) ?></strong></div>
-                <div class="row"><span>Tâches</span> <strong><?= count($taches) ?></strong></div>
-            </div>
+    <?php else: /* documents */ ?>
+      <div class="r1b-page-head">
+        <div>
+          <h2>Espace documentaire</h2>
+          <p class="text-muted text-sm">Documents du projet</p>
         </div>
-    </aside>
+      </div>
+      <?php if ($ncEnabled): ?>
+      <form class="r1b-card" action="<?= url('actions/upload.php') ?>" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="projet_id" value="<?= $id ?>">
+        <input type="hidden" name="phase" value="<?= e($phase) ?>">
+        <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+          Importer un fichier
+          <input type="file" name="fichier" required style="display:none" onchange="this.form.submit()">
+        </label>
+      </form>
+      <?php endif; ?>
+      <div class="r1b-docs-grid">
+        <?php foreach ($documents as $doc): ?>
+        <div class="r1b-card">
+          <h4><?= e($doc['nom_fichier']) ?></h4>
+          <p class="text-muted text-sm"><?= date('d/m/Y H:i', strtotime($doc['date_upload'])) ?>
+            · phase <?= e($doc['phase']) ?>
+            <?php if ($doc['taille']): ?> · <?= number_format($doc['taille']/1024, 0) ?> Ko<?php endif; ?>
+          </p>
+        </div>
+        <?php endforeach; ?>
+        <?php if (!$documents): ?><p class="text-muted">Aucun document</p><?php endif; ?>
+      </div>
+    <?php endif; ?>
+  </div>
 </div>
 
-<?php
-// Footer minimal without the default main-content wrapper closing issues
-?>
+<style>
+.r1b-layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - var(--header-h)); background: #f8fafc; }
+.r1b-sidebar { background: #fff; border-right: 1px solid #e2e8f0; padding: .75rem 0; }
+.r1b-sidebar-title { padding: .75rem 1rem; font-weight: 700; font-size: .95rem; border-bottom: 1px solid #f1f5f9; word-break: break-word; }
+.r1b-nav a { display: flex; align-items: center; gap: .5rem; padding: .65rem 1rem; color: #64748b; text-decoration: none; font-size: .85rem; font-weight: 500; border-right: 3px solid transparent; }
+.r1b-nav a:hover { background: #f8fafc; color: #5b21b6; }
+.r1b-nav a.active { background: #ede9fe; color: #5b21b6; border-right-color: #7c3aed; }
+.r1b-sidebar-foot { padding: 1rem; border-top: 1px solid #f1f5f9; margin-top: 1rem; }
+.r1b-sidebar-foot a { color: #64748b; font-size: .8rem; text-decoration: none; }
+.r1b-main { padding: 1.25rem 1.5rem 2rem; max-width: 1100px; }
+.r1b-page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap; }
+.r1b-page-head h2 { font-size: 1.4rem; font-weight: 700; }
+.r1b-stepper-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; overflow-x: auto; }
+.r1b-stepper { display: flex; align-items: flex-start; min-width: 860px; }
+.r1b-step { flex: 1; display: flex; flex-direction: column; align-items: center; text-decoration: none; color: #64748b; }
+.r1b-step-circle { width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
+.r1b-step.active .r1b-step-circle { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; box-shadow: 0 4px 12px rgba(124,58,237,.35); }
+.r1b-step.done .r1b-step-circle { background: #10b981; color: #fff; }
+.r1b-step-label { font-size: .68rem; font-weight: 500; text-align: center; margin-top: .4rem; max-width: 100px; line-height: 1.2; }
+.r1b-step.active .r1b-step-label { color: #5b21b6; font-weight: 700; }
+.r1b-step-line { flex: 0.4; height: 4px; background: #e2e8f0; margin-top: 18px; border-radius: 2px; }
+.r1b-step-line.on { background: #10b981; }
+.r1b-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.r1b-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: .75rem; }
+.r1b-card h4 { font-size: .95rem; font-weight: 600; }
+.r1b-info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: .75rem; font-size: .85rem; margin: .5rem 0; }
+.r1b-list { padding-left: 1.1rem; font-size: .85rem; }
+.r1b-task-line { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #f1f5f9; font-size: .85rem; }
+.r1b-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; padding-top: .75rem; border-top: 1px solid #f1f5f9; }
+.r1b-kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.r1b-kanban-col { background: #f1f5f9; border-radius: 12px; padding: .75rem; min-height: 280px; }
+.r1b-kanban-head { font-weight: 600; font-size: .85rem; margin-bottom: .6rem; display: flex; justify-content: space-between; }
+.r1b-kanban-head span { background: #fff; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; }
+.r1b-kanban-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: .65rem; margin-bottom: .5rem; font-size: .85rem; }
+.r1b-docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+@media (max-width: 900px) {
+  .r1b-layout { grid-template-columns: 1fr; }
+  .r1b-sidebar { border-right: none; border-bottom: 1px solid #e2e8f0; }
+  .r1b-kanban { grid-template-columns: 1fr; }
+}
+</style>
+
 </main>
 <footer class="footer">
-    <div class="footer-container">
-        <p>&copy; <?= date('Y') ?> ProjectFlow — Gestion de projets, processus & documentation</p>
-    </div>
+  <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </body>

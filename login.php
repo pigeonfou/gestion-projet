@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/auth.php';
 if (estConnecte()) {
-    redirect('index.php');
+    redirect('projets.php');
 }
 ?>
 <!DOCTYPE html>

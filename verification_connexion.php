@@ -23,7 +23,7 @@ try {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['identifiant'] = $user['identifiant'];
         $_SESSION['role'] = $user['role'];
-        redirect('index.php');
+        redirect('projets.php');
     }
     redirect('login.php?erreur=identifiants');
 } catch (PDOException $e) {

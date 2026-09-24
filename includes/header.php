@@ -19,16 +19,13 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
 <body>
     <header class="header">
         <div class="header-container">
-            <a href="<?= url('index.php') ?>" class="logo">
+            <a href="<?= url('projets.php') ?>" class="logo">
                 <i class="fas fa-project-diagram"></i>
                 <span><?= e($siteNom) ?></span>
             </a>
             <?php if ($user): ?>
             <nav class="nav">
-                <a href="<?= url('index.php') ?>" class="nav-link <?= ($activePage ?? '') === 'accueil' ? 'active' : '' ?>">
-                    <i class="fas fa-home"></i> Accueil
-                </a>
-                <a href="<?= url('projets.php') ?>" class="nav-link <?= ($activePage ?? '') === 'projets' ? 'active' : '' ?>">
+                <a href="<?= url('projets.php') ?>" class="nav-link <?= in_array(($activePage ?? ''), ['accueil','projets'], true) ? 'active' : '' ?>">
                     <i class="fas fa-folder-open"></i> Projets
                 </a>
                 <?php if (estAdmin()): ?>

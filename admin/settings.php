@@ -145,7 +145,7 @@ require __DIR__ . '/../includes/header.php';
 
     <div class="form-actions">
         <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-        <a href="<?= url('index.php') ?>" class="btn btn-secondary">Retour</a>
+        <a href="<?= url('projets.php') ?>" class="btn btn-secondary">Retour</a>
     </div>
 </form>
 
