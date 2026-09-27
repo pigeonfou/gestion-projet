@@ -167,8 +167,6 @@ function sel(?string $cur, string $val): string {
                                 <th style="width:5.5rem">ID</th>
                                 <th>Description</th>
                                 <th style="width:9rem">Indicateur</th>
-                                <th style="width:4.5rem;text-align:center">Matériel</th>
-                                <th style="width:4.5rem;text-align:center">Logiciel</th>
                                 <th style="width:2.5rem"></th>
                             </tr>
                         </thead>
@@ -176,7 +174,7 @@ function sel(?string $cur, string $val): string {
                             <?php
                             $fonctions = $s['fonctions'] ?? [];
                             if (empty($fonctions)) {
-                                $fonctions = [['id' => 'S.F.1', 'description' => '', 'indicateur' => 'Obligatoire', 'materiel' => false, 'logiciel' => false]];
+                                $fonctions = [['id' => 'S.F.1', 'description' => '', 'indicateur' => 'Obligatoire']];
                             }
                             foreach ($fonctions as $fi => $f):
                                 $ind = $f['indicateur'] ?? 'Obligatoire';
@@ -191,8 +189,6 @@ function sel(?string $cur, string $val): string {
                                         <option value="Optionnel" <?= ($ind === 'Optionnel') ? 'selected' : '' ?>>Optionnel</option>
                                     </select>
                                 </td>
-                                <td style="text-align:center"><input type="checkbox" name="sf_materiel[<?= (int)$fi ?>]" value="1" <?= !empty($f['materiel']) ? 'checked' : '' ?>></td>
-                                <td style="text-align:center"><input type="checkbox" name="sf_logiciel[<?= (int)$fi ?>]" value="1" <?= !empty($f['logiciel']) ? 'checked' : '' ?>></td>
                                 <td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>
                             </tr>
                             <?php endforeach; ?>
@@ -361,10 +357,6 @@ function sel(?string $cur, string $val): string {
     body.querySelectorAll('.sf-row').forEach((row, i) => {
       const idSpan = row.querySelector('.sf-id');
       if (idSpan) idSpan.textContent = 'S.F.' + (i + 1);
-      const mat = row.querySelector('input[type="checkbox"][name^="sf_materiel"]');
-      const log = row.querySelector('input[type="checkbox"][name^="sf_logiciel"]');
-      if (mat) mat.name = 'sf_materiel[' + i + ']';
-      if (log) log.name = 'sf_logiciel[' + i + ']';
     });
   }
 
@@ -376,7 +368,6 @@ function sel(?string $cur, string $val): string {
         const row = rows[0];
         row.querySelector('input[type="text"]').value = '';
         row.querySelector('select').value = 'Obligatoire';
-        row.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = false; });
         renumber();
         return;
       }
@@ -399,8 +390,6 @@ function sel(?string $cur, string $val): string {
         '<option value="Facultative">Facultative</option>' +
         '<option value="Optionnel">Optionnel</option>' +
       '</select></td>' +
-      '<td style="text-align:center"><input type="checkbox" name="sf_materiel[' + i + ']" value="1"></td>' +
-      '<td style="text-align:center"><input type="checkbox" name="sf_logiciel[' + i + ']" value="1"></td>' +
       '<td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>';
     body.appendChild(tr);
     bindDel(tr.querySelector('.btn-sf-del'));
