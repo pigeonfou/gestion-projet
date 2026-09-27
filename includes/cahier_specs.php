@@ -22,7 +22,6 @@ function emptySpecs(): array {
         'resultats_attendus' => '',
         'cas_usage' => '',
         'profils_utilisateurs' => '',
-        'contraintes_operationnelles' => '',
         // 2. Fonctionnelles
         'fonctionnalites' => '',
         'fonctionnalites_cochees' => [],
@@ -64,11 +63,10 @@ function generateCahierText(array $s, string $projetNom): string {
     $lines[] = str_repeat('=', 60);
 
     $lines[] = "\n1. CONTEXTE, OBJECTIFS ET BESOINS UTILISATEURS";
-    $lines[] = "Objectifs :\n" . ($s['objectifs'] ?: '—');
-    $lines[] = "Résultats attendus :\n" . ($s['resultats_attendus'] ?: '—');
-    $lines[] = "Cas d'usage :\n" . ($s['cas_usage'] ?: '—');
+    $lines[] = "Objectifs et contexte :\n" . ($s['objectifs'] ?: '—');
+    $lines[] = "Hors périmètre du projet :\n" . ($s['resultats_attendus'] ?: '—');
+    $lines[] = "Contraintes :\n" . ($s['cas_usage'] ?: '—');
     $lines[] = "Profils utilisateurs :\n" . ($s['profils_utilisateurs'] ?: '—');
-    $lines[] = "Contraintes opérationnelles :\n" . ($s['contraintes_operationnelles'] ?: '—');
 
     $lines[] = "\n2. EXIGENCES FONCTIONNELLES";
     $lines[] = "Fonctionnalités :\n" . ($s['fonctionnalites'] ?: '—');
@@ -94,7 +92,7 @@ function generateCahierText(array $s, string $projetNom): string {
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
     return [
-        'contexte_utilisation', 'contexte_autre',
+        'contexte_utilisation', 'contexte_autre', 'contraintes_operationnelles',
         'processeur', 'ram', 'stockage', 'autonomie', 'fiabilite', 'securite', 'maintenabilite',
         'ip', 'ip_autre', 'chute_metres', 'vibrations', 'temp_fonc_min', 'temp_fonc_max',
         'temp_stock_min', 'temp_stock_max', 'humidite', 'brouillard_salin', 'altitude_max',

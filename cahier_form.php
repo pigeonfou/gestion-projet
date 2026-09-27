@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Text fields
     $textKeys = [
-        'objectifs','resultats_attendus','cas_usage','profils_utilisateurs','contraintes_operationnelles',
+        'objectifs','resultats_attendus','cas_usage','profils_utilisateurs',
         'fonctionnalites','connectivite_autre','luminosite_nits','tactile_multitouch','usage_gants','anti_reflet','taille_ecran','ihm_accessoires',
         'delais','livrables_attendus',
     ];
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Required validation on "generate"
     $errors = [];
     if ($action === 'generate') {
-        if ($specs['objectifs'] === '') $errors[] = 'Les objectifs du projet sont obligatoires.';
+        if ($specs['objectifs'] === '') $errors[] = 'Les objectifs et le contexte sont obligatoires.';
     }
 
     if ($errors) {
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         saveSpecs($cahier_id, $specs);
         // Mirror some fields into classic cahier columns
         $db->prepare('UPDATE cahiers SET objectifs=?, contexte=?, contraintes=?, date_maj=CURRENT_TIMESTAMP WHERE id=?')
-           ->execute([$specs['objectifs'], $specs['cas_usage'], $specs['contraintes_operationnelles'], $cahier_id]);
+           ->execute([$specs['objectifs'], $specs['cas_usage'], $specs['cas_usage'], $cahier_id]);
 
         if ($action === 'generate') {
             $text = generateCahierText($specs, $projet['nom']);
@@ -135,24 +135,20 @@ function sel(?string $cur, string $val): string {
             <div class="card-header"><h2>1. Contexte, objectifs et besoins utilisateurs</h2></div>
             <div class="card-body">
                 <div class="form-group">
-                    <label>Objectifs du projet *</label>
+                    <label>Objectifs et contexte *</label>
                     <textarea name="objectifs" class="form-control" rows="3" required><?= e($s['objectifs']) ?></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Résultats attendus</label>
+                    <label>Hors périmètre du projet</label>
                     <textarea name="resultats_attendus" class="form-control" rows="3"><?= e($s['resultats_attendus']) ?></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Cas d'usage principaux</label>
+                    <label>Contraintes</label>
                     <textarea name="cas_usage" class="form-control" rows="3"><?= e($s['cas_usage']) ?></textarea>
                 </div>
                 <div class="form-group">
                     <label>Profils des utilisateurs finaux</label>
                     <textarea name="profils_utilisateurs" class="form-control" rows="2"><?= e($s['profils_utilisateurs']) ?></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Contraintes opérationnelles spécifiques</label>
-                    <textarea name="contraintes_operationnelles" class="form-control" rows="2"><?= e($s['contraintes_operationnelles']) ?></textarea>
                 </div>
             </div>
         </div>
