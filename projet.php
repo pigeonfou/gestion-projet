@@ -11,7 +11,7 @@ ensureProjectProcessColumns();
 
 $db = getDB();
 $user = utilisateurCourant();
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id = (int)($_GET['id'] ?? $_POST['id'] ?? $_POST['projet_id'] ?? 0);
 $view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | taches | documents
 $stepGet = isset($_GET['step']) ? (int)$_GET['step'] : 0;
 
@@ -52,16 +52,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
     }
     if ($action === 'save_specs_techniques') {
-        $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
-        $stmtC->execute([$id]);
-        $cid = (int)$stmtC->fetchColumn();
-        if ($cid <= 0) {
-            $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
-            $cid = (int)$db->lastInsertId();
+        try {
+            ensureCahierSpecsColumn();
+            $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
+            $stmtC->execute([$id]);
+            $cid = (int)$stmtC->fetchColumn();
+            if ($cid <= 0) {
+                $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
+                $cid = (int)$db->lastInsertId();
+            }
+            $techniques = parseSpecsTechniquesFromPost($_POST);
+            saveSpecsTechniques($cid, $techniques);
+            $n = count($techniques);
+            setFlash('success', $n > 0
+                ? ("Spécifications techniques enregistrées ($n ligne(s)).")
+                : 'Aucune ligne avec description : rien à enregistrer. Saisissez une description pour chaque S.T.');
+        } catch (Throwable $e) {
+            setFlash('error', 'Erreur d\'enregistrement des S.T. : ' . $e->getMessage());
         }
-        $techniques = parseSpecsTechniquesFromPost($_POST);
-        saveSpecsTechniques($cid, $techniques);
-        setFlash('success', 'Spécifications techniques enregistrées.');
         redirect('projet.php?id=' . $id . '&view=processus&step=2');
     }
     if ($action === 'decide') {
@@ -410,8 +418,10 @@ function statutLabel(string $s): string
               <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
             </div>
           <?php else: ?>
-            <form method="POST" id="formSpecsTech">
+            <form method="POST" id="formSpecsTech" action="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>">
               <input type="hidden" name="action" value="save_specs_techniques">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
               <?php foreach ($fonctionsSF as $sf): ?>
                 <?php
                   $sfId = $sf['id'] ?? '';
@@ -467,7 +477,7 @@ function statutLabel(string $s): string
               <?php endforeach; ?>
               <div class="mt-3">
                 <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
             </form>
           <?php endif; ?>

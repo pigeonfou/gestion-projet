@@ -322,7 +322,9 @@ function sel(?string $cur, string $val): string {
   btnPrev.addEventListener('click', () => show(step - 1));
   btnNext.addEventListener('click', () => show(step + 1));
   steps.forEach(s => s.addEventListener('click', () => show(+s.dataset.step)));
-  show(1);
+  const params = new URLSearchParams(window.location.search);
+  const initialStep = parseInt(params.get('step') || params.get('onglet') || '1', 10);
+  show(initialStep >= 1 && initialStep <= total ? initialStep : 1);
 
   // localStorage draft backup
   const form = document.getElementById('cdcForm');

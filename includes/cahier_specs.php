@@ -45,8 +45,15 @@ function loadSpecs(int $cahierId): array {
 
 function saveSpecs(int $cahierId, array $specs): void {
     ensureCahierSpecsColumn();
-    $json = json_encode($specs, JSON_UNESCAPED_UNICODE);
-    $stmt = getDB()->prepare('UPDATE cahiers SET specs_json = ?, date_maj = CURRENT_TIMESTAMP WHERE id = ?');
+    $db = getDB();
+    $json = json_encode($specs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    // date_maj peut manquer sur d'anciennes bases
+    $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (in_array('date_maj', $cols, true)) {
+        $stmt = $db->prepare('UPDATE cahiers SET specs_json = ?, date_maj = CURRENT_TIMESTAMP WHERE id = ?');
+    } else {
+        $stmt = $db->prepare('UPDATE cahiers SET specs_json = ? WHERE id = ?');
+    }
     $stmt->execute([$json, $cahierId]);
 }
 
@@ -240,10 +247,17 @@ function parseSpecsTechniquesFromPost(array $post): array {
 }
 
 function saveSpecsTechniques(int $cahierId, array $techniques): void {
-    $specs = loadSpecs($cahierId);
-    $specs['specs_techniques'] = $techniques;
-    // loadSpecs merges emptySpecs and strips obsolete - ensure fonctions preserved
-    saveSpecs($cahierId, $specs);
+    ensureCahierSpecsColumn();
+    $db = getDB();
+    $stmt = $db->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
+    $stmt->execute([$cahierId]);
+    $raw = $stmt->fetchColumn();
+    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+    if (!is_array($data)) {
+        $data = [];
+    }
+    $data['specs_techniques'] = array_values($techniques);
+    saveSpecs($cahierId, $data);
 }
 
 
