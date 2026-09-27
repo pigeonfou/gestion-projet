@@ -808,7 +808,7 @@ function stepClass(int $n, int $current): string
       <div class="r1b-kanban r1b-kanban-4">
         <?php foreach ($colsK as $key => $col): ?>
           <div class="r1b-kanban-col <?= e($col['bg']) ?>">
-            <div class="r1b-kanban-head"><?= e($col['title']) ?> <span><?= count($col['items']) ?></span></div>
+            <div class="r1b-kanban-head"><span class="kanban-col-title"><?= e($col['title']) ?></span> <span class="kanban-col-count"><?= count($col['items']) ?></span></div>
             <?php foreach ($col['items'] as $t): ?>
               <div class="r1b-kanban-card">
                 <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
