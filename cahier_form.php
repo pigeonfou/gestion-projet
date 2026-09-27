@@ -99,7 +99,7 @@ function sel(?string $cur, string $val): string {
         <h1><i class="fas fa-file-alt"></i> Cahier des charges structuré</h1>
         <p class="text-muted text-sm mt-1">Projet : <strong><?= e($projet['nom']) ?></strong></p>
     </div>
-    <a href="<?= url('projet.php?id=' . $projet_id . 'projet.php?id=' . $projet_id . '&phase=cahier')view=processus') ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour au projet</a>
+    <a href="<?= url('projet.php?id=' . $projet_id . '&view=processus') ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour au projet</a>
 </div>
 
 <?php if ($generated): ?>
