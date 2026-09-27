@@ -22,17 +22,7 @@ function emptySpecs(): array {
         'resultats_attendus' => '',
         'cas_usage' => '',
         'profils_utilisateurs' => '',
-        // 2. Fonctionnelles
-        'fonctionnalites' => '',
-        'fonctionnalites_cochees' => [],
-        'connectivite' => [],
-        'connectivite_autre' => '',
-        'luminosite_nits' => '',
-        'tactile_multitouch' => '',
-        'usage_gants' => '',
-        'anti_reflet' => '',
-        'taille_ecran' => '',
-        'ihm_accessoires' => '',
+        // 2. Spécifications fonctionnelles (réservé)
         // 3. Planning
         'delais' => '',
         'livrables_attendus' => '',
@@ -68,18 +58,8 @@ function generateCahierText(array $s, string $projetNom): string {
     $lines[] = "Contraintes :\n" . ($s['cas_usage'] ?: '—');
     $lines[] = "Profils utilisateurs :\n" . ($s['profils_utilisateurs'] ?: '—');
 
-    $lines[] = "\n2. EXIGENCES FONCTIONNELLES";
-    $lines[] = "Fonctionnalités :\n" . ($s['fonctionnalites'] ?: '—');
-    if (!empty($s['fonctionnalites_cochees'])) {
-        $lines[] = "Fonctionnalités cochées : " . implode(', ', $s['fonctionnalites_cochees']);
-    }
-    $conn = implode(', ', $s['connectivite'] ?? []);
-    if (!empty($s['connectivite_autre'])) {
-        $conn .= ($conn ? ' — ' : '') . $s['connectivite_autre'];
-    }
-    $lines[] = "Connectivité : " . ($conn ?: '—');
-    $lines[] = "Affichage : luminosité {$s['luminosite_nits']} nits, tactile multi-touch : {$s['tactile_multitouch']}, gants : {$s['usage_gants']}, anti-reflet : {$s['anti_reflet']}, taille : {$s['taille_ecran']}";
-    $lines[] = "IHM / accessoires :\n" . ($s['ihm_accessoires'] ?: '—');
+    $lines[] = "\n2. SPÉCIFICATIONS FONCTIONNELLES";
+    $lines[] = "—";
 
     $lines[] = "\n3. PLANNING ET LIVRABLES";
     $lines[] = "Délais :\n" . ($s['delais'] ?: '—');
@@ -93,6 +73,8 @@ function generateCahierText(array $s, string $projetNom): string {
 function obsoleteSpecKeys(): array {
     return [
         'contexte_utilisation', 'contexte_autre', 'contraintes_operationnelles',
+        'fonctionnalites', 'fonctionnalites_cochees', 'connectivite', 'connectivite_autre',
+        'luminosite_nits', 'tactile_multitouch', 'usage_gants', 'anti_reflet', 'taille_ecran', 'ihm_accessoires',
         'processeur', 'ram', 'stockage', 'autonomie', 'fiabilite', 'securite', 'maintenabilite',
         'ip', 'ip_autre', 'chute_metres', 'vibrations', 'temp_fonc_min', 'temp_fonc_max',
         'temp_stock_min', 'temp_stock_max', 'humidite', 'brouillard_salin', 'altitude_max',

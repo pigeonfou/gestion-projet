@@ -36,15 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Text fields
     $textKeys = [
         'objectifs','resultats_attendus','cas_usage','profils_utilisateurs',
-        'fonctionnalites','connectivite_autre','luminosite_nits','tactile_multitouch','usage_gants','anti_reflet','taille_ecran','ihm_accessoires',
         'delais','livrables_attendus',
     ];
     foreach ($textKeys as $k) {
         $specs[$k] = trim($_POST[$k] ?? '');
     }
     // Arrays (checkboxes)
-    $specs['fonctionnalites_cochees'] = array_values(array_filter((array)($_POST['fonctionnalites_cochees'] ?? [])));
-    $specs['connectivite'] = array_values(array_filter((array)($_POST['connectivite'] ?? [])));
 
     // Required validation on "generate"
     $errors = [];
@@ -120,7 +117,7 @@ function sel(?string $cur, string $val): string {
 <!-- Stepper -->
 <div class="cdc-stepper" id="cdcStepper">
     <button type="button" class="step active" data-step="1"><span>1</span> Contexte</button>
-    <button type="button" class="step" data-step="2"><span>2</span> Fonctionnel</button>
+    <button type="button" class="step" data-step="2"><span>2</span> Spécifications</button>
     <button type="button" class="step" data-step="3"><span>3</span> Planning</button>
 </div>
 <div class="cdc-progress"><div class="cdc-progress-bar" id="cdcProgress" style="width:33%"></div></div>
@@ -157,61 +154,9 @@ function sel(?string $cur, string $val): string {
     <!-- ===== 2 ===== -->
     <div class="cdc-step-panel" data-panel="2">
         <div class="card">
-            <div class="card-header"><h2>2. Exigences fonctionnelles</h2></div>
+            <div class="card-header"><h2>2. Spécifications fonctionnelles</h2></div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>Fonctionnalités attendues</label>
-                    <textarea name="fonctionnalites" class="form-control" rows="3" placeholder="Description libre…"><?= e($s['fonctionnalites']) ?></textarea>
-                    <div class="check-grid mt-1">
-                        <?php foreach (['Lecture de codes','GPS','Caméra','NFC/RFID','Scanner 1D/2D','Audio','Capteurs IO'] as $v): ?>
-                        <label class="form-check"><input type="checkbox" name="fonctionnalites_cochees[]" value="<?= $v ?>" <?= checked_arr($s['fonctionnalites_cochees'], $v) ?>> <?= $v ?></label>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Connectivité requise</label>
-                    <div class="check-grid">
-                        <?php foreach (['Wi-Fi','4G/5G','Bluetooth','Ethernet','Ports M12','Docking','Autre'] as $v): ?>
-                        <label class="form-check"><input type="checkbox" name="connectivite[]" value="<?= $v ?>" <?= checked_arr($s['connectivite'], $v) ?>> <?= $v ?></label>
-                        <?php endforeach; ?>
-                    </div>
-                    <input type="text" name="connectivite_autre" class="form-control mt-1" placeholder="Autre connectivité…" value="<?= e($s['connectivite_autre']) ?>">
-                </div>
-                <div class="section-label">Caractéristiques d'affichage</div>
-                <div class="form-row">
-                    <div class="form-group"><label>Luminosité min. (nits)</label><input type="number" name="luminosite_nits" class="form-control" value="<?= e($s['luminosite_nits']) ?>" min="0"></div>
-                    <div class="form-group"><label>Taille d'écran</label><input type="text" name="taille_ecran" class="form-control" value="<?= e($s['taille_ecran']) ?>" placeholder="ex. 10.1&quot;"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Tactile multi-touch</label>
-                        <select name="tactile_multitouch" class="form-control">
-                            <option value="">—</option>
-                            <option value="oui" <?= sel($s['tactile_multitouch'],'oui') ?>>Oui</option>
-                            <option value="non" <?= sel($s['tactile_multitouch'],'non') ?>>Non</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Utilisation avec gants</label>
-                        <select name="usage_gants" class="form-control">
-                            <option value="">—</option>
-                            <option value="oui" <?= sel($s['usage_gants'],'oui') ?>>Oui</option>
-                            <option value="non" <?= sel($s['usage_gants'],'non') ?>>Non</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Anti-reflet</label>
-                        <select name="anti_reflet" class="form-control">
-                            <option value="">—</option>
-                            <option value="oui" <?= sel($s['anti_reflet'],'oui') ?>>Oui</option>
-                            <option value="non" <?= sel($s['anti_reflet'],'non') ?>>Non</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Interfaces homme-machine et accessoires</label>
-                    <textarea name="ihm_accessoires" class="form-control" rows="2" placeholder="Clavier rétroéclairé, batteries hot-swap…"><?= e($s['ihm_accessoires']) ?></textarea>
-                </div>
+                <p class="text-muted text-sm">Aucun champ pour le moment. Les spécifications fonctionnelles pourront être définies ici ultérieurement.</p>
             </div>
         </div>
     </div>
