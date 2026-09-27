@@ -100,6 +100,9 @@ $documents->execute([$id]);
 $documents = $documents->fetchAll();
 $ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
 
+$jalonsProjet = loadJalons($cahier_id);
+$nbJalons = count($jalonsProjet);
+
 // Stats pour le tableau de bord projet
 $tachesOuvertes = 0;
 $tachesTerminees = 0;
@@ -197,8 +200,8 @@ function statutLabel(string $s): string
           <p class="dash-kpi-value"><?= $validationsPending ?></p>
         </div>
         <div class="dash-kpi">
-          <p class="dash-kpi-label">Documents</p>
-          <p class="dash-kpi-value"><?= $nbDocs ?></p>
+          <p class="dash-kpi-label">Jalons</p>
+          <p class="dash-kpi-value"><?= $nbJalons ?></p>
         </div>
       </div>
 
@@ -274,6 +277,32 @@ function statutLabel(string $s): string
             <?php if (!empty($projet['go_decision'])): ?>
               <div class="r1b-info-box mt-3">
                 Décision GO/NO GO : <strong><?= e($projet['go_decision']) ?></strong>
+              </div>
+            <?php endif; ?>
+          </div>
+
+
+          <div class="r1b-card">
+            <div class="flex-between mb-3">
+              <h3>Jalons</h3>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Éditer</a>
+            </div>
+            <?php if (empty($jalonsProjet)): ?>
+              <p class="text-muted text-sm">Aucun jalon défini.</p>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter</a>
+            <?php else: ?>
+              <div class="dash-jalon-list">
+                <?php foreach ($jalonsProjet as $j): ?>
+                  <?php
+                    $jd = $j['date_prevue'] ?? '';
+                    $past = $jd && strtotime($jd) < strtotime('today');
+                    $soon = $jd && !$past && strtotime($jd) <= strtotime('+14 days');
+                  ?>
+                  <div class="dash-jalon-row <?= $past ? 'past' : ($soon ? 'soon' : '') ?>">
+                    <span class="dash-jalon-name"><?= e($j['nom']) ?></span>
+                    <span class="dash-jalon-date"><?= $jd ? date('d/m/Y', strtotime($jd)) : '—' ?></span>
+                  </div>
+                <?php endforeach; ?>
               </div>
             <?php endif; ?>
           </div>
@@ -618,6 +647,15 @@ function statutLabel(string $s): string
   .r1b-kanban { grid-template-columns: 1fr; }
   .dash-kpi-grid { grid-template-columns: 1fr 1fr; }
 }
+
+.dash-jalon-list { display: flex; flex-direction: column; gap: .35rem; }
+.dash-jalon-row { display: flex; justify-content: space-between; align-items: center; padding: .5rem 0; border-bottom: 1px solid #f1f5f9; font-size: .875rem; }
+.dash-jalon-name { font-weight: 500; }
+.dash-jalon-date { color: #64748b; font-size: .8rem; white-space: nowrap; }
+.dash-jalon-row.soon .dash-jalon-date { color: #d97706; font-weight: 600; }
+.dash-jalon-row.past .dash-jalon-date { color: #dc2626; }
+.dash-jalon-row.past .dash-jalon-name { color: #94a3b8; text-decoration: line-through; }
+
 </style>
 
 </main>

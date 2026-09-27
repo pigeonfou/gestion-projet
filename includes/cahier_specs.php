@@ -48,7 +48,7 @@ function saveSpecs(int $cahierId, array $specs): void {
     $stmt->execute([$json, $cahierId]);
 }
 
-function generateCahierText(array $s, string $projetNom): string {
+function generateCahierText(array $s, string $projetNom, array $jalons = []): string {
     $lines = [];
     $lines[] = "CAHIER DES CHARGES — " . $projetNom;
     $lines[] = str_repeat('=', 60);
@@ -79,6 +79,15 @@ function generateCahierText(array $s, string $projetNom): string {
     $lines[] = "\n3. PLANNING ET LIVRABLES";
     $lines[] = "Délais :\n" . ($s['delais'] ?: '—');
     $lines[] = "Livrables :\n" . ($s['livrables_attendus'] ?: '—');
+    $lines[] = "Jalons :";
+    if (empty($jalons)) {
+        $lines[] = "—";
+    } else {
+        foreach ($jalons as $j) {
+            $d = !empty($j['date_prevue']) ? date('d/m/Y', strtotime($j['date_prevue'])) : 'date non définie';
+            $lines[] = "  • " . ($j['nom'] ?? '') . " — " . $d;
+        }
+    }
 
     return implode("\n", $lines);
 }
@@ -123,6 +132,61 @@ function parseFonctionsFromPost(array $post): array {
     }
     return $out;
 }
+
+
+
+function ensureJalonsTable(): void {
+    static $done = false;
+    if ($done) return;
+    $db = getDB();
+    $db->exec("CREATE TABLE IF NOT EXISTS jalons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cahier_id INTEGER NOT NULL,
+        nom TEXT NOT NULL,
+        date_prevue DATE,
+        FOREIGN KEY (cahier_id) REFERENCES cahiers(id) ON DELETE CASCADE
+    )");
+    $done = true;
+}
+
+/** @return list<array{id:int,nom:string,date_prevue:?string}> */
+function loadJalons(int $cahierId): array {
+    ensureJalonsTable();
+    $stmt = getDB()->prepare('SELECT id, nom, date_prevue FROM jalons WHERE cahier_id = ? ORDER BY date_prevue IS NULL, date_prevue, id');
+    $stmt->execute([$cahierId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/**
+ * Remplace tous les jalons d'un cahier à partir du POST (jalon_nom[], jalon_date[]).
+ * @return int nombre de jalons enregistrés
+ */
+function saveJalonsFromPost(int $cahierId, array $post): int {
+    ensureJalonsTable();
+    $noms = $post['jalon_nom'] ?? [];
+    $dates = $post['jalon_date'] ?? [];
+    if (!is_array($noms)) {
+        $noms = [];
+    }
+    $db = getDB();
+    $db->prepare('DELETE FROM jalons WHERE cahier_id = ?')->execute([$cahierId]);
+    $ins = $db->prepare('INSERT INTO jalons (cahier_id, nom, date_prevue) VALUES (?,?,?)');
+    $n = 0;
+    foreach ($noms as $i => $nom) {
+        $nom = trim((string)$nom);
+        if ($nom === '') {
+            continue;
+        }
+        $date = trim((string)($dates[$i] ?? ''));
+        if ($date === '') {
+            $date = null;
+        }
+        $ins->execute([$cahierId, $nom, $date]);
+        $n++;
+    }
+    return $n;
+}
+
 
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {

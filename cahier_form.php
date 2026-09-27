@@ -54,12 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('error', implode(' ', $errors));
     } else {
         saveSpecs($cahier_id, $specs);
+        saveJalonsFromPost($cahier_id, $_POST);
         // Mirror some fields into classic cahier columns
         $db->prepare('UPDATE cahiers SET objectifs=?, contexte=?, contraintes=?, date_maj=CURRENT_TIMESTAMP WHERE id=?')
            ->execute([$specs['objectifs'], $specs['cas_usage'], $specs['cas_usage'], $cahier_id]);
 
         if ($action === 'generate') {
-            $text = generateCahierText($specs, $projet['nom']);
+            $text = generateCahierText($specs, $projet['nom'], loadJalons($cahier_id));
             $_SESSION['cdc_generated'] = $text;
             setFlash('success', 'Cahier des charges généré et enregistré.');
             redirect('cahier_form.php?projet_id=' . $projet_id . '&generated=1');
@@ -70,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $s = loadSpecs($cahier_id);
+$jalonsList = loadJalons($cahier_id);
 $generated = $_SESSION['cdc_generated'] ?? null;
 if (isset($_GET['generated'])) {
     // keep flash; text in session
@@ -210,6 +212,36 @@ function sel(?string $cur, string $val): string {
             <div class="card-body">
                 <div class="form-group"><label>Délais de livraison et de mise en service</label><textarea name="delais" class="form-control" rows="3"><?= e($s['delais']) ?></textarea></div>
                 <div class="form-group"><label>Livrables attendus (prototypes, certificats, rapports de tests…)</label><textarea name="livrables_attendus" class="form-control" rows="3"><?= e($s['livrables_attendus']) ?></textarea></div>
+
+                <div class="section-label mt-3">Jalons du projet</div>
+                <p class="text-muted text-sm mb-2">Définissez les jalons clés (nom + date prévue). Ils apparaissent aussi sur le tableau de bord du projet.</p>
+                <div class="sf-table-wrap">
+                    <table class="sf-table" id="jalonTable">
+                        <thead>
+                            <tr>
+                                <th>Nom du jalon</th>
+                                <th style="width:11rem">Date prévue</th>
+                                <th style="width:2.5rem"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="jalonBody">
+                            <?php
+                            $jl = $jalonsList ?? [];
+                            if (empty($jl)) {
+                                $jl = [['nom' => '', 'date_prevue' => '']];
+                            }
+                            foreach ($jl as $j):
+                            ?>
+                            <tr class="jalon-row">
+                                <td><input type="text" name="jalon_nom[]" class="form-control" value="<?= e($j['nom'] ?? '') ?>" placeholder="Ex. Revue GO/NO GO, Livraison proto…"></td>
+                                <td><input type="date" name="jalon_date[]" class="form-control" value="<?= e($j['date_prevue'] ?? '') ?>"></td>
+                                <td><button type="button" class="btn-sf-del btn-jalon-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm mt-2" id="jalonAddRow"><i class="fas fa-plus"></i> Ajouter un jalon</button>
             </div>
         </div>
     </div>
@@ -267,6 +299,7 @@ function sel(?string $cur, string $val): string {
 .btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
 .btn-sf-del:hover { background: #fef2f2; }
 
+.section-label { font-weight: 600; font-size: .9rem; margin: 1rem 0 .5rem; color: #334155; }
 </style>
 <script>
 (function(){
@@ -372,6 +405,38 @@ function sel(?string $cur, string $val): string {
     body.appendChild(tr);
     bindDel(tr.querySelector('.btn-sf-del'));
     renumber();
+  });
+})();
+
+
+
+(function() {
+  const body = document.getElementById('jalonBody');
+  const addBtn = document.getElementById('jalonAddRow');
+  if (!body || !addBtn) return;
+
+  function bindDel(btn) {
+    btn.addEventListener('click', () => {
+      const rows = body.querySelectorAll('.jalon-row');
+      if (rows.length <= 1) {
+        const row = rows[0];
+        row.querySelectorAll('input').forEach(inp => { inp.value = ''; });
+        return;
+      }
+      btn.closest('.jalon-row').remove();
+    });
+  }
+  body.querySelectorAll('.btn-jalon-del').forEach(bindDel);
+
+  addBtn.addEventListener('click', () => {
+    const tr = document.createElement('tr');
+    tr.className = 'jalon-row';
+    tr.innerHTML =
+      '<td><input type="text" name="jalon_nom[]" class="form-control" value="" placeholder="Ex. Revue GO/NO GO, Livraison proto…"></td>' +
+      '<td><input type="date" name="jalon_date[]" class="form-control" value=""></td>' +
+      '<td><button type="button" class="btn-sf-del btn-jalon-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>';
+    body.appendChild(tr);
+    bindDel(tr.querySelector('.btn-jalon-del'));
   });
 })();
 
