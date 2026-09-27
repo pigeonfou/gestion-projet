@@ -399,7 +399,21 @@ function statutLabel(string $s): string
             foreach ($techniquesAll as $trow) {
                 $sfKey = $trow['sf'] ?? '';
                 if ($sfKey === '') continue;
+                if (empty($trow['uid'])) {
+                    $trow['uid'] = bin2hex(random_bytes(8));
+                }
                 $techBySf[$sfKey][] = $trow;
+            }
+            $uidToId = techniquesUidToId($techniquesAll);
+            // Liste plate pour les selects de dépendances (toutes les S.T. du projet)
+            $allTechForDeps = [];
+            foreach ($techniquesAll as $trow) {
+                if (empty($trow['uid'])) continue;
+                $allTechForDeps[] = [
+                    'uid' => $trow['uid'],
+                    'id' => $trow['id'] ?? '',
+                    'label' => ($trow['id'] ?? '') . ' — ' . mb_strimwidth($trow['description'] ?? '', 0, 40, '…'),
+                ];
             }
           ?>
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Spécifications techniques</h4>
@@ -412,7 +426,7 @@ function statutLabel(string $s): string
           <?php else: ?>
             <form method="POST" id="formSpecsTech">
               <input type="hidden" name="action" value="save_specs_techniques">
-              <?php foreach ($fonctionsSF as $sf): ?>
+              <?php $stRowIndex = 0; foreach ($fonctionsSF as $sf): ?>
                 <?php
                   $sfId = $sf['id'] ?? '';
                   if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
@@ -436,17 +450,26 @@ function statutLabel(string $s): string
                         <tr>
                           <th style="width:5.5rem">ID</th>
                           <th>Description</th>
-                          <th style="width:8.5rem">Type</th>
+                          <th style="width:8rem">Type</th>
+                          <th style="width:11rem">Dépend de</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
                       <tbody class="st-body">
                         <?php foreach ($rows as $ri => $tr): ?>
-                        <tr class="st-row">
-                          <td><span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
+                        <?php
+                          $rowUid = $tr['uid'] ?? bin2hex(random_bytes(8));
+                          $rowDeps = $tr['dependances'] ?? [];
+                          if (!is_array($rowDeps)) $rowDeps = [];
+                          $idx = $stRowIndex++;
+                        ?>
+                        <tr class="st-row" data-uid="<?= e($rowUid) ?>">
+                          <td>
+                            <span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
                             <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
+                            <input type="hidden" name="st_uid[]" class="st-uid" value="<?= e($rowUid) ?>">
                           </td>
-                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
+                          <td><input type="text" name="st_description[]" class="form-control st-desc" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
                           <td>
                             <?php $ty = $tr['type'] ?? 'Matériel'; ?>
                             <select name="st_type[]" class="form-control">
@@ -454,6 +477,14 @@ function statutLabel(string $s): string
                               <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
                               <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
+                            </select>
+                          </td>
+                          <td>
+                            <select name="st_deps[<?= (int)$idx ?>][]" class="form-control st-deps" multiple size="3" title="Ctrl+clic pour multi-sélection">
+                              <?php foreach ($allTechForDeps as $opt): ?>
+                                <?php if ($opt['uid'] === $rowUid) continue; ?>
+                                <option value="<?= e($opt['uid']) ?>" <?= in_array($opt['uid'], $rowDeps, true) ? 'selected' : '' ?>><?= e($opt['label']) ?></option>
+                              <?php endforeach; ?>
                             </select>
                           </td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
@@ -466,6 +497,7 @@ function statutLabel(string $s): string
                 </div>
               <?php endforeach; ?>
               <div class="mt-3">
+                <p class="text-muted text-sm mb-2">Dépendances : maintenez <strong>Ctrl</strong> (ou Cmd) pour sélectionner plusieurs S.T. Les liens restent valides même si les ID S.T.n.m sont renumérotés.</p>
                 <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
                 <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
@@ -765,6 +797,14 @@ function statutLabel(string $s): string
 
 <script>
 (function() {
+  function uid() {
+    return 'st' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  }
+
+  function allRows() {
+    return Array.from(document.querySelectorAll('#formSpecsTech .st-row'));
+  }
+
   function renumberBlock(block) {
     const sfNum = block.getAttribute('data-sf-num');
     const sfId = block.getAttribute('data-sf');
@@ -773,6 +813,42 @@ function statutLabel(string $s): string
       if (idSpan) idSpan.textContent = 'S.T.' + sfNum + '.' + (i + 1);
       const hid = row.querySelector('input[name="st_sf[]"]');
       if (hid) hid.value = sfId;
+    });
+    refreshDepOptions();
+    reindexDepNames();
+  }
+
+  function reindexDepNames() {
+    allRows().forEach((row, i) => {
+      const sel = row.querySelector('select.st-deps');
+      if (sel) sel.name = 'st_deps[' + i + '][]';
+    });
+  }
+
+  function refreshDepOptions() {
+    const rows = allRows();
+    const options = rows.map(row => {
+      const u = row.getAttribute('data-uid') || (row.querySelector('.st-uid') || {}).value;
+      const id = (row.querySelector('.st-id') || {}).textContent || '';
+      const desc = (row.querySelector('.st-desc') || {}).value || '';
+      const label = id + ' — ' + (desc.length > 40 ? desc.slice(0, 40) + '…' : desc);
+      return { uid: u, label: label };
+    }).filter(o => o.uid);
+
+    rows.forEach(row => {
+      const sel = row.querySelector('select.st-deps');
+      if (!sel) return;
+      const myUid = row.getAttribute('data-uid');
+      const selected = new Set(Array.from(sel.selectedOptions).map(o => o.value));
+      sel.innerHTML = '';
+      options.forEach(opt => {
+        if (opt.uid === myUid) return;
+        const o = document.createElement('option');
+        o.value = opt.uid;
+        o.textContent = opt.label || opt.uid;
+        if (selected.has(opt.uid)) o.selected = true;
+        sel.appendChild(o);
+      });
     });
   }
 
@@ -786,8 +862,10 @@ function statutLabel(string $s): string
         const rows = body.querySelectorAll('.st-row');
         if (rows.length <= 1) {
           const row = rows[0];
-          row.querySelector('input[type="text"]').value = '';
-          row.querySelector('select').value = 'Matériel';
+          row.querySelector('.st-desc').value = '';
+          row.querySelector('select:not(.st-deps)').value = 'Matériel';
+          const deps = row.querySelector('select.st-deps');
+          if (deps) Array.from(deps.options).forEach(o => { o.selected = false; });
           renumberBlock(block);
           return;
         }
@@ -797,29 +875,43 @@ function statutLabel(string $s): string
     }
     body.querySelectorAll('.btn-st-del').forEach(bindDel);
 
+    body.querySelectorAll('.st-desc').forEach(inp => {
+      inp.addEventListener('change', refreshDepOptions);
+      inp.addEventListener('blur', refreshDepOptions);
+    });
+
     const addBtn = block.querySelector('.btn-st-add');
     if (addBtn) {
       addBtn.addEventListener('click', () => {
         const i = body.querySelectorAll('.st-row').length;
+        const newUid = uid();
         const tr = document.createElement('tr');
         tr.className = 'st-row';
+        tr.setAttribute('data-uid', newUid);
         tr.innerHTML =
           '<td><span class="st-id">S.T.' + sfNum + '.' + (i + 1) + '</span>' +
-          '<input type="hidden" name="st_sf[]" value="' + sfId + '"></td>' +
-          '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
+          '<input type="hidden" name="st_sf[]" value="' + sfId + '">' +
+          '<input type="hidden" name="st_uid[]" class="st-uid" value="' + newUid + '"></td>' +
+          '<td><input type="text" name="st_description[]" class="form-control st-desc" value="" placeholder="Description technique…"></td>' +
           '<td><select name="st_type[]" class="form-control">' +
             '<option value="Matériel" selected>Matériel</option>' +
             '<option value="Logiciel">Logiciel</option>' +
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
           '</select></td>' +
+          '<td><select name="st_deps[0][]" class="form-control st-deps" multiple size="3" title="Ctrl+clic pour multi-sélection"></select></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
+        tr.querySelector('.st-desc').addEventListener('change', refreshDepOptions);
+        tr.querySelector('.st-desc').addEventListener('blur', refreshDepOptions);
         renumberBlock(block);
       });
     }
   });
+
+  reindexDepNames();
+  refreshDepOptions();
 })();
 </script>
 
