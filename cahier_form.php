@@ -130,13 +130,9 @@ function sel(?string $cur, string $val): string {
 <div class="cdc-stepper" id="cdcStepper">
     <button type="button" class="step active" data-step="1"><span>1</span> Contexte</button>
     <button type="button" class="step" data-step="2"><span>2</span> Fonctionnel</button>
-    <button type="button" class="step" data-step="3"><span>3</span> Performance</button>
-    <button type="button" class="step" data-step="4"><span>4</span> Environnement</button>
-    <button type="button" class="step" data-step="5"><span>5</span> Technique</button>
-    <button type="button" class="step" data-step="6"><span>6</span> Support</button>
-    <button type="button" class="step" data-step="7"><span>7</span> Planning</button>
+    <button type="button" class="step" data-step="3"><span>3</span> Planning</button>
 </div>
-<div class="cdc-progress"><div class="cdc-progress-bar" id="cdcProgress" style="width:14%"></div></div>
+<div class="cdc-progress"><div class="cdc-progress-bar" id="cdcProgress" style="width:33%"></div></div>
 
 <form method="POST" id="cdcForm" action="<?= url('cahier_form.php') ?>">
     <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
@@ -242,129 +238,11 @@ function sel(?string $cur, string $val): string {
         </div>
     </div>
 
+
     <!-- ===== 3 ===== -->
     <div class="cdc-step-panel" data-panel="3">
         <div class="card">
-            <div class="card-header"><h2>3. Exigences non fonctionnelles / performance</h2></div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group"><label>Processeur</label><input type="text" name="processeur" class="form-control" value="<?= e($s['processeur']) ?>"></div>
-                    <div class="form-group"><label>RAM</label><input type="text" name="ram" class="form-control" value="<?= e($s['ram']) ?>" placeholder="ex. 8 Go"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Stockage</label><input type="text" name="stockage" class="form-control" value="<?= e($s['stockage']) ?>" placeholder="ex. 256 Go SSD"></div>
-                    <div class="form-group"><label>Autonomie</label><input type="text" name="autonomie" class="form-control" value="<?= e($s['autonomie']) ?>" placeholder="ex. 8 h"></div>
-                </div>
-                <div class="form-group"><label>Fiabilité et disponibilité</label><textarea name="fiabilite" class="form-control" rows="2"><?= e($s['fiabilite']) ?></textarea></div>
-                <div class="form-group"><label>Exigences de sécurité (chiffrement, TPM, auth, RGPD/ISO…)</label><textarea name="securite" class="form-control" rows="2"><?= e($s['securite']) ?></textarea></div>
-                <div class="form-group"><label>Maintenabilité, évolutivité et interopérabilité</label><textarea name="maintenabilite" class="form-control" rows="2"><?= e($s['maintenabilite']) ?></textarea></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 4 ===== -->
-    <div class="cdc-step-panel" data-panel="4">
-        <div class="card">
-            <div class="card-header"><h2>4. Exigences environnementales et de durcissement</h2></div>
-            <div class="card-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Indice de protection IP</label>
-                        <select name="ip" class="form-control">
-                            <option value="">—</option>
-                            <?php foreach (['IP65','IP66','IP67','IP68','autre'] as $v): ?>
-                            <option value="<?= $v ?>" <?= sel($s['ip'], $v) ?>><?= $v ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <input type="text" name="ip_autre" class="form-control mt-1" placeholder="Autre IP…" value="<?= e($s['ip_autre']) ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>Niveau de durcissement *</label>
-                        <select name="niveau_durcissement" class="form-control">
-                            <option value="">—</option>
-                            <option value="semi-durci" <?= sel($s['niveau_durcissement'],'semi-durci') ?>>Semi-durci</option>
-                            <option value="entierement-durci" <?= sel($s['niveau_durcissement'],'entierement-durci') ?>>Entièrement durci</option>
-                            <option value="ultra-durci" <?= sel($s['niveau_durcissement'],'ultra-durci') ?>>Ultra-durci</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Résistance chutes (m)</label><input type="number" step="0.1" name="chute_metres" class="form-control" value="<?= e($s['chute_metres']) ?>"></div>
-                    <div class="form-group"><label>Résistance vibrations</label><input type="text" name="vibrations" class="form-control" value="<?= e($s['vibrations']) ?>"></div>
-                </div>
-                <div class="section-label">Températures (°C)</div>
-                <div class="form-row">
-                    <div class="form-group"><label>Fonctionnement min</label><input type="number" name="temp_fonc_min" class="form-control" value="<?= e($s['temp_fonc_min']) ?>"></div>
-                    <div class="form-group"><label>Fonctionnement max</label><input type="number" name="temp_fonc_max" class="form-control" value="<?= e($s['temp_fonc_max']) ?>"></div>
-                    <div class="form-group"><label>Stockage min</label><input type="number" name="temp_stock_min" class="form-control" value="<?= e($s['temp_stock_min']) ?>"></div>
-                    <div class="form-group"><label>Stockage max</label><input type="number" name="temp_stock_max" class="form-control" value="<?= e($s['temp_stock_max']) ?>"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Humidité / condensation</label><input type="text" name="humidite" class="form-control" value="<?= e($s['humidite']) ?>"></div>
-                    <div class="form-group"><label>Brouillard salin</label><input type="text" name="brouillard_salin" class="form-control" value="<?= e($s['brouillard_salin']) ?>"></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Altitude maximale</label><input type="text" name="altitude_max" class="form-control" value="<?= e($s['altitude_max']) ?>"></div>
-                    <div class="form-group"><label>Protection UV / solaire</label><input type="text" name="uv" class="form-control" value="<?= e($s['uv']) ?>"></div>
-                </div>
-                <div class="form-group"><label>Exigences CEM</label><textarea name="cem" class="form-control" rows="2"><?= e($s['cem']) ?></textarea></div>
-                <div class="form-group">
-                    <label>Normes et certifications</label>
-                    <div class="check-grid">
-                        <?php foreach (['MIL-STD-810G','MIL-STD-810H','EN50155','IEC 60945','ATEX','NEMA','autre'] as $v): ?>
-                        <label class="form-check"><input type="checkbox" name="normes[]" value="<?= $v ?>" <?= checked_arr($s['normes'], $v) ?>> <?= $v ?></label>
-                        <?php endforeach; ?>
-                    </div>
-                    <input type="text" name="normes_autre" class="form-control mt-1" placeholder="Autres normes…" value="<?= e($s['normes_autre']) ?>">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 5 ===== -->
-    <div class="cdc-step-panel" data-panel="5">
-        <div class="card">
-            <div class="card-header"><h2>5. Contraintes techniques, réglementaires et d'intégration</h2></div>
-            <div class="card-body">
-                <div class="form-group"><label>Architecture matérielle et logicielle souhaitée</label><textarea name="architecture" class="form-control" rows="2"><?= e($s['architecture']) ?></textarea></div>
-                <div class="form-group"><label>Compatibilité avec les systèmes existants</label><textarea name="compatibilite" class="form-control" rows="2"><?= e($s['compatibilite']) ?></textarea></div>
-                <div class="form-row">
-                    <div class="form-group"><label>Alimentation</label><input type="text" name="alimentation" class="form-control" value="<?= e($s['alimentation']) ?>" placeholder="Secteur, véhicule, batteries…"></div>
-                    <div class="form-group"><label>Consommation max</label><input type="text" name="consommation_max" class="form-control" value="<?= e($s['consommation_max']) ?>"></div>
-                </div>
-                <div class="form-group"><label>Matériaux et construction</label><textarea name="materiaux" class="form-control" rows="2" placeholder="Alliage, fanless, ports protégés…"><?= e($s['materiaux']) ?></textarea></div>
-                <div class="form-group"><label>Conformités réglementaires obligatoires</label><textarea name="conformites" class="form-control" rows="2"><?= e($s['conformites']) ?></textarea></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 6 ===== -->
-    <div class="cdc-step-panel" data-panel="6">
-        <div class="card">
-            <div class="card-header"><h2>6. Contraintes opérationnelles, logistiques et de support</h2></div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label>Mode d'installation / déploiement</label>
-                    <select name="mode_installation" class="form-control">
-                        <option value="">—</option>
-                        <?php foreach (['fixe','portable','embarqué véhicule'] as $v): ?>
-                        <option value="<?= $v ?>" <?= sel($s['mode_installation'], $v) ?>><?= ucfirst($v) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group"><label>Exigences de maintenance</label><textarea name="maintenance" class="form-control" rows="2"><?= e($s['maintenance']) ?></textarea></div>
-                <div class="form-group"><label>Durée et type de garantie souhaitée</label><input type="text" name="garantie" class="form-control" value="<?= e($s['garantie']) ?>" placeholder="ex. 3 ans, extension 5 ans"></div>
-                <div class="form-group"><label>Formation et documentation attendues</label><textarea name="formation_doc" class="form-control" rows="2"><?= e($s['formation_doc']) ?></textarea></div>
-                <div class="form-group"><label>Disponibilité pièces détachées et SAV</label><textarea name="pieces_sav" class="form-control" rows="2"><?= e($s['pieces_sav']) ?></textarea></div>
-                <div class="form-group"><label>Cycle de vie et gestion de l'obsolescence</label><textarea name="cycle_vie" class="form-control" rows="2"><?= e($s['cycle_vie']) ?></textarea></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 7 ===== -->
-    <div class="cdc-step-panel" data-panel="7">
-        <div class="card">
-            <div class="card-header"><h2>7. Contraintes planning et livrables attendus</h2></div>
+            <div class="card-header"><h2>3. Contraintes planning et livrables attendus</h2></div>
             <div class="card-body">
                 <div class="form-group"><label>Délais de livraison et de mise en service</label><textarea name="delais" class="form-control" rows="3"><?= e($s['delais']) ?></textarea></div>
                 <div class="form-group"><label>Livrables attendus (prototypes, certificats, rapports de tests…)</label><textarea name="livrables_attendus" class="form-control" rows="3"><?= e($s['livrables_attendus']) ?></textarea></div>
@@ -419,7 +297,7 @@ function sel(?string $cur, string $val): string {
 <script>
 (function(){
   let step = 1;
-  const total = 7;
+  const total = 3;
   const panels = document.querySelectorAll('.cdc-step-panel');
   const steps = document.querySelectorAll('.cdc-stepper .step');
   const bar = document.getElementById('cdcProgress');
