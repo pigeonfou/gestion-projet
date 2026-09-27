@@ -113,9 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kanban = $map[$st] ?? 'a_faire';
         $statutDb = $kanban === 'validation' ? 'en_cours' : ($kanban === 'terminee' ? 'terminee' : ($kanban === 'en_cours' ? 'en_cours' : 'a_faire'));
         if ($tid > 0) {
-            $db->prepare('UPDATE taches SET kanban_status = ?, statut = ? WHERE id = ? AND projet_id = ?')
-               ->execute([$kanban, $statutDb, $tid, $id]);
-            setFlash('success', 'Statut de la tâche mis à jour.');
+            $chk = $db->prepare('SELECT assigne_a FROM taches WHERE id = ? AND projet_id = ?');
+            $chk->execute([$tid, $id]);
+            $row = $chk->fetch();
+            if (!$row) {
+                setFlash('error', 'Tâche introuvable.');
+            } elseif (!estAdmin() && (string)($row['assigne_a'] ?? '') !== (string)($user['identifiant'] ?? '')) {
+                setFlash('error', 'Vous ne pouvez modifier que les tâches qui vous sont affectées.');
+            } else {
+                $db->prepare('UPDATE taches SET kanban_status = ?, statut = ? WHERE id = ? AND projet_id = ?')
+                   ->execute([$kanban, $statutDb, $tid, $id]);
+                setFlash('success', 'Statut de la tâche mis à jour.');
+            }
         }
         redirect('projet.php?id=' . $id . '&view=taches');
     }
@@ -164,6 +173,13 @@ ensureTachesExtendedColumns();
 $taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id DESC');
 $taches->execute([$id]);
 $taches = $taches->fetchAll();
+$tachesAll = $taches;
+if (!estAdmin()) {
+    $ident = $user['identifiant'] ?? '';
+    $taches = array_values(array_filter($taches, static function ($t) use ($ident) {
+        return isset($t['assigne_a']) && (string)$t['assigne_a'] === (string)$ident;
+    }));
+}
 
 ensureSettingsTable();
 $documents = $db->prepare('SELECT * FROM documents WHERE projet_id = ? ORDER BY date_upload DESC');
@@ -729,7 +745,7 @@ function taskKanbanStatus(array $t): string
 
         <?php elseif ($currentStep === 5): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
-          <?php foreach ($taches as $t): ?>
+          <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
             <div class="r1b-task-line">
               <span><?= e($t['titre'] ?? '') ?></span>
@@ -801,9 +817,17 @@ function taskKanbanStatus(array $t): string
       <div class="r1b-page-head">
         <div>
           <h2>Gestion des tâches</h2>
-          <p class="text-muted text-sm">Tâches individuelles et de groupe — projet <?= e($projet['nom']) ?></p>
+          <p class="text-muted text-sm">
+            <?php if (estAdmin()): ?>
+              Toutes les tâches du projet <?= e($projet['nom']) ?>
+            <?php else: ?>
+              Vos tâches affectées — projet <?= e($projet['nom']) ?>
+            <?php endif; ?>
+          </p>
         </div>
-        <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
+        <?php if (estAdmin()): ?>
+          <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
+        <?php endif; ?>
       </div>
       <div class="r1b-kanban r1b-kanban-4">
         <?php foreach ($colsK as $key => $col): ?>
