@@ -124,11 +124,23 @@ $order = match($tri) {
     default => 'p.date_creation DESC'
 };
 
+// Compter les jalons via cahiers (colonne cahier_id, pas projet_id)
+$jalonsSub = '0';
+try {
+    $db->query('SELECT 1 FROM jalons LIMIT 1');
+    $db->query('SELECT 1 FROM cahiers LIMIT 1');
+    $jalonsSub = "(SELECT COUNT(*) FROM jalons j
+              INNER JOIN cahiers c ON c.id = j.cahier_id
+              WHERE c.projet_id = p.id)";
+} catch (Throwable $e) {
+    $jalonsSub = '0';
+}
+
 $stmt = $db->query("
     SELECT p.*, u.identifiant AS createur,
            (SELECT COUNT(*) FROM taches t WHERE t.projet_id = p.id) AS nb_taches,
            (SELECT COUNT(*) FROM taches t WHERE t.projet_id = p.id AND t.statut IN ('a_faire','en_cours')) AS nb_taches_ouvertes,
-           (SELECT COUNT(*) FROM jalons j WHERE j.projet_id = p.id) AS nb_jalons
+           $jalonsSub AS nb_jalons
     FROM projets p
     JOIN utilisateurs u ON u.id = p.createur_id
     ORDER BY $order
