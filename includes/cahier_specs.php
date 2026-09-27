@@ -22,7 +22,8 @@ function emptySpecs(): array {
         'resultats_attendus' => '',
         'cas_usage' => '',
         'profils_utilisateurs' => '',
-        // 2. Spécifications fonctionnelles (réservé)
+        // 2. Spécifications fonctionnelles
+        'fonctions' => [], // [ ['id'=>'S.F.1', 'description'=>'', 'indicateur'=>'Obligatoire', 'materiel'=>false, 'logiciel'=>false], ... ]
         // 3. Planning
         'delais' => '',
         'livrables_attendus' => '',
@@ -59,7 +60,21 @@ function generateCahierText(array $s, string $projetNom): string {
     $lines[] = "Profils utilisateurs :\n" . ($s['profils_utilisateurs'] ?: '—');
 
     $lines[] = "\n2. SPÉCIFICATIONS FONCTIONNELLES";
-    $lines[] = "—";
+    $fonctions = $s['fonctions'] ?? [];
+    if (empty($fonctions)) {
+        $lines[] = "—";
+    } else {
+        $lines[] = str_pad("ID", 8) . " | " . str_pad("Indicateur", 12) . " | Mat. | Log. | Description";
+        $lines[] = str_repeat('-', 72);
+        foreach ($fonctions as $f) {
+            $id = $f['id'] ?? '';
+            $ind = $f['indicateur'] ?? '';
+            $mat = !empty($f['materiel']) ? 'Oui' : 'Non';
+            $log = !empty($f['logiciel']) ? 'Oui' : 'Non';
+            $desc = trim(preg_replace('/\s+/', ' ', $f['description'] ?? ''));
+            $lines[] = str_pad($id, 8) . " | " . str_pad($ind, 12) . " | " . str_pad($mat, 3) . " | " . str_pad($log, 3) . " | " . $desc;
+        }
+    }
 
     $lines[] = "\n3. PLANNING ET LIVRABLES";
     $lines[] = "Délais :\n" . ($s['delais'] ?: '—');
@@ -68,6 +83,46 @@ function generateCahierText(array $s, string $projetNom): string {
     return implode("\n", $lines);
 }
 
+
+
+
+/**
+ * Parse les lignes de spécifications fonctionnelles depuis le POST.
+ * @return list<array{id:string,description:string,indicateur:string,materiel:bool,logiciel:bool}>
+ */
+function parseFonctionsFromPost(array $post): array {
+    $descs = $post['sf_description'] ?? [];
+    $inds = $post['sf_indicateur'] ?? [];
+    $mats = $post['sf_materiel'] ?? [];
+    $logs = $post['sf_logiciel'] ?? [];
+    if (!is_array($descs)) {
+        return [];
+    }
+    $out = [];
+    $n = 0;
+    foreach ($descs as $i => $desc) {
+        $desc = trim((string)$desc);
+        $ind = trim((string)($inds[$i] ?? 'Obligatoire'));
+        if (!in_array($ind, ['Obligatoire', 'Facultative', 'Optionnel'], true)) {
+            $ind = 'Obligatoire';
+        }
+        // Skip completely empty rows
+        $mat = isset($mats[$i]);
+        $log = isset($logs[$i]);
+        if ($desc === '' && !$mat && !$log) {
+            continue;
+        }
+        $n++;
+        $out[] = [
+            'id' => 'S.F.' . $n,
+            'description' => $desc,
+            'indicateur' => $ind,
+            'materiel' => $mat,
+            'logiciel' => $log,
+        ];
+    }
+    return $out;
+}
 
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {

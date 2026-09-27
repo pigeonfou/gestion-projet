@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($textKeys as $k) {
         $specs[$k] = trim($_POST[$k] ?? '');
     }
-    // Arrays (checkboxes)
+    // Spécifications fonctionnelles (liste dynamique)
+    $specs['fonctions'] = parseFonctionsFromPost($_POST);
 
     // Required validation on "generate"
     $errors = [];
@@ -156,7 +157,47 @@ function sel(?string $cur, string $val): string {
         <div class="card">
             <div class="card-header"><h2>2. Spécifications fonctionnelles</h2></div>
             <div class="card-body">
-                <p class="text-muted text-sm">Aucun champ pour le moment. Les spécifications fonctionnelles pourront être définies ici ultérieurement.</p>
+                <p class="text-muted text-sm mb-2">Ajoutez les fonctions attendues. L’ID est généré automatiquement (S.F.1, S.F.2…).</p>
+                <div class="sf-table-wrap">
+                    <table class="sf-table" id="sfTable">
+                        <thead>
+                            <tr>
+                                <th style="width:5.5rem">ID</th>
+                                <th>Description</th>
+                                <th style="width:9rem">Indicateur</th>
+                                <th style="width:4.5rem;text-align:center">Matériel</th>
+                                <th style="width:4.5rem;text-align:center">Logiciel</th>
+                                <th style="width:2.5rem"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sfBody">
+                            <?php
+                            $fonctions = $s['fonctions'] ?? [];
+                            if (empty($fonctions)) {
+                                $fonctions = [['id' => 'S.F.1', 'description' => '', 'indicateur' => 'Obligatoire', 'materiel' => false, 'logiciel' => false]];
+                            }
+                            foreach ($fonctions as $fi => $f):
+                                $ind = $f['indicateur'] ?? 'Obligatoire';
+                            ?>
+                            <tr class="sf-row">
+                                <td><span class="sf-id"><?= e($f['id'] ?? ('S.F.' . ($fi + 1))) ?></span></td>
+                                <td><input type="text" name="sf_description[]" class="form-control" value="<?= e($f['description'] ?? '') ?>" placeholder="Description de la fonction…"></td>
+                                <td>
+                                    <select name="sf_indicateur[]" class="form-control">
+                                        <option value="Obligatoire" <?= ($ind === 'Obligatoire') ? 'selected' : '' ?>>Obligatoire</option>
+                                        <option value="Facultative" <?= ($ind === 'Facultative') ? 'selected' : '' ?>>Facultative</option>
+                                        <option value="Optionnel" <?= ($ind === 'Optionnel') ? 'selected' : '' ?>>Optionnel</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:center"><input type="checkbox" name="sf_materiel[<?= (int)$fi ?>]" value="1" <?= !empty($f['materiel']) ? 'checked' : '' ?>></td>
+                                <td style="text-align:center"><input type="checkbox" name="sf_logiciel[<?= (int)$fi ?>]" value="1" <?= !empty($f['logiciel']) ? 'checked' : '' ?>></td>
+                                <td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm mt-2" id="sfAddRow"><i class="fas fa-plus"></i> Ajouter une fonction</button>
             </div>
         </div>
     </div>
@@ -216,6 +257,16 @@ function sel(?string $cur, string $val): string {
   .cdc-stepper .step { min-width: 44px; font-size: 0; }
   .cdc-stepper .step span { font-size: .7rem; }
 }
+
+.sf-table-wrap { overflow-x: auto; }
+.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; }
+.sf-table th, .sf-table td { border: 1px solid var(--border, #e2e8f0); padding: .4rem .5rem; vertical-align: middle; }
+.sf-table th { background: #f8fafc; font-weight: 600; text-align: left; }
+.sf-table .sf-id { font-weight: 700; color: #5b21b6; font-family: ui-monospace, monospace; white-space: nowrap; }
+.sf-table input[type="text"], .sf-table select { width: 100%; font-size: .85rem; }
+.btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
+.btn-sf-del:hover { background: #fef2f2; }
+
 </style>
 <script>
 (function(){
@@ -266,6 +317,64 @@ function sel(?string $cur, string $val): string {
     } catch(e) {}
   });
 })();
+
+
+(function() {
+  const body = document.getElementById('sfBody');
+  const addBtn = document.getElementById('sfAddRow');
+  if (!body || !addBtn) return;
+
+  function renumber() {
+    body.querySelectorAll('.sf-row').forEach((row, i) => {
+      const idSpan = row.querySelector('.sf-id');
+      if (idSpan) idSpan.textContent = 'S.F.' + (i + 1);
+      const mat = row.querySelector('input[type="checkbox"][name^="sf_materiel"]');
+      const log = row.querySelector('input[type="checkbox"][name^="sf_logiciel"]');
+      if (mat) mat.name = 'sf_materiel[' + i + ']';
+      if (log) log.name = 'sf_logiciel[' + i + ']';
+    });
+  }
+
+  function bindDel(btn) {
+    btn.addEventListener('click', () => {
+      const rows = body.querySelectorAll('.sf-row');
+      if (rows.length <= 1) {
+        // clear last row instead of removing
+        const row = rows[0];
+        row.querySelector('input[type="text"]').value = '';
+        row.querySelector('select').value = 'Obligatoire';
+        row.querySelectorAll('input[type="checkbox"]').forEach(c => { c.checked = false; });
+        renumber();
+        return;
+      }
+      btn.closest('.sf-row').remove();
+      renumber();
+    });
+  }
+
+  body.querySelectorAll('.btn-sf-del').forEach(bindDel);
+
+  addBtn.addEventListener('click', () => {
+    const i = body.querySelectorAll('.sf-row').length;
+    const tr = document.createElement('tr');
+    tr.className = 'sf-row';
+    tr.innerHTML =
+      '<td><span class="sf-id">S.F.' + (i + 1) + '</span></td>' +
+      '<td><input type="text" name="sf_description[]" class="form-control" value="" placeholder="Description de la fonction…"></td>' +
+      '<td><select name="sf_indicateur[]" class="form-control">' +
+        '<option value="Obligatoire" selected>Obligatoire</option>' +
+        '<option value="Facultative">Facultative</option>' +
+        '<option value="Optionnel">Optionnel</option>' +
+      '</select></td>' +
+      '<td style="text-align:center"><input type="checkbox" name="sf_materiel[' + i + ']" value="1"></td>' +
+      '<td style="text-align:center"><input type="checkbox" name="sf_logiciel[' + i + ']" value="1"></td>' +
+      '<td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>';
+    body.appendChild(tr);
+    bindDel(tr.querySelector('.btn-sf-del'));
+    renumber();
+  });
+})();
+
 </script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
