@@ -227,10 +227,9 @@ function stepClass(int $n, int $current): string
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
-    <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
     <nav class="r1b-nav">
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
-        <i class="fas fa-th-large"></i> Tableau de bord
+        <i class="fas fa-th-large"></i> <?= e($projet['nom']) ?>
       </a>
       <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
         <i class="fas fa-route"></i> Processus R1b
