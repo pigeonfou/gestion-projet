@@ -517,3 +517,28 @@ tr:hover td { background:#f8fafc; }
 .docs-list li .doc-meta {
   font-size: .7rem; color: var(--text-muted); display: block;
 }
+
+
+/* Kanban tâches (global + projet) */
+.r1b-kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.r1b-kanban-4 { grid-template-columns: repeat(4, 1fr); }
+.r1b-kanban-col { background: #f1f5f9; border-radius: 12px; padding: .75rem; min-height: 280px; }
+.r1b-kanban-head { font-weight: 600; font-size: .85rem; margin-bottom: .6rem; display: flex; justify-content: space-between; }
+.r1b-kanban-head span { background: #fff; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; }
+.r1b-kanban-card { display: block; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: .65rem; margin-bottom: .5rem; font-size: .85rem; text-decoration: none; color: inherit; }
+.r1b-kanban-card:hover { border-color: #a78bfa; }
+.kanban-col-todo { background: #f1f5f9; }
+.kanban-col-progress { background: #eff6ff; }
+.kanban-col-validation { background: #fffbeb; }
+.kanban-col-done { background: #ecfdf5; }
+.kanban-card-foot { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-top: .5rem; flex-wrap: wrap; }
+.kanban-status-select { font-size: .7rem; border: 1px solid #e2e8f0; border-radius: 4px; padding: .15rem .25rem; max-width: 7.5rem; }
+.kanban-status-form { margin: 0; }
+.kanban-project-link { font-size: .7rem; color: #7c3aed; text-decoration: none; }
+.kanban-project-link:hover { text-decoration: underline; }
+@media (max-width: 1100px) {
+  .r1b-kanban-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .r1b-kanban, .r1b-kanban-4 { grid-template-columns: 1fr; }
+}

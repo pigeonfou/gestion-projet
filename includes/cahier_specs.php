@@ -368,6 +368,34 @@ function saveComposantsSt(int $cahierId, array $composants): void {
 
 
 
+
+
+function statutLabel(string $s): string
+{
+    return match ($s) {
+        'a_faire', 'todo' => 'À faire',
+        'en_cours', 'in_progress' => 'En cours',
+        'terminee', 'done', 'terminé' => 'Terminé',
+        'validation' => 'En validation',
+        default => $s,
+    };
+}
+
+function taskKanbanStatus(array $t): string
+{
+    $k = $t['kanban_status'] ?? '';
+    if (in_array($k, ['a_faire', 'en_cours', 'validation', 'terminee'], true)) {
+        return $k;
+    }
+    $s = $t['statut'] ?? 'a_faire';
+    return match ($s) {
+        'terminee', 'done', 'terminé' => 'terminee',
+        'en_cours', 'in_progress' => 'en_cours',
+        default => 'a_faire',
+    };
+}
+
+
 function ensureTachesExtendedColumns(): void {
     static $done = false;
     if ($done) {

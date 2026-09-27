@@ -28,6 +28,9 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
                 <a href="<?= url('projets.php') ?>" class="nav-link <?= in_array(($activePage ?? ''), ['accueil','projets'], true) ? 'active' : '' ?>">
                     <i class="fas fa-folder-open"></i> Projets
                 </a>
+                <a href="<?= url('taches.php') ?>" class="nav-link <?= ($activePage ?? '') === 'taches' ? 'active' : '' ?>">
+                    <i class="fas fa-tasks"></i> Tâches
+                </a>
                 <?php if (estAdmin()): ?>
                 <a href="<?= url('admin/utilisateurs.php') ?>" class="nav-link <?= ($activePage ?? '') === 'utilisateurs' ? 'active' : '' ?>">
                     <i class="fas fa-users"></i> Utilisateurs
