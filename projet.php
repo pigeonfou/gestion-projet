@@ -51,6 +51,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('success', 'Étape mise à jour.');
         redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
     }
+    if ($action === 'save_specs_techniques') {
+        $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
+        $stmtC->execute([$id]);
+        $cid = (int)$stmtC->fetchColumn();
+        if ($cid <= 0) {
+            $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
+            $cid = (int)$db->lastInsertId();
+        }
+        $techniques = parseSpecsTechniquesFromPost($_POST);
+        saveSpecsTechniques($cid, $techniques);
+        setFlash('success', 'Spécifications techniques enregistrées.');
+        redirect('projet.php?id=' . $id . '&view=processus&step=2');
+    }
     if ($action === 'decide') {
         $decision = $_POST['decision'] ?? '';
         if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
@@ -379,12 +392,85 @@ function statutLabel(string $s): string
           <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Rédiger / éditer le CDC</a>
 
         <?php elseif ($currentStep === 2): ?>
-          <p class="text-sm text-muted mb-2">Études de capacité et besoins d'investissement.</p>
-          <div class="r1b-info-box">
-            <p><strong>Tâches / ressources :</strong> <?= count($taches) ?></p>
-            <p><strong>Budget (cahier) :</strong> <?= e($cahier['budget'] ?? '—') ?></p>
-          </div>
-          <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter une charge</a>
+          <?php
+            $fonctionsSF = $specs['fonctions'] ?? [];
+            $techniquesAll = $specs['specs_techniques'] ?? [];
+            $techBySf = [];
+            foreach ($techniquesAll as $trow) {
+                $sfKey = $trow['sf'] ?? '';
+                if ($sfKey === '') continue;
+                $techBySf[$sfKey][] = $trow;
+            }
+          ?>
+          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Spécifications techniques</h4>
+          <p class="text-sm text-muted mb-3">Pour chaque spécification fonctionnelle (S.F.) du CDC, ajoutez les spécifications techniques associées (S.T.n.m).</p>
+          <?php if (empty($fonctionsSF)): ?>
+            <div class="r1b-info-box">
+              <p>Aucune spécification fonctionnelle dans le cahier des charges.</p>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
+            </div>
+          <?php else: ?>
+            <form method="POST" id="formSpecsTech">
+              <input type="hidden" name="action" value="save_specs_techniques">
+              <?php foreach ($fonctionsSF as $sf): ?>
+                <?php
+                  $sfId = $sf['id'] ?? '';
+                  if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
+                  $sfNum = (int)$mSf[1];
+                  $rows = $techBySf[$sfId] ?? [];
+                  if (empty($rows)) {
+                      $rows = [['id' => 'S.T.' . $sfNum . '.1', 'description' => '', 'type' => 'Matériel']];
+                  }
+                ?>
+                <div class="st-sf-block" data-sf="<?= e($sfId) ?>" data-sf-num="<?= $sfNum ?>">
+                  <div class="st-sf-head">
+                    <span class="st-sf-id"><?= e($sfId) ?></span>
+                    <span class="st-sf-desc"><?= e($sf['description'] ?: '(sans description)') ?></span>
+                    <?php if (!empty($sf['indicateur'])): ?>
+                      <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
+                    <?php endif; ?>
+                  </div>
+                  <div class="sf-table-wrap">
+                    <table class="sf-table st-table">
+                      <thead>
+                        <tr>
+                          <th style="width:5.5rem">ID</th>
+                          <th>Description</th>
+                          <th style="width:8.5rem">Type</th>
+                          <th style="width:2.5rem"></th>
+                        </tr>
+                      </thead>
+                      <tbody class="st-body">
+                        <?php foreach ($rows as $ri => $tr): ?>
+                        <tr class="st-row">
+                          <td><span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
+                            <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
+                          </td>
+                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
+                          <td>
+                            <?php $ty = $tr['type'] ?? 'Matériel'; ?>
+                            <select name="st_type[]" class="form-control">
+                              <option value="Matériel" <?= $ty === 'Matériel' ? 'selected' : '' ?>>Matériel</option>
+                              <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
+                              <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
+                              <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
+                            </select>
+                          </td>
+                          <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
+                        </tr>
+                        <?php endforeach; ?>
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
+                </div>
+              <?php endforeach; ?>
+              <div class="mt-3">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
+              </div>
+            </form>
+          <?php endif; ?>
 
         <?php elseif ($currentStep === 3): ?>
           <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
@@ -656,12 +742,87 @@ function statutLabel(string $s): string
 .dash-jalon-row.past .dash-jalon-date { color: #dc2626; }
 .dash-jalon-row.past .dash-jalon-name { color: #94a3b8; text-decoration: line-through; }
 
+
+.st-sf-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: .9rem 1rem; margin-bottom: 1rem; }
+.st-sf-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .65rem; }
+.st-sf-id { font-weight: 700; color: #5b21b6; font-family: ui-monospace, monospace; }
+.st-sf-desc { flex: 1; font-size: .875rem; color: #334155; }
+.st-sf-badge { font-size: .7rem; padding: .15rem .45rem; border-radius: 999px; background: #ede9fe; color: #5b21b6; }
+.st-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
+.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; }
+.sf-table th, .sf-table td { border: 1px solid #e2e8f0; padding: .4rem .5rem; vertical-align: middle; }
+.sf-table th { background: #f1f5f9; font-weight: 600; text-align: left; }
+.btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
+.btn-sf-del:hover { background: #fef2f2; }
+.sf-table-wrap { overflow-x: auto; }
+
 </style>
 
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
+
+<script>
+(function() {
+  function renumberBlock(block) {
+    const sfNum = block.getAttribute('data-sf-num');
+    const sfId = block.getAttribute('data-sf');
+    block.querySelectorAll('.st-row').forEach((row, i) => {
+      const idSpan = row.querySelector('.st-id');
+      if (idSpan) idSpan.textContent = 'S.T.' + sfNum + '.' + (i + 1);
+      const hid = row.querySelector('input[name="st_sf[]"]');
+      if (hid) hid.value = sfId;
+    });
+  }
+
+  document.querySelectorAll('.st-sf-block').forEach(block => {
+    const body = block.querySelector('.st-body');
+    const sfNum = block.getAttribute('data-sf-num');
+    const sfId = block.getAttribute('data-sf');
+
+    function bindDel(btn) {
+      btn.addEventListener('click', () => {
+        const rows = body.querySelectorAll('.st-row');
+        if (rows.length <= 1) {
+          const row = rows[0];
+          row.querySelector('input[type="text"]').value = '';
+          row.querySelector('select').value = 'Matériel';
+          renumberBlock(block);
+          return;
+        }
+        btn.closest('.st-row').remove();
+        renumberBlock(block);
+      });
+    }
+    body.querySelectorAll('.btn-st-del').forEach(bindDel);
+
+    const addBtn = block.querySelector('.btn-st-add');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const i = body.querySelectorAll('.st-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'st-row';
+        tr.innerHTML =
+          '<td><span class="st-id">S.T.' + sfNum + '.' + (i + 1) + '</span>' +
+          '<input type="hidden" name="st_sf[]" value="' + sfId + '"></td>' +
+          '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
+          '<td><select name="st_type[]" class="form-control">' +
+            '<option value="Matériel" selected>Matériel</option>' +
+            '<option value="Logiciel">Logiciel</option>' +
+            '<option value="3D">3D</option>' +
+            '<option value="PCB">PCB</option>' +
+          '</select></td>' +
+          '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
+        body.appendChild(tr);
+        bindDel(tr.querySelector('.btn-st-del'));
+        renumberBlock(block);
+      });
+    }
+  });
+})();
+</script>
+
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </body>
 </html>

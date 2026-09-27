@@ -24,6 +24,8 @@ function emptySpecs(): array {
         'profils_utilisateurs' => '',
         // 2. Spécifications fonctionnelles
         'fonctions' => [], // [ ['id'=>'S.F.1', 'description'=>'', 'indicateur'=>'Obligatoire', 'materiel'=>false, 'logiciel'=>false], ... ]
+        // Specs techniques (étape R1b 2) liées aux S.F. : [ ['sf'=>'S.F.1', 'id'=>'S.T.1.1', 'description'=>'', 'type'=>'Matériel'], ... ]
+        'specs_techniques' => [],
         // 3. Planning
         'delais' => '',
         'livrables_attendus' => '',
@@ -185,6 +187,72 @@ function saveJalonsFromPost(int $cahierId, array $post): int {
         $n++;
     }
     return $n;
+}
+
+
+
+
+/**
+ * Parse specs techniques depuis le POST (st_sf[], st_description[], st_type[]).
+ * Renumérote localement par S.F. : S.T.{n}.{m}
+ * @return list<array{sf:string,id:string,description:string,type:string}>
+ */
+function parseSpecsTechniquesFromPost(array $post): array {
+    $sfs = $post['st_sf'] ?? [];
+    $descs = $post['st_description'] ?? [];
+    $types = $post['st_type'] ?? [];
+    if (!is_array($sfs) || !is_array($descs)) {
+        return [];
+    }
+    $allowedTypes = ['Matériel', 'Logiciel', '3D', 'PCB'];
+    // Group by SF keeping order
+    $bySf = [];
+    foreach ($sfs as $i => $sf) {
+        $sf = trim((string)$sf);
+        $desc = trim((string)($descs[$i] ?? ''));
+        $type = trim((string)($types[$i] ?? 'Matériel'));
+        if (!in_array($type, $allowedTypes, true)) {
+            $type = 'Matériel';
+        }
+        if ($sf === '' || !preg_match('/^S\.F\.(\d+)$/', $sf, $m)) {
+            continue;
+        }
+        // keep empty desc rows only if we still want placeholders - skip empty
+        if ($desc === '') {
+            continue;
+        }
+        $n = (int)$m[1];
+        if (!isset($bySf[$n])) {
+            $bySf[$n] = [];
+        }
+        $bySf[$n][] = [
+            'sf' => 'S.F.' . $n,
+            'description' => $desc,
+            'type' => $type,
+        ];
+    }
+    ksort($bySf, SORT_NUMERIC);
+    $out = [];
+    foreach ($bySf as $n => $rows) {
+        $m = 0;
+        foreach ($rows as $row) {
+            $m++;
+            $out[] = [
+                'sf' => $row['sf'],
+                'id' => 'S.T.' . $n . '.' . $m,
+                'description' => $row['description'],
+                'type' => $row['type'],
+            ];
+        }
+    }
+    return $out;
+}
+
+function saveSpecsTechniques(int $cahierId, array $techniques): void {
+    $specs = loadSpecs($cahierId);
+    $specs['specs_techniques'] = $techniques;
+    // loadSpecs merges emptySpecs and strips obsolete - ensure fonctions preserved
+    saveSpecs($cahierId, $specs);
 }
 
 
