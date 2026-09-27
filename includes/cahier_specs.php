@@ -26,6 +26,8 @@ function emptySpecs(): array {
         'fonctions' => [], // [ ['id'=>'S.F.1', 'description'=>'', 'indicateur'=>'Obligatoire'], ... ]
         // Specs techniques (étape R1b 2) liées aux S.F. : [ ['sf'=>'S.F.1', 'id'=>'S.T.1.1', 'description'=>'', 'type'=>'Matériel'], ... ]
         'specs_techniques' => [],
+        // Composants / affectations liés aux S.T. (étape 4) : [ st_id => [ items... ] ]
+        'composants_st' => [],
         // 3. Planning
         'delais' => '',
         'livrables_attendus' => '',
@@ -257,6 +259,109 @@ function saveSpecsTechniques(int $cahierId, array $techniques): void {
         $data = [];
     }
     $data['specs_techniques'] = array_values($techniques);
+    saveSpecs($cahierId, $data);
+}
+
+
+
+
+/**
+ * Parse les lignes composants / affectations (étape 4) depuis le POST.
+ * @return array<string, list<array>> clé = id S.T.
+ */
+function parseComposantsStFromPost(array $post): array {
+    $stIds = $post['cp_st_id'] ?? [];
+    $types = $post['cp_type'] ?? [];
+    if (!is_array($stIds)) {
+        return [];
+    }
+    $bySt = [];
+    foreach ($stIds as $i => $stId) {
+        $stId = trim((string)$stId);
+        $type = trim((string)($types[$i] ?? 'Matériel'));
+        if ($stId === '') {
+            continue;
+        }
+        if ($type === 'Matériel') {
+            $des = trim((string)($post['cp_designation'][$i] ?? ''));
+            $ref = trim((string)($post['cp_reference'][$i] ?? ''));
+            $four = trim((string)($post['cp_fournisseur'][$i] ?? ''));
+            $qty = (float)str_replace(',', '.', (string)($post['cp_quantite'][$i] ?? '0'));
+            $cu = (float)str_replace(',', '.', (string)($post['cp_cout_unitaire'][$i] ?? '0'));
+            $cuTaxe = ($post['cp_cout_unitaire_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
+            $ctTaxe = ($post['cp_cout_total_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
+            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0) {
+                continue;
+            }
+            if (!isset($bySt[$stId])) {
+                $bySt[$stId] = ['type' => 'Matériel', 'items' => []];
+            }
+            $bySt[$stId]['items'][] = [
+                'designation' => $des,
+                'reference' => $ref,
+                'fournisseur' => $four,
+                'quantite' => $qty,
+                'cout_unitaire' => $cu,
+                'cout_unitaire_taxe' => $cuTaxe,
+                'cout_total' => round($qty * $cu, 2),
+                'cout_total_taxe' => $ctTaxe,
+            ];
+        } else {
+            // Logiciel, 3D, PCB
+            $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
+            $duree = trim((string)($post['cp_duree'][$i] ?? ''));
+            $var = trim((string)($post['cp_variation'][$i] ?? 'Moyenne'));
+            if (!in_array($var, ['Forte', 'Moyenne', 'Faible'], true)) {
+                $var = 'Moyenne';
+            }
+            if ($aff === '' && $duree === '') {
+                continue;
+            }
+            if (!isset($bySt[$stId])) {
+                $bySt[$stId] = ['type' => $type, 'items' => []];
+            }
+            $bySt[$stId]['items'][] = [
+                'affectation' => $aff,
+                'duree' => $duree,
+                'variation' => $var,
+            ];
+        }
+    }
+
+    // Renuméroter les ID selon le type
+    $out = [];
+    foreach ($bySt as $stId => $pack) {
+        $type = $pack['type'];
+        $prefix = match ($type) {
+            'Matériel' => 'M',
+            'Logiciel' => 'L',
+            '3D' => '3D',
+            'PCB' => 'PCB',
+            default => 'X',
+        };
+        $items = [];
+        $n = 0;
+        foreach ($pack['items'] as $it) {
+            $n++;
+            $it['id'] = $prefix . '.' . $n;
+            $items[] = $it;
+        }
+        $out[$stId] = $items;
+    }
+    return $out;
+}
+
+function saveComposantsSt(int $cahierId, array $composants): void {
+    ensureCahierSpecsColumn();
+    $db = getDB();
+    $stmt = $db->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
+    $stmt->execute([$cahierId]);
+    $raw = $stmt->fetchColumn();
+    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+    if (!is_array($data)) {
+        $data = [];
+    }
+    $data['composants_st'] = $composants;
     saveSpecs($cahierId, $data);
 }
 

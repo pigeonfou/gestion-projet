@@ -72,7 +72,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=2');
     }
+    if ($action === 'save_composants_st') {
+        try {
+            ensureCahierSpecsColumn();
+            $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
+            $stmtC->execute([$id]);
+            $cid = (int)$stmtC->fetchColumn();
+            if ($cid <= 0) {
+                $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
+                $cid = (int)$db->lastInsertId();
+            }
+            $composants = parseComposantsStFromPost($_POST);
+            saveComposantsSt($cid, $composants);
+            $n = 0;
+            foreach ($composants as $items) { $n += count($items); }
+            setFlash('success', $n > 0
+                ? ("Composants / affectations enregistrés ($n ligne(s)).")
+                : 'Aucune ligne renseignée à enregistrer.');
+        } catch (Throwable $e) {
+            setFlash('error', 'Erreur d\'enregistrement : ' . $e->getMessage());
+        }
+        redirect('projet.php?id=' . $id . '&view=processus&step=4');
+    }
     if ($action === 'decide') {
+
         $decision = $_POST['decision'] ?? '';
         if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
             if ($decision === 'GO' || $decision === 'NO_GO') {
@@ -123,6 +146,8 @@ $ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
 
 $jalonsProjet = loadJalons($cahier_id);
 $nbJalons = count($jalonsProjet);
+$utilisateursListe = $db->query('SELECT id, identifiant FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
+
 
 // Stats pour le tableau de bord projet
 $tachesOuvertes = 0;
@@ -505,18 +530,161 @@ function statutLabel(string $s): string
           <?php endif; ?>
 
         <?php elseif ($currentStep === 4): ?>
-          <p class="text-sm text-muted mb-2">Recherche et sélection des composants / matériels.</p>
           <?php
-          $materiels = $db->prepare('SELECT * FROM materiel WHERE cahier_id = ?');
-          $materiels->execute([$cahier_id]);
-          $materiels = $materiels->fetchAll();
+            $techniquesAll = $specs['specs_techniques'] ?? [];
+            $composantsSt = $specs['composants_st'] ?? [];
+            if (!is_array($composantsSt)) $composantsSt = [];
+            $users = $utilisateursListe ?? [];
           ?>
-          <ul class="r1b-list">
-            <?php foreach ($materiels as $m): ?>
-              <li><?= e($m['description'] ?? '') ?></li>
-            <?php endforeach; ?>
-            <?php if (empty($materiels)): ?><li class="text-muted">Aucun matériel listé</li><?php endif; ?>
-          </ul>
+          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Composants & affectations</h4>
+          <p class="text-sm text-muted mb-3">Pour chaque spécification technique (S.T.), ajoutez les lignes selon son type (Matériel, Logiciel, 3D, PCB).</p>
+          <?php if (empty($techniquesAll)): ?>
+            <div class="r1b-info-box">
+              <p>Aucune spécification technique définie.</p>
+              <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-primary btn-sm mt-2">Aller à l'étape 2</a>
+            </div>
+          <?php else: ?>
+            <form method="POST" id="formComposantsSt" action="<?= url('projet.php?id=' . $id . '&view=processus&step=4') ?>">
+              <input type="hidden" name="action" value="save_composants_st">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
+              <?php foreach ($techniquesAll as $stRow): ?>
+                <?php
+                  $stId = $stRow['id'] ?? '';
+                  $stType = $stRow['type'] ?? 'Matériel';
+                  $stDesc = $stRow['description'] ?? '';
+                  if ($stId === '') continue;
+                  $items = $composantsSt[$stId] ?? [];
+                  if (empty($items)) {
+                      $items = [[]]; // ligne vide
+                  }
+                  $prefix = match ($stType) {
+                      'Matériel' => 'M',
+                      'Logiciel' => 'L',
+                      '3D' => '3D',
+                      'PCB' => 'PCB',
+                      default => 'X',
+                  };
+                ?>
+                <div class="st-sf-block cp-st-block" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
+                  <div class="st-sf-head">
+                    <span class="st-id"><?= e($stId) ?></span>
+                    <span class="st-sf-badge"><?= e($stType) ?></span>
+                    <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
+                  </div>
+                  <div class="sf-table-wrap">
+                    <?php if ($stType === 'Matériel'): ?>
+                      <table class="sf-table cp-table">
+                        <thead>
+                          <tr>
+                            <th style="width:3.5rem">ID</th>
+                            <th>Désignation</th>
+                            <th>Référence</th>
+                            <th>Fournisseur</th>
+                            <th style="width:5rem">Qté</th>
+                            <th style="width:9rem">Coût unitaire</th>
+                            <th style="width:9rem">Coût total</th>
+                            <th style="width:2.2rem"></th>
+                          </tr>
+                        </thead>
+                        <tbody class="cp-body">
+                          <?php foreach ($items as $ii => $it): ?>
+                          <tr class="cp-row">
+                            <td>
+                              <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
+                              <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
+                              <input type="hidden" name="cp_type[]" value="Matériel">
+                            </td>
+                            <td><input type="text" name="cp_designation[]" class="form-control" value="<?= e($it['designation'] ?? '') ?>"></td>
+                            <td><input type="text" name="cp_reference[]" class="form-control" value="<?= e($it['reference'] ?? '') ?>"></td>
+                            <td><input type="text" name="cp_fournisseur[]" class="form-control" value="<?= e($it['fournisseur'] ?? '') ?>"></td>
+                            <td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value="<?= e((string)($it['quantite'] ?? '')) ?>"></td>
+                            <td>
+                              <div class="cp-cost-cell">
+                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
+                                <select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe">
+                                  <option value="HT" <?= (($it['cout_unitaire_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
+                                  <option value="TTC" <?= (($it['cout_unitaire_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
+                                </select>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="cp-cost-cell">
+                                <input type="text" class="form-control cp-total" value="<?= e((string)($it['cout_total'] ?? '')) ?>" readonly tabindex="-1">
+                                <select name="cp_cout_total_taxe[]" class="form-control cp-taxe">
+                                  <option value="HT" <?= (($it['cout_total_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
+                                  <option value="TTC" <?= (($it['cout_total_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
+                                </select>
+                              </div>
+                              <!-- champs fantômes pour aligner les index des tableaux non-matériel -->
+                              <input type="hidden" name="cp_affectation[]" value="">
+                              <input type="hidden" name="cp_duree[]" value="">
+                              <input type="hidden" name="cp_variation[]" value="">
+                            </td>
+                            <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
+                          </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    <?php else: ?>
+                      <table class="sf-table cp-table">
+                        <thead>
+                          <tr>
+                            <th style="width:4rem">ID</th>
+                            <th>Affectation</th>
+                            <th style="width:9rem">Durée de réalisation</th>
+                            <th style="width:9rem">Variation possible</th>
+                            <th style="width:2.2rem"></th>
+                          </tr>
+                        </thead>
+                        <tbody class="cp-body">
+                          <?php foreach ($items as $ii => $it): ?>
+                          <tr class="cp-row">
+                            <td>
+                              <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
+                              <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
+                              <input type="hidden" name="cp_type[]" value="<?= e($stType) ?>">
+                              <input type="hidden" name="cp_designation[]" value="">
+                              <input type="hidden" name="cp_reference[]" value="">
+                              <input type="hidden" name="cp_fournisseur[]" value="">
+                              <input type="hidden" name="cp_quantite[]" value="">
+                              <input type="hidden" name="cp_cout_unitaire[]" value="">
+                              <input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">
+                              <input type="hidden" name="cp_cout_total_taxe[]" value="HT">
+                            </td>
+                            <td>
+                              <select name="cp_affectation[]" class="form-control">
+                                <option value="">—</option>
+                                <?php foreach ($users as $u): ?>
+                                  <option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option>
+                                <?php endforeach; ?>
+                              </select>
+                            </td>
+                            <td><input type="text" name="cp_duree[]" class="form-control" value="<?= e($it['duree'] ?? '') ?>" placeholder="ex. 3 j"></td>
+                            <td>
+                              <?php $vv = $it['variation'] ?? 'Moyenne'; ?>
+                              <select name="cp_variation[]" class="form-control">
+                                <option value="Forte" <?= $vv === 'Forte' ? 'selected' : '' ?>>Forte</option>
+                                <option value="Moyenne" <?= $vv === 'Moyenne' ? 'selected' : '' ?>>Moyenne</option>
+                                <option value="Faible" <?= $vv === 'Faible' ? 'selected' : '' ?>>Faible</option>
+                              </select>
+                            </td>
+                            <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
+                          </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    <?php endif; ?>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm mt-1 btn-cp-add"><i class="fas fa-plus"></i> Ajouter une ligne</button>
+                </div>
+              <?php endforeach; ?>
+              <div class="mt-3">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
+                <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.T. (étape 2)</a>
+              </div>
+            </form>
+          <?php endif; ?>
 
         <?php elseif ($currentStep === 5): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
@@ -782,6 +950,13 @@ function statutLabel(string $s): string
 .btn-sf-del:hover { background: #fef2f2; }
 .sf-table-wrap { overflow-x: auto; }
 
+
+.cp-cost-cell { display: flex; gap: .25rem; align-items: center; }
+.cp-cost-cell input { flex: 1; min-width: 0; }
+.cp-cost-cell select.cp-taxe { width: 4.2rem; flex-shrink: 0; font-size: .75rem; padding: .25rem; }
+.cp-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
+.cp-table input.form-control, .cp-table select.form-control { font-size: .8rem; padding: .3rem .4rem; }
+
 </style>
 
 </main>
@@ -843,6 +1018,107 @@ function statutLabel(string $s): string
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
         renumberBlock(block);
+      });
+    }
+  });
+})();
+</script>
+
+
+<script>
+(function() {
+  function renumber(block) {
+    const prefix = block.getAttribute('data-prefix') || 'X';
+    block.querySelectorAll('.cp-row').forEach((row, i) => {
+      const idSpan = row.querySelector('.cp-id');
+      if (idSpan) idSpan.textContent = prefix + '.' + (i + 1);
+    });
+  }
+
+  function recalc(row) {
+    const qty = parseFloat((row.querySelector('.cp-qty') || {}).value) || 0;
+    const unit = parseFloat((row.querySelector('.cp-unit') || {}).value) || 0;
+    const tot = row.querySelector('.cp-total');
+    if (tot) tot.value = (qty * unit).toFixed(2);
+  }
+
+  document.querySelectorAll('.cp-st-block').forEach(block => {
+    const body = block.querySelector('.cp-body');
+    const type = block.getAttribute('data-st-type');
+    const stId = block.getAttribute('data-st-id');
+    const prefix = block.getAttribute('data-prefix');
+
+    function bindRow(row) {
+      const del = row.querySelector('.btn-cp-del');
+      if (del) {
+        del.addEventListener('click', () => {
+          const rows = body.querySelectorAll('.cp-row');
+          if (rows.length <= 1) {
+            row.querySelectorAll('input:not([type="hidden"]), select').forEach(el => {
+              if (el.tagName === 'SELECT') {
+                if (el.options.length) el.selectedIndex = 0;
+              } else if (!el.readOnly) {
+                el.value = '';
+              }
+            });
+            const tot = row.querySelector('.cp-total');
+            if (tot) tot.value = '';
+            renumber(block);
+            return;
+          }
+          row.remove();
+          renumber(block);
+        });
+      }
+      const qty = row.querySelector('.cp-qty');
+      const unit = row.querySelector('.cp-unit');
+      if (qty) qty.addEventListener('input', () => recalc(row));
+      if (unit) unit.addEventListener('input', () => recalc(row));
+    }
+
+    body.querySelectorAll('.cp-row').forEach(bindRow);
+
+    const addBtn = block.querySelector('.btn-cp-add');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const i = body.querySelectorAll('.cp-row').length;
+        const tr = document.createElement('tr');
+        tr.className = 'cp-row';
+        if (type === 'Matériel') {
+          tr.innerHTML =
+            '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
+            '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
+            '<input type="hidden" name="cp_type[]" value="Matériel"></td>' +
+            '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
+            '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
+            '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
+            '<td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value=""></td>' +
+            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
+            '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
+            '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
+            '<select name="cp_cout_total_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div>' +
+            '<input type="hidden" name="cp_affectation[]" value=""><input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
+        } else {
+          const userOpts = <?= json_encode(array_map(fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;
+          let opts = '<option value="">—</option>';
+          (userOpts || []).forEach(u => { opts += '<option value="' + u.replace(/"/g, '&quot;') + '">' + u + '</option>'; });
+          tr.innerHTML =
+            '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
+            '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
+            '<input type="hidden" name="cp_type[]" value="' + type + '">' +
+            '<input type="hidden" name="cp_designation[]" value=""><input type="hidden" name="cp_reference[]" value="">' +
+            '<input type="hidden" name="cp_fournisseur[]" value=""><input type="hidden" name="cp_quantite[]" value="">' +
+            '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
+            '<input type="hidden" name="cp_cout_total_taxe[]" value="HT"></td>' +
+            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select></td>' +
+            '<td><input type="text" name="cp_duree[]" class="form-control" value="" placeholder="ex. 3 j"></td>' +
+            '<td><select name="cp_variation[]" class="form-control"><option value="Forte">Forte</option><option value="Moyenne" selected>Moyenne</option><option value="Faible">Faible</option></select></td>' +
+            '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
+        }
+        body.appendChild(tr);
+        bindRow(tr);
+        renumber(block);
       });
     }
   });
