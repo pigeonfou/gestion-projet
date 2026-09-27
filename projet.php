@@ -84,17 +84,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $composants = parseComposantsStFromPost($_POST);
             saveComposantsSt($cid, $composants);
+            $techs = loadSpecs($cid)['specs_techniques'] ?? [];
+            syncTasksFromComposants($id, $composants, is_array($techs) ? $techs : []);
             $n = 0;
             foreach ($composants as $items) { $n += count($items); }
             setFlash('success', $n > 0
-                ? ("Composants / affectations enregistrés ($n ligne(s)).")
+                ? ("Composants / affectations enregistrés ($n ligne(s)). Tâches Logiciel/3D/PCB synchronisées.")
                 : 'Aucune ligne renseignée à enregistrer.');
         } catch (Throwable $e) {
             setFlash('error', 'Erreur d\'enregistrement : ' . $e->getMessage());
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=4');
     }
+    if ($action === 'update_task_status') {
+        ensureTachesExtendedColumns();
+        $tid = (int)($_POST['task_id'] ?? 0);
+        $st = $_POST['status'] ?? 'a_faire';
+        $allowed = ['a_faire', 'en_cours', 'validation', 'terminee', 'done', 'todo', 'in_progress'];
+        $map = [
+            'todo' => 'a_faire',
+            'in_progress' => 'en_cours',
+            'done' => 'terminee',
+            'validation' => 'validation',
+            'a_faire' => 'a_faire',
+            'en_cours' => 'en_cours',
+            'terminee' => 'terminee',
+        ];
+        $kanban = $map[$st] ?? 'a_faire';
+        $statutDb = $kanban === 'validation' ? 'en_cours' : ($kanban === 'terminee' ? 'terminee' : ($kanban === 'en_cours' ? 'en_cours' : 'a_faire'));
+        if ($tid > 0) {
+            $db->prepare('UPDATE taches SET kanban_status = ?, statut = ? WHERE id = ? AND projet_id = ?')
+               ->execute([$kanban, $statutDb, $tid, $id]);
+            setFlash('success', 'Statut de la tâche mis à jour.');
+        }
+        redirect('projet.php?id=' . $id . '&view=taches');
+    }
     if ($action === 'decide') {
+
 
         $decision = $_POST['decision'] ?? '';
         if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
@@ -134,6 +160,7 @@ if (!$cahier) {
 $cahier_id = (int)$cahier['id'];
 $specs = loadSpecs($cahier_id);
 
+ensureTachesExtendedColumns();
 $taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id DESC');
 $taches->execute([$id]);
 $taches = $taches->fetchAll();
@@ -185,8 +212,22 @@ function statutLabel(string $s): string
         'a_faire', 'todo' => 'À faire',
         'en_cours', 'in_progress' => 'En cours',
         'terminee', 'done', 'terminé' => 'Terminé',
-        'validation' => 'Validation',
+        'validation' => 'En validation',
         default => $s,
+    };
+}
+
+function taskKanbanStatus(array $t): string
+{
+    $k = $t['kanban_status'] ?? '';
+    if (in_array($k, ['a_faire', 'en_cours', 'validation', 'terminee'], true)) {
+        return $k;
+    }
+    $s = $t['statut'] ?? 'a_faire';
+    return match ($s) {
+        'terminee', 'done', 'terminé' => 'terminee',
+        'en_cours', 'in_progress' => 'en_cours',
+        default => 'a_faire',
     };
 }
 ?>
@@ -742,48 +783,60 @@ function statutLabel(string $s): string
       </div>
 
     <?php elseif ($view === 'taches'): ?>
-      <!-- ========== TÂCHES (Kanban) ========== -->
+      <!-- ========== TÂCHES (Kanban style Processus-R1b) ========== -->
+      <?php
+        ensureTachesExtendedColumns();
+        $colsK = [
+          'a_faire' => ['title' => 'À faire', 'bg' => 'kanban-col-todo', 'items' => []],
+          'en_cours' => ['title' => 'En cours', 'bg' => 'kanban-col-progress', 'items' => []],
+          'validation' => ['title' => 'En validation', 'bg' => 'kanban-col-validation', 'items' => []],
+          'terminee' => ['title' => 'Terminé', 'bg' => 'kanban-col-done', 'items' => []],
+        ];
+        foreach ($taches as $t) {
+            $ks = taskKanbanStatus($t);
+            if (!isset($colsK[$ks])) $ks = 'a_faire';
+            $colsK[$ks]['items'][] = $t;
+        }
+      ?>
       <div class="r1b-page-head">
         <div>
           <h2>Gestion des tâches</h2>
-          <p class="text-muted text-sm">Tâches du projet <?= e($projet['nom']) ?></p>
+          <p class="text-muted text-sm">Tâches individuelles et de groupe — projet <?= e($projet['nom']) ?></p>
         </div>
         <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
       </div>
-      <?php
-      $cols = [
-          'a_faire' => ['title' => 'À faire', 'items' => []],
-          'en_cours' => ['title' => 'En cours', 'items' => []],
-          'terminee' => ['title' => 'Terminé', 'items' => []],
-      ];
-      foreach ($taches as $t) {
-          $st = $t['statut'] ?? $t['status'] ?? 'a_faire';
-          if (in_array($st, ['done', 'terminé', 'terminee'], true)) {
-              $cols['terminee']['items'][] = $t;
-          } elseif (in_array($st, ['en_cours', 'in_progress', 'validation'], true)) {
-              $cols['en_cours']['items'][] = $t;
-          } else {
-              $cols['a_faire']['items'][] = $t;
-          }
-      }
-      ?>
-      <div class="r1b-kanban">
-        <?php foreach ($cols as $key => $col): ?>
-          <div class="r1b-kanban-col">
+      <div class="r1b-kanban r1b-kanban-4">
+        <?php foreach ($colsK as $key => $col): ?>
+          <div class="r1b-kanban-col <?= e($col['bg']) ?>">
             <div class="r1b-kanban-head"><?= e($col['title']) ?> <span><?= count($col['items']) ?></span></div>
             <?php foreach ($col['items'] as $t): ?>
-              <a href="<?= url('tache.php?id=' . (int)$t['id']) ?>" class="r1b-kanban-card">
-                <p class="font-medium"><?= e($t['titre'] ?? $t['title'] ?? '') ?></p>
-                <?php if (!empty($t['assigne_a'])): ?>
-                  <p class="text-xs text-muted mt-1"><?= e($t['assigne_a']) ?></p>
+              <div class="r1b-kanban-card">
+                <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
+                <?php if (!empty($t['description'])): ?>
+                  <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
                 <?php endif; ?>
-              </a>
+                <div class="kanban-card-foot">
+                  <span class="text-xs text-muted"><?= e($t['assigne_a'] ?? 'Non assigné') ?></span>
+                  <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="kanban-status-form">
+                    <input type="hidden" name="action" value="update_task_status">
+                    <input type="hidden" name="id" value="<?= (int)$id ?>">
+                    <input type="hidden" name="task_id" value="<?= (int)$t['id'] ?>">
+                    <select name="status" class="kanban-status-select" onchange="this.form.submit()">
+                      <option value="a_faire" <?= taskKanbanStatus($t) === 'a_faire' ? 'selected' : '' ?>>À faire</option>
+                      <option value="en_cours" <?= taskKanbanStatus($t) === 'en_cours' ? 'selected' : '' ?>>En cours</option>
+                      <option value="validation" <?= taskKanbanStatus($t) === 'validation' ? 'selected' : '' ?>>En validation</option>
+                      <option value="terminee" <?= taskKanbanStatus($t) === 'terminee' ? 'selected' : '' ?>>Terminé</option>
+                    </select>
+                  </form>
+                </div>
+              </div>
             <?php endforeach; ?>
           </div>
         <?php endforeach; ?>
       </div>
 
     <?php elseif ($view === 'documents'): ?>
+
       <!-- ========== DOCUMENTS ========== -->
       <div class="r1b-page-head">
         <div>
