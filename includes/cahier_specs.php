@@ -193,24 +193,20 @@ function saveJalonsFromPost(int $cahierId, array $post): int {
 
 
 /**
- * Parse specs techniques depuis le POST.
- * Champs : st_sf[], st_uid[], st_description[], st_type[], st_deps[i][] (uids des dépendances).
- * Renumérote localement par S.F. : S.T.{n}.{m}. Les dépendances utilisent des uid stables.
- * @return list<array{sf:string,id:string,uid:string,description:string,type:string,dependances:list<string>}>
+ * Parse specs techniques depuis le POST (st_sf[], st_description[], st_type[]).
+ * Renumérote localement par S.F. : S.T.{n}.{m}
+ * @return list<array{sf:string,id:string,description:string,type:string}>
  */
 function parseSpecsTechniquesFromPost(array $post): array {
     $sfs = $post['st_sf'] ?? [];
-    $uids = $post['st_uid'] ?? [];
     $descs = $post['st_description'] ?? [];
     $types = $post['st_type'] ?? [];
-    $depsAll = $post['st_deps'] ?? [];
     if (!is_array($sfs) || !is_array($descs)) {
         return [];
     }
     $allowedTypes = ['Matériel', 'Logiciel', '3D', 'PCB'];
+    // Group by SF keeping order
     $bySf = [];
-    $validUids = [];
-
     foreach ($sfs as $i => $sf) {
         $sf = trim((string)$sf);
         $desc = trim((string)($descs[$i] ?? ''));
@@ -221,22 +217,9 @@ function parseSpecsTechniquesFromPost(array $post): array {
         if ($sf === '' || !preg_match('/^S\.F\.(\d+)$/', $sf, $m)) {
             continue;
         }
+        // keep empty desc rows only if we still want placeholders - skip empty
         if ($desc === '') {
             continue;
-        }
-        $uid = trim((string)($uids[$i] ?? ''));
-        if ($uid === '' || !preg_match('/^[a-zA-Z0-9_-]{6,64}$/', $uid)) {
-            $uid = bin2hex(random_bytes(8));
-        }
-        $deps = [];
-        if (isset($depsAll[$i]) && is_array($depsAll[$i])) {
-            foreach ($depsAll[$i] as $d) {
-                $d = trim((string)$d);
-                if ($d !== '' && $d !== $uid) {
-                    $deps[] = $d;
-                }
-            }
-            $deps = array_values(array_unique($deps));
         }
         $n = (int)$m[1];
         if (!isset($bySf[$n])) {
@@ -244,51 +227,25 @@ function parseSpecsTechniquesFromPost(array $post): array {
         }
         $bySf[$n][] = [
             'sf' => 'S.F.' . $n,
-            'uid' => $uid,
             'description' => $desc,
             'type' => $type,
-            'dependances' => $deps,
         ];
-        $validUids[$uid] = true;
     }
-
     ksort($bySf, SORT_NUMERIC);
     $out = [];
     foreach ($bySf as $n => $rows) {
-        $mIdx = 0;
+        $m = 0;
         foreach ($rows as $row) {
-            $mIdx++;
-            // Ne garder que des dépendances vers des S.T. encore présentes
-            $deps = array_values(array_filter(
-                $row['dependances'],
-                static fn($d) => isset($validUids[$d])
-            ));
+            $m++;
             $out[] = [
                 'sf' => $row['sf'],
-                'id' => 'S.T.' . $n . '.' . $mIdx,
-                'uid' => $row['uid'],
+                'id' => 'S.T.' . $n . '.' . $m,
                 'description' => $row['description'],
                 'type' => $row['type'],
-                'dependances' => $deps,
             ];
         }
     }
     return $out;
-}
-
-/**
- * Index uid => id affiché pour résoudre les dépendances à l'affichage.
- * @param list<array> $techniques
- * @return array<string,string>
- */
-function techniquesUidToId(array $techniques): array {
-    $map = [];
-    foreach ($techniques as $t) {
-        if (!empty($t['uid']) && !empty($t['id'])) {
-            $map[$t['uid']] = $t['id'];
-        }
-    }
-    return $map;
 }
 
 function saveSpecsTechniques(int $cahierId, array $techniques): void {
