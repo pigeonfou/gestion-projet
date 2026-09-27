@@ -37,11 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $textKeys = [
         'contexte_autre','objectifs','resultats_attendus','cas_usage','profils_utilisateurs','contraintes_operationnelles',
         'fonctionnalites','connectivite_autre','luminosite_nits','tactile_multitouch','usage_gants','anti_reflet','taille_ecran','ihm_accessoires',
-        'processeur','ram','stockage','autonomie','fiabilite','securite','maintenabilite',
-        'ip','ip_autre','chute_metres','vibrations','temp_fonc_min','temp_fonc_max','temp_stock_min','temp_stock_max',
-        'humidite','brouillard_salin','altitude_max','uv','cem','normes_autre','niveau_durcissement',
-        'architecture','compatibilite','alimentation','consommation_max','materiaux','conformites',
-        'mode_installation','maintenance','garantie','formation_doc','pieces_sav','cycle_vie',
         'delais','livrables_attendus',
     ];
     foreach ($textKeys as $k) {
@@ -51,14 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $specs['contexte_utilisation'] = array_values(array_filter((array)($_POST['contexte_utilisation'] ?? [])));
     $specs['fonctionnalites_cochees'] = array_values(array_filter((array)($_POST['fonctionnalites_cochees'] ?? [])));
     $specs['connectivite'] = array_values(array_filter((array)($_POST['connectivite'] ?? [])));
-    $specs['normes'] = array_values(array_filter((array)($_POST['normes'] ?? [])));
 
     // Required validation on "generate"
     $errors = [];
     if ($action === 'generate') {
         if ($specs['objectifs'] === '') $errors[] = 'Les objectifs du projet sont obligatoires.';
         if (empty($specs['contexte_utilisation']) && $specs['contexte_autre'] === '') $errors[] = 'Le contexte d\'utilisation est obligatoire.';
-        if ($specs['niveau_durcissement'] === '') $errors[] = 'Le niveau de durcissement est obligatoire.';
     }
 
     if ($errors) {
