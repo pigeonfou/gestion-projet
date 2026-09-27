@@ -18,8 +18,6 @@ function ensureCahierSpecsColumn(): void {
 function emptySpecs(): array {
     return [
         // 1. Contexte
-        'contexte_utilisation' => [],
-        'contexte_autre' => '',
         'objectifs' => '',
         'resultats_attendus' => '',
         'cas_usage' => '',
@@ -66,11 +64,6 @@ function generateCahierText(array $s, string $projetNom): string {
     $lines[] = str_repeat('=', 60);
 
     $lines[] = "\n1. CONTEXTE, OBJECTIFS ET BESOINS UTILISATEURS";
-    $ctx = implode(', ', $s['contexte_utilisation'] ?? []);
-    if (!empty($s['contexte_autre'])) {
-        $ctx .= ($ctx ? ' — ' : '') . $s['contexte_autre'];
-    }
-    $lines[] = "Contexte d'utilisation : " . ($ctx ?: '—');
     $lines[] = "Objectifs :\n" . ($s['objectifs'] ?: '—');
     $lines[] = "Résultats attendus :\n" . ($s['resultats_attendus'] ?: '—');
     $lines[] = "Cas d'usage :\n" . ($s['cas_usage'] ?: '—');
@@ -101,6 +94,7 @@ function generateCahierText(array $s, string $projetNom): string {
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
     return [
+        'contexte_utilisation', 'contexte_autre',
         'processeur', 'ram', 'stockage', 'autonomie', 'fiabilite', 'securite', 'maintenabilite',
         'ip', 'ip_autre', 'chute_metres', 'vibrations', 'temp_fonc_min', 'temp_fonc_max',
         'temp_stock_min', 'temp_stock_max', 'humidite', 'brouillard_salin', 'altitude_max',

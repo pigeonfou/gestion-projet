@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Text fields
     $textKeys = [
-        'contexte_autre','objectifs','resultats_attendus','cas_usage','profils_utilisateurs','contraintes_operationnelles',
+        'objectifs','resultats_attendus','cas_usage','profils_utilisateurs','contraintes_operationnelles',
         'fonctionnalites','connectivite_autre','luminosite_nits','tactile_multitouch','usage_gants','anti_reflet','taille_ecran','ihm_accessoires',
         'delais','livrables_attendus',
     ];
@@ -43,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $specs[$k] = trim($_POST[$k] ?? '');
     }
     // Arrays (checkboxes)
-    $specs['contexte_utilisation'] = array_values(array_filter((array)($_POST['contexte_utilisation'] ?? [])));
     $specs['fonctionnalites_cochees'] = array_values(array_filter((array)($_POST['fonctionnalites_cochees'] ?? [])));
     $specs['connectivite'] = array_values(array_filter((array)($_POST['connectivite'] ?? [])));
 
@@ -51,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
     if ($action === 'generate') {
         if ($specs['objectifs'] === '') $errors[] = 'Les objectifs du projet sont obligatoires.';
-        if (empty($specs['contexte_utilisation']) && $specs['contexte_autre'] === '') $errors[] = 'Le contexte d\'utilisation est obligatoire.';
     }
 
     if ($errors) {
@@ -136,15 +134,6 @@ function sel(?string $cur, string $val): string {
         <div class="card">
             <div class="card-header"><h2>1. Contexte, objectifs et besoins utilisateurs</h2></div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>Description du contexte d'utilisation *</label>
-                    <div class="check-grid">
-                        <?php foreach (['chantier','terrain','véhicule','maritime','industriel','militaire','autre'] as $v): ?>
-                        <label class="form-check"><input type="checkbox" name="contexte_utilisation[]" value="<?= $v ?>" <?= checked_arr($s['contexte_utilisation'], $v) ?>> <?= ucfirst($v) ?></label>
-                        <?php endforeach; ?>
-                    </div>
-                    <input type="text" name="contexte_autre" class="form-control mt-1" placeholder="Préciser si autre…" value="<?= e($s['contexte_autre']) ?>">
-                </div>
                 <div class="form-group">
                     <label>Objectifs du projet *</label>
                     <textarea name="objectifs" class="form-control" rows="3" required><?= e($s['objectifs']) ?></textarea>
