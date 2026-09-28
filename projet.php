@@ -785,24 +785,56 @@ function stepClass(int $n, int $current): string
         </form>
 
         <div class="r1b-actions">
-          <?php if ($currentStep === 3 && ($projet['go_decision'] ?? '') !== 'NO_GO'): ?>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="GO">
-              <button class="btn btn-success">GO</button></form>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NO_GO">
-              <button class="btn btn-danger">NO GO → Abandon (étape 3)</button></form>
+          <?php
+            $decideAction = url('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
+            $goDecision = trim((string)($projet['go_decision'] ?? ''));
+          ?>
+          <?php if ($currentStep === 3): ?>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="GO">
+              <button type="submit" class="btn btn-success">GO</button>
+            </form>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="NO_GO">
+              <button type="submit" class="btn btn-danger">NO GO → Abandon (étape 3)</button>
+            </form>
           <?php elseif ($currentStep === 6): ?>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="CONFORME">
-              <button class="btn btn-success">✓ Conforme → Livraison DG</button></form>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NON_CONFORME">
-              <button class="btn btn-danger">Non conforme</button></form>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="CONFORME">
+              <button type="submit" class="btn btn-success">✓ Conforme → Livraison DG</button>
+            </form>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="NON_CONFORME">
+              <button type="submit" class="btn btn-danger">Non conforme</button>
+            </form>
           <?php elseif ($currentStep === 7): ?>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="CONFORME">
-              <button class="btn btn-success">✓ Conforme → Archivage validé/vente</button></form>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NON_CONFORME">
-              <button class="btn btn-danger">Non conforme</button></form>
-          <?php elseif ($currentStep < 8 && ($projet['go_decision'] ?? '') !== 'NO_GO'): ?>
-            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="DONE">
-              <button class="btn btn-primary">Valider l'étape</button></form>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="CONFORME">
+              <button type="submit" class="btn btn-success">✓ Conforme → Archivage validé/vente</button>
+            </form>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="NON_CONFORME">
+              <button type="submit" class="btn btn-danger">Non conforme</button>
+            </form>
+          <?php elseif ($currentStep < 8 && $goDecision !== 'NO_GO'): ?>
+            <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="DONE">
+              <button type="submit" class="btn btn-primary">Valider l'étape</button>
+            </form>
           <?php endif; ?>
           <?php if ($currentStep > 1): ?>
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
