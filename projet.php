@@ -579,14 +579,16 @@ function stepClass(int $n, int $current): string
           <?php endif; ?>
 
         <?php elseif ($currentStep === 3): ?>
-          <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
           <?php if (($projet['go_decision'] ?? '') === 'NO_GO'): ?>
+            <p class="text-sm text-muted mb-2">NO GO — Projet archivé comme abandonné</p>
             <div class="r1b-info-box" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;">
-              <strong>NO GO</strong> — Projet archivé comme <strong>abandonné</strong> (étape 3).
-              Ce n’est pas l’archivage validé/vente (étape 8).
+              NO GO — Projet archivé comme abandonné
             </div>
-          <?php elseif (!empty($projet['go_decision'])): ?>
-            <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
+          <?php else: ?>
+            <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
+            <?php if (!empty($projet['go_decision'])): ?>
+              <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
+            <?php endif; ?>
           <?php endif; ?>
 
         <?php elseif ($currentStep === 4): ?>
@@ -800,7 +802,7 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NO_GO">
-              <button type="submit" class="btn btn-danger">NO GO → Abandon (étape 3)</button>
+              <button type="submit" class="btn btn-danger">NO GO → Abandon</button>
             </form>
           <?php elseif ($currentStep === 6): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
