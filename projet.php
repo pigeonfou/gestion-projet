@@ -1,13 +1,12 @@
 <?php
 $pageTitle = 'Projet';
 $activePage = 'projets';
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/settings_helper.php';
+require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 seedSettingsIfEmpty();
-ensureProjectProcessColumns();
+runSchemaMigrations();
 
 $db = getDB();
 $user = utilisateurCourant();
@@ -36,6 +35,7 @@ $steps = r1bSteps();
 
 // ——— Actions POST ———
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $action = $_POST['action'] ?? '';
     if ($action === 'save_notes') {
         $notes = trim($_POST['step_notes'] ?? '');
@@ -71,14 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'save_specs_techniques') {
         try {
-            ensureCahierSpecsColumn();
-            $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
-            $stmtC->execute([$id]);
-            $cid = (int)$stmtC->fetchColumn();
-            if ($cid <= 0) {
-                $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
-                $cid = (int)$db->lastInsertId();
-            }
+            $cid = getOrCreateCahierId($id);
             $techniques = parseSpecsTechniquesFromPost($_POST);
             saveSpecsTechniques($cid, $techniques);
             $n = count($techniques);
@@ -92,14 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'save_composants_st') {
         try {
-            ensureCahierSpecsColumn();
-            $stmtC = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
-            $stmtC->execute([$id]);
-            $cid = (int)$stmtC->fetchColumn();
-            if ($cid <= 0) {
-                $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
-                $cid = (int)$db->lastInsertId();
-            }
+            $cid = getOrCreateCahierId($id);
             $composants = parseComposantsStFromPost($_POST);
             saveComposantsSt($cid, $composants);
             $techs = loadSpecs($cid)['specs_techniques'] ?? [];
@@ -198,52 +184,66 @@ if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
 }
 $phase = r1bPhaseFromStep($currentStep);
 
-// Cahier
-$stmt = $db->prepare('SELECT * FROM cahiers WHERE projet_id = ?');
-$stmt->execute([$id]);
-$cahier = $stmt->fetch();
-if (!$cahier) {
-    $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$id]);
-    $stmt->execute([$id]);
-    $cahier = $stmt->fetch();
-}
-$cahier_id = (int)$cahier['id'];
+// Données selon la vue
+$cahier_id = getOrCreateCahierId($id);
+$stmt = $db->prepare('SELECT * FROM cahiers WHERE id = ?');
+$stmt->execute([$cahier_id]);
+$cahier = $stmt->fetch() ?: ['id' => $cahier_id];
 $specs = loadSpecs($cahier_id);
 
-ensureTachesExtendedColumns();
-$taches = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id DESC');
-$taches->execute([$id]);
-$taches = $taches->fetchAll();
-$tachesAll = $taches;
-if (!estAdmin()) {
-    $ident = $user['identifiant'] ?? '';
-    $taches = array_values(array_filter($taches, static function ($t) use ($ident) {
-        return isset($t['assigne_a']) && (string)$t['assigne_a'] === (string)$ident;
-    }));
-}
-
-ensureSettingsTable();
-$documents = $db->prepare('SELECT * FROM documents WHERE projet_id = ? ORDER BY date_upload DESC');
-$documents->execute([$id]);
-$documents = $documents->fetchAll();
-$ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
-
-$jalonsProjet = loadJalons($cahier_id);
-$nbJalons = count($jalonsProjet);
-$utilisateursListe = $db->query('SELECT id, identifiant FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
-
-
-// Stats pour le tableau de bord projet
+$taches = [];
+$tachesAll = [];
+$documents = [];
+$jalonsProjet = [];
+$utilisateursListe = [];
+$nbJalons = 0;
+$nbDocs = 0;
 $tachesOuvertes = 0;
 $tachesTerminees = 0;
-foreach ($taches as $t) {
-    $st = $t['statut'] ?? $t['status'] ?? 'a_faire';
-    if (in_array($st, ['terminee', 'done', 'terminé'], true)) {
-        $tachesTerminees++;
-    } else {
-        $tachesOuvertes++;
+$ncEnabled = false;
+
+$needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true);
+$needDocs = in_array($view, ['dashboard', 'documents'], true);
+$needJalons = $view === 'dashboard';
+$needUsers = $view === 'processus' && $currentStep === 4;
+
+if ($needTasks) {
+    ensureTachesExtendedColumns();
+    $tachesAll = $db->prepare('SELECT * FROM taches WHERE projet_id = ? ORDER BY id DESC');
+    $tachesAll->execute([$id]);
+    $tachesAll = $tachesAll->fetchAll();
+    $taches = $tachesAll;
+    if (!estAdmin()) {
+        $ident = $user['identifiant'] ?? '';
+        $taches = array_values(array_filter($taches, static function ($t) use ($ident) {
+            return isset($t['assigne_a']) && (string)$t['assigne_a'] === (string)$ident;
+        }));
+    }
+    foreach ($tachesAll as $t) {
+        $st = $t['statut'] ?? 'a_faire';
+        if (in_array($st, ['terminee', 'done', 'terminé'], true)) {
+            $tachesTerminees++;
+        } else {
+            $tachesOuvertes++;
+        }
     }
 }
+if ($needDocs) {
+    $documents = $db->prepare('SELECT * FROM documents WHERE projet_id = ? ORDER BY date_upload DESC');
+    $documents->execute([$id]);
+    $documents = $documents->fetchAll();
+    $nbDocs = count($documents);
+    $ncEnabled = getSetting('nextcloud_enabled', '0') === '1';
+}
+if ($needJalons) {
+    $jalonsProjet = loadJalons($cahier_id);
+    $nbJalons = count($jalonsProjet);
+}
+if ($needUsers) {
+    $utilisateursListe = $db->query('SELECT id, identifiant FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
 $pct = (int)round(($currentStep / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
 $validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [6, 7], true) ? 1 : 0;
@@ -389,6 +389,7 @@ function stepClass(int $n, int $current): string
             <h3>Notes / décisions</h3>
             <form method="POST">
               <input type="hidden" name="action" value="save_notes">
+              <?= csrfField() ?>
               <input type="hidden" name="redir_view" value="dashboard">
               <textarea name="step_notes" class="form-control" rows="5" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
               <button type="submit" class="btn btn-secondary btn-sm mt-2"><i class="fas fa-save"></i> Enregistrer</button>
@@ -488,6 +489,7 @@ function stepClass(int $n, int $current): string
           <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=0') ?>">
             <input type="hidden" name="id" value="<?= (int)$id ?>">
             <input type="hidden" name="action" value="save_cadrage">
+              <?= csrfField() ?>
 
             <div class="r1b-info-box mb-3">
               <p class="font-medium mb-2">Entrée du projet provenant de la Direction générale via :</p>
@@ -576,6 +578,7 @@ function stepClass(int $n, int $current): string
           <?php else: ?>
             <form method="POST" id="formSpecsTech" action="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>">
               <input type="hidden" name="action" value="save_specs_techniques">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
               <?php foreach ($fonctionsSF as $sf): ?>
@@ -668,6 +671,7 @@ function stepClass(int $n, int $current): string
           <?php else: ?>
             <form method="POST" id="formComposantsSt" action="<?= url('projet.php?id=' . $id . '&view=processus&step=4') ?>">
               <input type="hidden" name="action" value="save_composants_st">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
               <?php foreach ($techniquesAll as $stRow): ?>
@@ -1004,309 +1008,18 @@ function stepClass(int $n, int $current): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
-<style>
-.r1b-layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 120px); gap: 0; }
-.r1b-sidebar { background: #fff; border-right: 1px solid #e2e8f0; padding: 1rem 0; position: sticky; top: 60px; align-self: start; min-height: calc(100vh - 120px); }
-.r1b-sidebar-title { font-weight: 700; font-size: .95rem; padding: 0 1rem 1rem; border-bottom: 1px solid #f1f5f9; margin-bottom: .5rem; color: #1e293b; word-break: break-word; }
-.r1b-nav a { display: flex; align-items: center; gap: .6rem; padding: .65rem 1rem; font-size: .875rem; color: #64748b; text-decoration: none; border-right: 3px solid transparent; }
-.r1b-nav a:hover { background: #f8fafc; color: #334155; }
-.r1b-nav a.active { background: #ede9fe; color: #5b21b6; border-right-color: #7c3aed; font-weight: 600; }
-.r1b-sidebar-foot { padding: 1rem; margin-top: 1rem; border-top: 1px solid #f1f5f9; }
-.r1b-sidebar-foot a { font-size: .8rem; color: #64748b; text-decoration: none; }
-.r1b-main { padding: 1.5rem; background: #f8fafc; }
-.r1b-page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: .75rem; }
-.r1b-page-head h2 { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0; }
-.text-muted { color: #64748b; }
-.text-sm { font-size: .875rem; }
-.text-xs { font-size: .75rem; }
-.mt-1 { margin-top: .25rem; }
-.mt-2 { margin-top: .5rem; }
-.mt-3 { margin-top: .75rem; }
-.mb-2 { margin-bottom: .5rem; }
-.mb-3 { margin-bottom: .75rem; }
-.flex-between { display: flex; justify-content: space-between; align-items: center; }
-.font-medium { font-weight: 500; }
+<!-- projet-r1b.css -->
 
-/* KPI – disposition Tableau de bord R1b */
-.dash-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-.dash-kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; }
-.dash-kpi-label { font-size: .875rem; color: #64748b; margin: 0; }
-.dash-kpi-value { font-size: 1.875rem; font-weight: 700; margin-top: .5rem; color: #0f172a; }
-
-.dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
-.dash-col-main, .dash-col-side { display: flex; flex-direction: column; gap: 0; }
-
-.dash-steps { display: flex; flex-direction: column; gap: .5rem; }
-.dash-step { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; border: 1px solid #f1f5f9; border-radius: 10px; text-decoration: none; color: inherit; transition: border-color .15s; }
-.dash-step:hover { border-color: #c4b5fd; background: #faf5ff; }
-.dash-step.active { border-color: #a78bfa; background: #f5f3ff; }
-.dash-step.done { border-color: #a7f3d0; }
-.dash-step-num { width: 2rem; height: 2rem; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; flex-shrink: 0; }
-.dash-step.active .dash-step-num { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; }
-.dash-step.done .dash-step-num { background: #10b981; color: #fff; }
-.dash-step-body { flex: 1; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-.dash-step-title { font-weight: 500; font-size: .875rem; }
-.dash-step-badge { font-size: .7rem; padding: .15rem .5rem; border-radius: 999px; background: #ede9fe; color: #5b21b6; }
-.dash-step-badge.done { background: #d1fae5; color: #047857; }
-.dash-step-pct { font-size: .8rem; color: #64748b; font-weight: 500; }
-.dash-progress-bar { height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 1rem; }
-.dash-progress-fill { height: 100%; background: #7c3aed; border-radius: 999px; transition: width .3s; }
-
-.dash-task-list { display: flex; flex-direction: column; }
-.dash-task-row { display: flex; justify-content: space-between; align-items: center; padding: .6rem 0; border-bottom: 1px solid #f1f5f9; text-decoration: none; color: inherit; font-size: .875rem; }
-.dash-task-row:hover { color: #5b21b6; }
-.dash-task-status { font-size: .7rem; padding: .15rem .45rem; border-radius: 999px; background: #f1f5f9; color: #475569; }
-.dash-task-status.status-en_cours, .dash-task-status.status-in_progress { background: #dbeafe; color: #1d4ed8; }
-.dash-task-status.status-terminee, .dash-task-status.status-done { background: #d1fae5; color: #047857; }
-
-.dash-doc-list { display: flex; flex-direction: column; gap: .5rem; }
-.dash-doc-row { display: flex; gap: .6rem; align-items: flex-start; font-size: .875rem; }
-.dash-doc-row i { color: #94a3b8; margin-top: .15rem; }
-.dash-doc-name { font-weight: 500; margin: 0; }
-
-/* Stepper horizontal */
-.r1b-stepper-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; overflow-x: auto; }
-.r1b-stepper { display: flex; align-items: flex-start; min-width: 980px; }
-.r1b-step { display: flex; flex-direction: column; align-items: center; flex: 1; text-decoration: none; color: inherit; }
-.r1b-step-circle { width: 2.25rem; height: 2.25rem; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
-.r1b-step.active .r1b-step-circle { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; box-shadow: 0 4px 12px rgba(124,58,237,.35); }
-.r1b-step.done .r1b-step-circle { background: #10b981; color: #fff; }
-.r1b-step-label { font-size: .68rem; font-weight: 500; text-align: center; margin-top: .4rem; max-width: 100px; line-height: 1.2; }
-.r1b-step.active .r1b-step-label { color: #5b21b6; font-weight: 700; }
-.r1b-step-line { flex: 0.4; height: 4px; background: #e2e8f0; margin-top: 18px; border-radius: 2px; }
-.r1b-step-line.on { background: #10b981; }
-
-.r1b-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
-.r1b-card h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 .75rem; }
-.r1b-card h4 { font-size: .95rem; font-weight: 600; margin: 0; }
-.r1b-info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: .75rem; font-size: .85rem; margin: .5rem 0; }
-.r1b-list { padding-left: 1.1rem; font-size: .85rem; margin: .5rem 0; }
-.r1b-task-line { display: flex; justify-content: space-between; padding: .4rem 0; border-bottom: 1px solid #f1f5f9; font-size: .85rem; }
-.r1b-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; padding-top: .75rem; border-top: 1px solid #f1f5f9; }
-.r1b-kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-.r1b-kanban-col { background: #f1f5f9; border-radius: 12px; padding: .75rem; min-height: 280px; }
-.r1b-kanban-head { font-weight: 600; font-size: .85rem; margin-bottom: .6rem; display: flex; justify-content: space-between; }
-.r1b-kanban-head span { background: #fff; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; }
-.r1b-kanban-card { display: block; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: .65rem; margin-bottom: .5rem; font-size: .85rem; text-decoration: none; color: inherit; }
-.r1b-kanban-card:hover { border-color: #a78bfa; }
-.r1b-docs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-
-.form-control { width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: .5rem .75rem; font-size: .875rem; }
-.btn { display: inline-flex; align-items: center; gap: .35rem; padding: .5rem 1rem; border-radius: 8px; font-size: .875rem; font-weight: 500; border: none; cursor: pointer; text-decoration: none; }
-.btn-sm { padding: .4rem .75rem; font-size: .8rem; }
-.btn-primary { background: #7c3aed; color: #fff; }
-.btn-primary:hover { background: #6d28d9; }
-.btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
-.btn-success { background: #059669; color: #fff; }
-.btn-danger { background: #dc2626; color: #fff; }
-
-@media (max-width: 1100px) {
-  .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .dash-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 900px) {
-  .r1b-layout { grid-template-columns: 1fr; }
-  .r1b-sidebar { border-right: none; border-bottom: 1px solid #e2e8f0; position: static; min-height: auto; }
-  .r1b-kanban { grid-template-columns: 1fr; }
-  .dash-kpi-grid { grid-template-columns: 1fr 1fr; }
-}
-
-.dash-jalon-list { display: flex; flex-direction: column; gap: .35rem; }
-.dash-jalon-row { display: flex; justify-content: space-between; align-items: center; padding: .5rem 0; border-bottom: 1px solid #f1f5f9; font-size: .875rem; }
-.dash-jalon-name { font-weight: 500; }
-.dash-jalon-date { color: #64748b; font-size: .8rem; white-space: nowrap; }
-.dash-jalon-row.soon .dash-jalon-date { color: #d97706; font-weight: 600; }
-.dash-jalon-row.past .dash-jalon-date { color: #dc2626; }
-.dash-jalon-row.past .dash-jalon-name { color: #94a3b8; text-decoration: line-through; }
-
-
-.st-sf-block { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: .9rem 1rem; margin-bottom: 1rem; }
-.st-sf-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .65rem; }
-.st-sf-id { font-weight: 700; color: #5b21b6; font-family: ui-monospace, monospace; }
-.st-sf-desc { flex: 1; font-size: .875rem; color: #334155; }
-.st-sf-badge { font-size: .7rem; padding: .15rem .45rem; border-radius: 999px; background: #ede9fe; color: #5b21b6; }
-.st-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
-.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; }
-.sf-table th, .sf-table td { border: 1px solid #e2e8f0; padding: .4rem .5rem; vertical-align: middle; }
-.sf-table th { background: #f1f5f9; font-weight: 600; text-align: left; }
-.btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
-.btn-sf-del:hover { background: #fef2f2; }
-.sf-table-wrap { overflow-x: auto; }
-
-
-.cp-cost-cell { display: flex; gap: .25rem; align-items: center; }
-.cp-cost-cell input { flex: 1; min-width: 0; }
-.cp-cost-cell select.cp-taxe { width: 4.2rem; flex-shrink: 0; font-size: .75rem; padding: .25rem; }
-.cp-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
-.cp-table input.form-control, .cp-table select.form-control { font-size: .8rem; padding: .3rem .4rem; }
-
-</style>
 
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
 
-<script>
-(function() {
-  function renumberBlock(block) {
-    const sfNum = block.getAttribute('data-sf-num');
-    const sfId = block.getAttribute('data-sf');
-    block.querySelectorAll('.st-row').forEach((row, i) => {
-      const idSpan = row.querySelector('.st-id');
-      if (idSpan) idSpan.textContent = 'S.T.' + sfNum + '.' + (i + 1);
-      const hid = row.querySelector('input[name="st_sf[]"]');
-      if (hid) hid.value = sfId;
-    });
-  }
-
-  document.querySelectorAll('.st-sf-block').forEach(block => {
-    const body = block.querySelector('.st-body');
-    const sfNum = block.getAttribute('data-sf-num');
-    const sfId = block.getAttribute('data-sf');
-
-    function bindDel(btn) {
-      btn.addEventListener('click', () => {
-        const rows = body.querySelectorAll('.st-row');
-        if (rows.length <= 1) {
-          const row = rows[0];
-          row.querySelector('input[type="text"]').value = '';
-          row.querySelector('select').value = 'Matériel';
-          renumberBlock(block);
-          return;
-        }
-        btn.closest('.st-row').remove();
-        renumberBlock(block);
-      });
-    }
-    body.querySelectorAll('.btn-st-del').forEach(bindDel);
-
-    const addBtn = block.querySelector('.btn-st-add');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const i = body.querySelectorAll('.st-row').length;
-        const tr = document.createElement('tr');
-        tr.className = 'st-row';
-        tr.innerHTML =
-          '<td><span class="st-id">S.T.' + sfNum + '.' + (i + 1) + '</span>' +
-          '<input type="hidden" name="st_sf[]" value="' + sfId + '"></td>' +
-          '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
-          '<td><select name="st_type[]" class="form-control">' +
-            '<option value="Matériel" selected>Matériel</option>' +
-            '<option value="Logiciel">Logiciel</option>' +
-            '<option value="3D">3D</option>' +
-            '<option value="PCB">PCB</option>' +
-          '</select></td>' +
-          '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
-        body.appendChild(tr);
-        bindDel(tr.querySelector('.btn-st-del'));
-        renumberBlock(block);
-      });
-    }
-  });
-})();
-</script>
 
 
-<script>
-(function() {
-  function renumber(block) {
-    const prefix = block.getAttribute('data-prefix') || 'X';
-    block.querySelectorAll('.cp-row').forEach((row, i) => {
-      const idSpan = row.querySelector('.cp-id');
-      if (idSpan) idSpan.textContent = prefix + '.' + (i + 1);
-    });
-  }
 
-  function recalc(row) {
-    const qty = parseFloat((row.querySelector('.cp-qty') || {}).value) || 0;
-    const unit = parseFloat((row.querySelector('.cp-unit') || {}).value) || 0;
-    const tot = row.querySelector('.cp-total');
-    if (tot) tot.value = (qty * unit).toFixed(2);
-  }
 
-  document.querySelectorAll('.cp-st-block').forEach(block => {
-    const body = block.querySelector('.cp-body');
-    const type = block.getAttribute('data-st-type');
-    const stId = block.getAttribute('data-st-id');
-    const prefix = block.getAttribute('data-prefix');
-
-    function bindRow(row) {
-      const del = row.querySelector('.btn-cp-del');
-      if (del) {
-        del.addEventListener('click', () => {
-          const rows = body.querySelectorAll('.cp-row');
-          if (rows.length <= 1) {
-            row.querySelectorAll('input:not([type="hidden"]), select').forEach(el => {
-              if (el.tagName === 'SELECT') {
-                if (el.options.length) el.selectedIndex = 0;
-              } else if (!el.readOnly) {
-                el.value = '';
-              }
-            });
-            const tot = row.querySelector('.cp-total');
-            if (tot) tot.value = '';
-            renumber(block);
-            return;
-          }
-          row.remove();
-          renumber(block);
-        });
-      }
-      const qty = row.querySelector('.cp-qty');
-      const unit = row.querySelector('.cp-unit');
-      if (qty) qty.addEventListener('input', () => recalc(row));
-      if (unit) unit.addEventListener('input', () => recalc(row));
-    }
-
-    body.querySelectorAll('.cp-row').forEach(bindRow);
-
-    const addBtn = block.querySelector('.btn-cp-add');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const i = body.querySelectorAll('.cp-row').length;
-        const tr = document.createElement('tr');
-        tr.className = 'cp-row';
-        if (type === 'Matériel') {
-          tr.innerHTML =
-            '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
-            '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="Matériel"></td>' +
-            '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
-            '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
-            '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
-            '<td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value=""></td>' +
-            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
-            '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
-            '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
-            '<select name="cp_cout_total_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div>' +
-            '<input type="hidden" name="cp_affectation[]" value=""><input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
-            '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
-        } else {
-          const userOpts = <?= json_encode(array_map(fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;
-          let opts = '<option value="">—</option>';
-          (userOpts || []).forEach(u => { opts += '<option value="' + u.replace(/"/g, '&quot;') + '">' + u + '</option>'; });
-          tr.innerHTML =
-            '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
-            '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="' + type + '">' +
-            '<input type="hidden" name="cp_designation[]" value=""><input type="hidden" name="cp_reference[]" value="">' +
-            '<input type="hidden" name="cp_fournisseur[]" value=""><input type="hidden" name="cp_quantite[]" value="">' +
-            '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
-            '<input type="hidden" name="cp_cout_total_taxe[]" value="HT"></td>' +
-            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select></td>' +
-            '<td><input type="text" name="cp_duree[]" class="form-control" value="" placeholder="ex. 3 j"></td>' +
-            '<td><select name="cp_variation[]" class="form-control"><option value="Forte">Forte</option><option value="Moyenne" selected>Moyenne</option><option value="Faible">Faible</option></select></td>' +
-            '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
-        }
-        body.appendChild(tr);
-        bindRow(tr);
-        renumber(block);
-      });
-    }
-  });
-})();
-</script>
 
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </body>

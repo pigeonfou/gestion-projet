@@ -3,16 +3,10 @@
  * Schéma et helpers pour le cahier des charges structuré
  */
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/schema.php';
 
 function ensureCahierSpecsColumn(): void {
-    static $done = false;
-    if ($done) return;
-    $db = getDB();
-    $cols = $db->query("PRAGMA table_info(cahiers)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('specs_json', $cols, true)) {
-        $db->exec('ALTER TABLE cahiers ADD COLUMN specs_json TEXT');
-    }
-    $done = true;
+    runSchemaMigrations();
 }
 
 function emptySpecs(): array {
@@ -138,17 +132,7 @@ function parseFonctionsFromPost(array $post): array {
 
 
 function ensureJalonsTable(): void {
-    static $done = false;
-    if ($done) return;
-    $db = getDB();
-    $db->exec("CREATE TABLE IF NOT EXISTS jalons (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cahier_id INTEGER NOT NULL,
-        nom TEXT NOT NULL,
-        date_prevue DATE,
-        FOREIGN KEY (cahier_id) REFERENCES cahiers(id) ON DELETE CASCADE
-    )");
-    $done = true;
+    runSchemaMigrations();
 }
 
 /** @return list<array{id:int,nom:string,date_prevue:?string}> */
@@ -397,22 +381,7 @@ function taskKanbanStatus(array $t): string
 
 
 function ensureTachesExtendedColumns(): void {
-    static $done = false;
-    if ($done) {
-        return;
-    }
-    $db = getDB();
-    $cols = $db->query('PRAGMA table_info(taches)')->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('assigne_a', $cols, true)) {
-        $db->exec('ALTER TABLE taches ADD COLUMN assigne_a TEXT');
-    }
-    if (!in_array('source_key', $cols, true)) {
-        $db->exec('ALTER TABLE taches ADD COLUMN source_key TEXT');
-    }
-    if (!in_array('kanban_status', $cols, true)) {
-        $db->exec("ALTER TABLE taches ADD COLUMN kanban_status TEXT DEFAULT 'a_faire'");
-    }
-    $done = true;
+    runSchemaMigrations();
 }
 
 /**
@@ -429,89 +398,21 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
             $techById[$t['id']] = $t;
         }
     }
-
-    $wantedKeys = [];
-    $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
-    $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE projet_id=? AND source_key=?');
-
+    $wanted = [];
     foreach ($composants as $stId => $items) {
+        if (!is_array($items)) continue;
         $tech = $techById[$stId] ?? [];
         $stType = $tech['type'] ?? '';
-        if (!in_array($stType, ['Logiciel', '3D', 'PCB'], true)) {
-            // Déduire le type depuis le préfixe d'id item si besoin
-            continue;
-        }
         $stDesc = $tech['description'] ?? '';
-        if (!is_array($items)) {
-            continue;
-        }
         foreach ($items as $it) {
             $itemId = $it['id'] ?? '';
-            if ($itemId === '') {
-                continue;
-            }
-            // Si le type n'était pas sur la S.T., détecter via préfixe
+            if ($itemId === '') continue;
             $prefix = explode('.', $itemId)[0] ?? '';
-            if (!in_array($prefix, ['L', '3D', 'PCB'], true) && !in_array($stType, ['Logiciel', '3D', 'PCB'], true)) {
-                continue;
-            }
-            $typeLabel = $stType ?: $prefix;
+            $isSoft = in_array($stType, ['Logiciel', '3D', 'PCB'], true)
+                || in_array($prefix, ['L', '3D', 'PCB'], true);
+            if (!$isSoft) continue;
+            $typeLabel = $stType ?: ($prefix === 'L' ? 'Logiciel' : $prefix);
             $key = 'cp:' . $projetId . ':' . $stId . ':' . $itemId;
-            $wantedKeys[] = $key;
-            $aff = trim((string)($it['affectation'] ?? ''));
-            $duree = trim((string)($it['duree'] ?? ''));
-            $var = trim((string)($it['variation'] ?? ''));
-            $titre = '[' . $itemId . '] ' . $stId . ($stDesc !== '' ? ' — ' . $stDesc : '');
-            $descParts = array_filter([
-                'Type : ' . $typeLabel,
-                $duree !== '' ? 'Durée : ' . $duree : '',
-                $var !== '' ? 'Variation : ' . $var : '',
-            ]);
-            $description = implode("\n", $descParts);
-
-            $exists = $db->prepare('SELECT id FROM taches WHERE projet_id = ? AND source_key = ?');
-            $exists->execute([$projetId, $key]);
-            $tid = $exists->fetchColumn();
-            if ($tid) {
-                $upd->execute([$titre, $description, $aff !== '' ? $aff : null, $projetId, $key]);
-            } else {
-                $ins->execute([
-                    $projetId,
-                    $titre,
-                    $description,
-                    'moyenne',
-                    'a_faire',
-                    $aff !== '' ? $aff : null,
-                    $key,
-                    'a_faire',
-                ]);
-            }
-        }
-    }
-
-    // Aussi traiter items dont le type vient du préfixe même si S.T. absente du tableau techniques
-    foreach ($composants as $stId => $items) {
-        if (!is_array($items)) {
-            continue;
-        }
-        $tech = $techById[$stId] ?? [];
-        $stType = $tech['type'] ?? '';
-        if (in_array($stType, ['Logiciel', '3D', 'PCB'], true)) {
-            continue; // déjà fait
-        }
-        foreach ($items as $it) {
-            $itemId = $it['id'] ?? '';
-            $prefix = explode('.', $itemId)[0] ?? '';
-            if (!in_array($prefix, ['L', '3D', 'PCB'], true)) {
-                continue;
-            }
-            $typeLabel = $prefix === 'L' ? 'Logiciel' : $prefix;
-            $key = 'cp:' . $projetId . ':' . $stId . ':' . $itemId;
-            if (in_array($key, $wantedKeys, true)) {
-                continue;
-            }
-            $wantedKeys[] = $key;
-            $stDesc = $tech['description'] ?? '';
             $aff = trim((string)($it['affectation'] ?? ''));
             $duree = trim((string)($it['duree'] ?? ''));
             $var = trim((string)($it['variation'] ?? ''));
@@ -521,25 +422,39 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
                 $duree !== '' ? 'Durée : ' . $duree : '',
                 $var !== '' ? 'Variation : ' . $var : '',
             ]));
-            $exists = $db->prepare('SELECT id FROM taches WHERE projet_id = ? AND source_key = ?');
-            $exists->execute([$projetId, $key]);
-            $tid = $exists->fetchColumn();
-            if ($tid) {
-                $upd->execute([$titre, $description, $aff !== '' ? $aff : null, $projetId, $key]);
-            } else {
-                $ins->execute([$projetId, $titre, $description, 'moyenne', 'a_faire', $aff !== '' ? $aff : null, $key, 'a_faire']);
-            }
+            $wanted[$key] = [
+                'titre' => $titre,
+                'description' => $description,
+                'assigne_a' => $aff !== '' ? $aff : null,
+            ];
         }
     }
-
-    // Supprimer les tâches issues de l'étape 4 qui ne sont plus dans la liste
-    $existing = $db->prepare("SELECT id, source_key FROM taches WHERE projet_id = ? AND source_key LIKE 'cp:%'");
-    $existing->execute([$projetId]);
-    $del = $db->prepare('DELETE FROM taches WHERE id = ?');
-    foreach ($existing->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (!in_array($row['source_key'], $wantedKeys, true)) {
-            $del->execute([(int)$row['id']]);
+    $stmt = $db->prepare("SELECT id, source_key FROM taches WHERE projet_id = ? AND source_key LIKE 'cp:%'");
+    $stmt->execute([$projetId]);
+    $existing = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $existing[$row['source_key']] = (int)$row['id'];
+    }
+    $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
+    $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE id=?');
+    $del = $db->prepare('DELETE FROM taches WHERE id=?');
+    $db->beginTransaction();
+    try {
+        foreach ($wanted as $key => $payload) {
+            if (isset($existing[$key])) {
+                $upd->execute([$payload['titre'], $payload['description'], $payload['assigne_a'], $existing[$key]]);
+                unset($existing[$key]);
+            } else {
+                $ins->execute([$projetId, $payload['titre'], $payload['description'], 'moyenne', 'a_faire', $payload['assigne_a'], $key, 'a_faire']);
+            }
         }
+        foreach ($existing as $idLeft) {
+            $del->execute([$idLeft]);
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
     }
 }
 
@@ -600,3 +515,17 @@ function cleanAllObsoleteSpecs(): int {
     return $updated;
 }
 
+
+
+function getOrCreateCahierId(int $projetId): int
+{
+    $db = getDB();
+    $stmt = $db->prepare('SELECT id FROM cahiers WHERE projet_id = ?');
+    $stmt->execute([$projetId]);
+    $cid = (int)$stmt->fetchColumn();
+    if ($cid <= 0) {
+        $db->prepare('INSERT INTO cahiers (projet_id) VALUES (?)')->execute([$projetId]);
+        $cid = (int)$db->lastInsertId();
+    }
+    return $cid;
+}

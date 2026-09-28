@@ -1,8 +1,9 @@
 <?php
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/settings_helper.php';
 require_once __DIR__ . '/../includes/NextcloudClient.php';
 requerirConnexion();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { csrfRequire(); }
 seedSettingsIfEmpty();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

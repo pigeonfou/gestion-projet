@@ -3,29 +3,10 @@
  * Gestion des paramètres globaux (key/value en base)
  */
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/schema.php';
 
 function ensureSettingsTable(): void {
-    static $done = false;
-    if ($done) return;
-    $db = getDB();
-    $db->exec("CREATE TABLE IF NOT EXISTS parametres (
-        cle TEXT PRIMARY KEY,
-        valeur TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-    $db->exec("CREATE TABLE IF NOT EXISTS documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        projet_id INTEGER NOT NULL,
-        phase TEXT NOT NULL DEFAULT 'cahier',
-        nom_fichier TEXT NOT NULL,
-        chemin_nextcloud TEXT NOT NULL,
-        taille INTEGER DEFAULT 0,
-        mime TEXT,
-        uploader_id INTEGER,
-        date_upload DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
-    )");
-    $done = true;
+    runSchemaMigrations();
 }
 
 function getSetting(string $key, ?string $default = null): ?string {

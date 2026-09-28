@@ -1,7 +1,7 @@
 <?php
 $pageTitle = 'Cahier des charges';
 $activePage = 'projets';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 requerirConnexion();
 
@@ -30,6 +30,7 @@ $cahier_id = (int)$cahier['id'];
 
 // Save
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $action = $_POST['form_action'] ?? 'save';
     $specs = emptySpecs();
 
@@ -128,6 +129,7 @@ function sel(?string $cur, string $val): string {
 <form method="POST" id="cdcForm" action="<?= url('cahier_form.php') ?>">
     <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
     <input type="hidden" name="form_action" id="formAction" value="save">
+    <?= csrfField() ?>
 
     <!-- ===== 1 ===== -->
     <div class="cdc-step-panel active" data-panel="1">
