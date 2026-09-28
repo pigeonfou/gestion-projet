@@ -1008,19 +1008,12 @@ function stepClass(int $n, int $current): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
-<!-- projet-r1b.css -->
-
-
+<script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
+<script src="<?= url('assets/js/projet-r1b.js') ?>"></script>
+<script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
-
-
-
-
-
-
-<script src="<?= url('assets/js/app.js') ?>"></script>
 </body>
 </html>
