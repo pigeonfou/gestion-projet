@@ -13,7 +13,7 @@ $db = getDB();
 $user = utilisateurCourant();
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? $_POST['projet_id'] ?? 0);
 $view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | taches | documents
-$stepGet = isset($_GET['step']) ? (int)$_GET['step'] : 0;
+$stepGet = array_key_exists('step', $_GET) ? (int)$_GET['step'] : null;
 
 if ($id <= 0) {
     redirect('projets.php');
@@ -27,8 +27,8 @@ if (!$projet) {
     redirect('projets.php');
 }
 
-$currentStep = max(1, min(8, (int)($projet['current_step'] ?? 1)));
-if ($stepGet >= 1 && $stepGet <= 8) {
+$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
 $phase = r1bPhaseFromStep($currentStep);
@@ -45,11 +45,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('projet.php?id=' . $id . '&view=' . $redirView . ($redirView === 'processus' ? '&step=' . $currentStep : ''));
     }
     if ($action === 'set_step') {
-        $n = (int)($_POST['step'] ?? 1);
-        $n = max(1, min(8, $n));
+        $n = r1bClampStep((int)($_POST['step'] ?? 0));
         $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$n, $id]);
         setFlash('success', 'Étape mise à jour.');
         redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
+    }
+    if ($action === 'save_cadrage') {
+        $comm = !empty($_POST['cadrage_commerciale']) ? 1 : 0;
+        $tech = !empty($_POST['cadrage_technique']) ? 1 : 0;
+        $dest = $_POST['cadrage_destination'] ?? '';
+        if (!in_array($dest, ['interne', 'externe'], true)) {
+            $dest = null;
+        }
+        $db->prepare('UPDATE projets SET cadrage_commerciale = ?, cadrage_technique = ?, cadrage_destination = ? WHERE id = ?')
+           ->execute([$comm, $tech, $dest, $id]);
+        // Avancer à l'étape 1 si encore à 0
+        $dbStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+        if ($dbStep === 0 && !empty($_POST['valider_etape'])) {
+            $db->prepare('UPDATE projets SET current_step = 1 WHERE id = ?')->execute([$id]);
+            setFlash('success', 'Note de cadrage enregistrée — passage à l\'étape 1.');
+            redirect('projet.php?id=' . $id . '&view=processus&step=1');
+        }
+        setFlash('success', 'Note de cadrage enregistrée.');
+        redirect('projet.php?id=' . $id . '&view=processus&step=0');
     }
     if ($action === 'save_specs_techniques') {
         try {
@@ -138,11 +156,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setFlash('success', 'NO GO enregistré — projet archivé comme abandonné (étape 3).');
             } elseif ($decision === 'GO') {
                 $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ? WHERE id = ?')
-                   ->execute(['GO', min(8, $currentStep + 1), 'actif', $id]);
+                   ->execute(['GO', r1bClampStep($currentStep + 1), 'actif', $id]);
                 setFlash('success', 'Décision enregistrée : GO');
             } elseif ($decision === 'CONFORME') {
                 // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
-                $next = min(8, $currentStep + 1);
+                $next = r1bClampStep($currentStep + 1);
                 if ($currentStep >= 7 || $next === 8) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
                        ->execute(['termine', $id]);
@@ -153,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setFlash('success', 'Décision enregistrée : CONFORME');
                 }
             } elseif ($decision === 'DONE') {
-                $next = min(8, $currentStep + 1);
+                $next = r1bClampStep($currentStep + 1);
                 if ($next === 8) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
                        ->execute(['termine', $id]);
@@ -163,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setFlash('success', 'Décision enregistrée : DONE');
                 }
             } elseif ($decision === 'NON_CONFORME') {
-                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([max(1, $currentStep - 1), $id]);
+                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([r1bClampStep($currentStep - 1), $id]);
                 setFlash('success', 'Décision enregistrée : NON_CONFORME');
             }
         }
@@ -174,8 +192,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Reload after possible updates
 $stmt->execute([$id]);
 $projet = $stmt->fetch();
-$currentStep = max(1, min(8, (int)($projet['current_step'] ?? 1)));
-if ($stepGet >= 1 && $stepGet <= 8) {
+$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
 $phase = r1bPhaseFromStep($currentStep);
@@ -226,7 +244,7 @@ foreach ($taches as $t) {
         $tachesOuvertes++;
     }
 }
-$pct = (int)round(($currentStep / 8) * 100);
+$pct = (int)round(($currentStep / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
 $validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [6, 7], true) ? 1 : 0;
 
@@ -328,7 +346,7 @@ function stepClass(int $n, int $current): string
                       <span class="dash-step-badge done">Terminé</span>
                     <?php endif; ?>
                   </div>
-                  <div class="dash-step-pct"><?= $done || $active ? (int)round(($n / 8) * 100) : 0 ?>%</div>
+                  <div class="dash-step-pct"><?= $done || $active ? (int)round(($n / r1bMaxStep()) * 100) : 0 ?>%</div>
                 </a>
               <?php endforeach; ?>
             </div>
@@ -452,8 +470,8 @@ function stepClass(int $n, int $current): string
 
       <div class="r1b-stepper-wrap">
         <div class="r1b-stepper">
-          <?php foreach ($steps as $n => $s): ?>
-            <?php if ($n > 1): ?><div class="r1b-step-line <?= $n <= $currentStep ? 'on' : '' ?>"></div><?php endif; ?>
+          <?php $firstStep = true; foreach ($steps as $n => $s): ?>
+            <?php if (!$firstStep): ?><div class="r1b-step-line <?= $n <= $currentStep ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
             <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep) ?>">
               <div class="r1b-step-circle"><?= $n < $currentStep ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
@@ -465,7 +483,49 @@ function stepClass(int $n, int $current): string
       <div class="r1b-card">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
-        <?php if ($currentStep === 1): ?>
+        <?php if ($currentStep === 0): ?>
+          <p class="text-sm text-muted mb-3">Origine de l’entrée projet (Direction générale) et destination du besoin.</p>
+          <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=0') ?>">
+            <input type="hidden" name="id" value="<?= (int)$id ?>">
+            <input type="hidden" name="action" value="save_cadrage">
+
+            <div class="r1b-info-box mb-3">
+              <p class="font-medium mb-2">Entrée du projet provenant de la Direction générale via :</p>
+              <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
+                <input type="checkbox" name="cadrage_commerciale" value="1"
+                  <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
+                <span>Service <strong>Commercial</strong></span>
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+                <input type="checkbox" name="cadrage_technique" value="1"
+                  <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
+                <span>Service <strong>Technique</strong></span>
+              </label>
+            </div>
+
+            <div class="r1b-info-box mb-3">
+              <p class="font-medium mb-2">Projet à destination d’un besoin :</p>
+              <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
+                <input type="radio" name="cadrage_destination" value="interne"
+                  <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
+                <span><strong>Interne</strong></span>
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+                <input type="radio" name="cadrage_destination" value="externe"
+                  <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
+                <span><strong>Externe</strong> (client)</span>
+              </label>
+            </div>
+
+            <div class="r1b-actions" style="border-top:none;padding-top:0;">
+              <button type="submit" class="btn btn-secondary"><i class="fas fa-save"></i> Enregistrer</button>
+              <button type="submit" name="valider_etape" value="1" class="btn btn-primary">
+                Enregistrer et passer à l’étape suivante
+              </button>
+            </div>
+          </form>
+
+        <?php elseif ($currentStep === 1): ?>
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
           <?php
             $hasContexte = trim($specs['objectifs'] ?? '') !== ''
@@ -830,7 +890,7 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="decision" value="NON_CONFORME">
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
-          <?php elseif ($currentStep < 8 && $goDecision !== 'NO_GO'): ?>
+          <?php elseif ($currentStep > 0 && $currentStep < 8 && $goDecision !== 'NO_GO'): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
@@ -838,7 +898,7 @@ function stepClass(int $n, int $current): string
               <button type="submit" class="btn btn-primary">Valider l'étape</button>
             </form>
           <?php endif; ?>
-          <?php if ($currentStep > 1): ?>
+          <?php if ($currentStep > r1bMinStep()): ?>
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
           <?php endif; ?>
         </div>
@@ -1006,7 +1066,7 @@ function stepClass(int $n, int $current): string
 
 /* Stepper horizontal */
 .r1b-stepper-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; overflow-x: auto; }
-.r1b-stepper { display: flex; align-items: flex-start; min-width: 860px; }
+.r1b-stepper { display: flex; align-items: flex-start; min-width: 980px; }
 .r1b-step { display: flex; flex-direction: column; align-items: center; flex: 1; text-decoration: none; color: inherit; }
 .r1b-step-circle { width: 2.25rem; height: 2.25rem; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; }
 .r1b-step.active .r1b-step-circle { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; box-shadow: 0 4px 12px rgba(124,58,237,.35); }

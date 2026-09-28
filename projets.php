@@ -33,8 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlash('success', 'Projet mis à jour avec succès.');
             redirect('projet.php?id=' . $editId);
         } else {
-            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id) VALUES (?, ?, ?)');
-            $stmt->execute([$nom, $description, $user['id']]);
+            require_once __DIR__ . '/includes/r1b_steps.php';
+            ensureProjectProcessColumns();
+            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id, current_step, status) VALUES (?, ?, ?, 0, ?)');
+            $stmt->execute([$nom, $description, $user['id'], 'actif']);
             $newId = $db->lastInsertId();
             setFlash('success', 'Projet créé avec succès.');
             redirect('projet.php?id=' . $newId);
@@ -199,12 +201,12 @@ foreach ($projets as $p) {
 
 /** Affiche une carte projet (réutilisé pour en cours / archivage). */
 $renderProjetCard = static function (array $p, array $steps, array $user) use ($isAbandonne): void {
-    $cs = max(1, min(8, (int)($p['current_step'] ?? 1)));
-    $pct = (int)round(($cs / 8) * 100);
+    $cs = r1bClampStep((int)($p['current_step'] ?? 0));
+    $pct = (int)round(($cs / r1bMaxStep()) * 100);
     $stepLabel = $steps[$cs]['title'] ?? ($p['status'] ?? 'actif');
     if ($isAbandonne($p)) {
         $stepLabel = 'Abandonné (NO GO)';
-        $pct = (int)round((3 / 8) * 100);
+        $pct = (int)round((3 / r1bMaxStep()) * 100);
     } elseif ($cs === 8) {
         $stepLabel = 'Validé / Vente';
     }
@@ -421,7 +423,7 @@ require __DIR__ . '/includes/header.php';
         <p class="text-muted text-sm">Aucune activité</p>
       <?php else: ?>
         <?php foreach ($recent as $p):
-          $cs = max(1, min(8, (int)($p['current_step'] ?? 1)));
+          $cs = r1bClampStep((int)($p['current_step'] ?? 0));
           $stepLabel = $steps[$cs]['title'] ?? '—';
         ?>
         <div class="dash-side-item">
