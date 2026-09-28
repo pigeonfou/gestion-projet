@@ -149,24 +149,97 @@ $projets = $stmt->fetchAll();
 
 $steps = r1bSteps();
 
+/**
+ * Classification archivage :
+ * - Abandonnés : décision NO_GO (étape 3) ou status archive à l'étape 3
+ * - Validé/vente : étape 8 sans NO_GO (ou status archive à l'étape 8)
+ * - En cours : le reste
+ */
+$isAbandonne = static function (array $p): bool {
+    $cs = (int)($p['current_step'] ?? 1);
+    $st = $p['status'] ?? 'actif';
+    $go = $p['go_decision'] ?? '';
+    return $go === 'NO_GO' || ($st === 'archive' && $cs === 3);
+};
+$isValideVente = static function (array $p) use ($isAbandonne): bool {
+    if ($isAbandonne($p)) {
+        return false;
+    }
+    $cs = (int)($p['current_step'] ?? 1);
+    $st = $p['status'] ?? 'actif';
+    return $cs === 8 || ($st === 'archive' && $cs === 8) || $st === 'termine';
+};
+
+$projetsEnCours = [];
+$projetsAbandonnes = [];
+$projetsValides = [];
+foreach ($projets as $p) {
+    if ($isAbandonne($p)) {
+        $projetsAbandonnes[] = $p;
+    } elseif ($isValideVente($p)) {
+        $projetsValides[] = $p;
+    } else {
+        $projetsEnCours[] = $p;
+    }
+}
+
 // Stats globales (alignées Tableau de bord Processus-R1b)
-$nbProjetsActifs = 0;
+$nbProjetsActifs = count($projetsEnCours);
 $nbTachesOuvertes = 0;
 $nbValidationsPending = 0;
 $nbJalonsTotal = 0;
 foreach ($projets as $p) {
-    $st = $p['status'] ?? 'actif';
-    if ($st !== 'archive' && $st !== 'termine') {
-        $nbProjetsActifs++;
-    }
     $nbTachesOuvertes += (int)($p['nb_taches_ouvertes'] ?? 0);
     $nbJalonsTotal += (int)($p['nb_jalons'] ?? 0);
-    // Validation en attente ≈ projets à l'étape GO/NO GO sans décision
     $cs = (int)($p['current_step'] ?? 1);
     if ($cs === 3 && empty($p['go_decision'])) {
         $nbValidationsPending++;
     }
 }
+
+/** Affiche une carte projet (réutilisé pour en cours / archivage). */
+$renderProjetCard = static function (array $p, array $steps, array $user) use ($isAbandonne): void {
+    $cs = max(1, min(8, (int)($p['current_step'] ?? 1)));
+    $pct = (int)round(($cs / 8) * 100);
+    $stepLabel = $steps[$cs]['title'] ?? ($p['status'] ?? 'actif');
+    if ($isAbandonne($p)) {
+        $stepLabel = 'Abandonné (NO GO)';
+        $pct = (int)round((3 / 8) * 100);
+    } elseif ($cs === 8) {
+        $stepLabel = 'Validé / Vente';
+    }
+    $peutSupprimer = ($p['createur_id'] == $user['id'] || estAdmin()) && (int)$p['nb_taches'] === 0;
+    $urlProjet = url('projet.php?id=' . (int)$p['id']);
+    ?>
+    <div class="dash-proj-item" onclick="if(!event.target.closest('a,button')) location.href='<?= $urlProjet ?>'">
+      <div class="dash-proj-top">
+        <div>
+          <span class="dash-proj-name"><?= e($p['nom']) ?></span>
+          <span class="dash-proj-badge"><?= e($stepLabel) ?></span>
+        </div>
+        <span class="dash-proj-pct"><?= $pct ?>%</span>
+      </div>
+      <div class="dash-proj-bar">
+        <div class="dash-proj-fill" style="width:<?= $pct ?>%"></div>
+      </div>
+      <p class="dash-proj-meta">
+        <?= e($p['createur']) ?> · <?= (int)$p['nb_taches'] ?> tâche(s) · <?= (int)($p['nb_jalons'] ?? 0) ?> jalon(s)
+        <?php if (!empty($p['description'])): ?>
+          · <?= e(mb_strimwidth($p['description'], 0, 80, '…')) ?>
+        <?php endif; ?>
+      </p>
+      <div class="dash-proj-actions" onclick="event.stopPropagation()">
+        <a href="<?= $urlProjet ?>" class="btn-r1b btn-r1b-primary btn-r1b-sm"><i class="fas fa-eye"></i> Voir</a>
+        <?php if ($p['createur_id'] == $user['id'] || estAdmin()): ?>
+        <a href="<?= url('projets.php?action=modifier&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-secondary btn-r1b-sm"><i class="fas fa-edit"></i></a>
+        <?php endif; ?>
+        <?php if ($peutSupprimer): ?>
+        <a href="<?= url('projets.php?action=supprimer&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-danger btn-r1b-sm" data-confirm="Supprimer définitivement ce projet ?"><i class="fas fa-trash"></i></a>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php
+};
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -216,6 +289,22 @@ require __DIR__ . '/includes/header.php';
 .dash-toolbar select.form-control { width: auto; min-width: 140px; border-radius: 8px; border: 1px solid #e2e8f0; padding: .4rem .65rem; font-size: .85rem; }
 .dash-empty { text-align: center; padding: 2.5rem 1rem; color: #64748b; }
 .dash-empty i { font-size: 2.5rem; opacity: .35; margin-bottom: .75rem; display: block; }
+.dash-archive-wrap { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.dash-archive-section { border: 1px solid #f1f5f9; border-radius: 10px; padding: 1rem; background: #f8fafc; }
+.dash-archive-section h4 {
+  font-size: .9rem; font-weight: 600; margin: 0 0 .75rem; color: #334155;
+  display: flex; align-items: center; gap: .4rem;
+}
+.dash-archive-section h4 .count {
+  font-size: .7rem; font-weight: 500; padding: .1rem .45rem; border-radius: 999px;
+  background: #e2e8f0; color: #475569;
+}
+.dash-archive-section.abandonnes h4 { color: #b91c1c; }
+.dash-archive-section.abandonnes h4 .count { background: #fee2e2; color: #b91c1c; }
+.dash-archive-section.valides h4 { color: #047857; }
+.dash-archive-section.valides h4 .count { background: #d1fae5; color: #047857; }
+.dash-archive-section .dash-empty { padding: 1rem; font-size: .85rem; }
+.dash-col-main { display: flex; flex-direction: column; gap: 1.25rem; }
 @media (max-width: 900px) {
   .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-grid { grid-template-columns: 1fr; }
@@ -267,59 +356,66 @@ require __DIR__ . '/includes/header.php';
   </div>
 
   <div class="dash-grid">
-    <div class="dash-card">
-      <h3>Projets</h3>
-      <?php if (empty($projets)): ?>
-        <div class="dash-empty">
-          <i class="fas fa-folder-open"></i>
-          <p>Aucun projet trouvé.</p>
-          <a href="<?= url('projets.php?action=creer') ?>" class="btn-r1b btn-r1b-primary" style="margin-top:.75rem;">Créer un projet</a>
-        </div>
-      <?php else: ?>
-        <div class="dash-proj-list">
-          <?php foreach ($projets as $p):
-            $cs = max(1, min(8, (int)($p['current_step'] ?? 1)));
-            $pct = (int)round(($cs / 8) * 100);
-            $stepLabel = $steps[$cs]['title'] ?? ($p['status'] ?? 'actif');
-            $peutSupprimer = ($p['createur_id'] == $user['id'] || estAdmin()) && (int)$p['nb_taches'] === 0;
-          ?>
-          <div class="dash-proj-item" onclick="if(!event.target.closest('a,button')) location.href='<?= url('projet.php?id=' . (int)$p['id']) ?>'">
-            <div class="dash-proj-top">
-              <div>
-                <span class="dash-proj-name"><?= e($p['nom']) ?></span>
-                <span class="dash-proj-badge"><?= e($stepLabel) ?></span>
-              </div>
-              <span class="dash-proj-pct"><?= $pct ?>%</span>
-            </div>
-            <div class="dash-proj-bar">
-              <div class="dash-proj-fill" style="width:<?= $pct ?>%"></div>
-            </div>
-            <p class="dash-proj-meta">
-              <?= e($p['createur']) ?> · <?= (int)$p['nb_taches'] ?> tâche(s) · <?= (int)($p['nb_jalons'] ?? 0) ?> jalon(s)
-              <?php if (!empty($p['description'])): ?>
-                · <?= e(mb_strimwidth($p['description'], 0, 80, '…')) ?>
-              <?php endif; ?>
-            </p>
-            <div class="dash-proj-actions" onclick="event.stopPropagation()">
-              <a href="<?= url('projet.php?id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-primary btn-r1b-sm"><i class="fas fa-eye"></i> Voir</a>
-              <?php if ($p['createur_id'] == $user['id'] || estAdmin()): ?>
-              <a href="<?= url('projets.php?action=modifier&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-secondary btn-r1b-sm"><i class="fas fa-edit"></i></a>
-              <?php endif; ?>
-              <?php if ($peutSupprimer): ?>
-              <a href="<?= url('projets.php?action=supprimer&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-danger btn-r1b-sm" data-confirm="Supprimer définitivement ce projet ?"><i class="fas fa-trash"></i></a>
-              <?php endif; ?>
-            </div>
+    <div class="dash-col-main">
+      <div class="dash-card">
+        <h3>Projets (En cours)</h3>
+        <?php if (empty($projetsEnCours)): ?>
+          <div class="dash-empty">
+            <i class="fas fa-folder-open"></i>
+            <p>Aucun projet en cours.</p>
+            <a href="<?= url('projets.php?action=creer') ?>" class="btn-r1b btn-r1b-primary" style="margin-top:.75rem;">Créer un projet</a>
           </div>
-          <?php endforeach; ?>
+        <?php else: ?>
+          <div class="dash-proj-list">
+            <?php foreach ($projetsEnCours as $p) {
+                $renderProjetCard($p, $steps, $user);
+            } ?>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <div class="dash-card">
+        <h3>Archivage</h3>
+        <div class="dash-archive-wrap">
+          <div class="dash-archive-section abandonnes">
+            <h4>
+              <i class="fas fa-times-circle"></i> Projets abandonnés
+              <span class="count"><?= count($projetsAbandonnes) ?></span>
+            </h4>
+            <?php if (empty($projetsAbandonnes)): ?>
+              <div class="dash-empty"><p>Aucun projet abandonné.</p></div>
+            <?php else: ?>
+              <div class="dash-proj-list">
+                <?php foreach ($projetsAbandonnes as $p) {
+                    $renderProjetCard($p, $steps, $user);
+                } ?>
+              </div>
+            <?php endif; ?>
+          </div>
+
+          <div class="dash-archive-section valides">
+            <h4>
+              <i class="fas fa-check-circle"></i> Projets validé/vente
+              <span class="count"><?= count($projetsValides) ?></span>
+            </h4>
+            <?php if (empty($projetsValides)): ?>
+              <div class="dash-empty"><p>Aucun projet validé / vente.</p></div>
+            <?php else: ?>
+              <div class="dash-proj-list">
+                <?php foreach ($projetsValides as $p) {
+                    $renderProjetCard($p, $steps, $user);
+                } ?>
+              </div>
+            <?php endif; ?>
+          </div>
         </div>
-      <?php endif; ?>
+      </div>
     </div>
 
     <div class="dash-card">
       <h3>Activité récente</h3>
       <?php
-      // Derniers projets / étapes comme proxy de notifications
-      $recent = array_slice($projets, 0, 8);
+      $recent = array_slice($projetsEnCours, 0, 8);
       if (empty($recent)):
       ?>
         <p class="text-muted text-sm">Aucune activité</p>
