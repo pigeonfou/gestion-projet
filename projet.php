@@ -129,20 +129,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('projet.php?id=' . $id . '&view=taches');
     }
     if ($action === 'decide') {
-
-
         $decision = $_POST['decision'] ?? '';
         if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
-            if ($decision === 'GO' || $decision === 'NO_GO') {
-                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ? WHERE id = ?')
-                   ->execute([$decision, $decision === 'NO_GO' ? 8 : min(8, $currentStep + 1), $id]);
-            } elseif ($decision === 'DONE' || $decision === 'CONFORME') {
+            if ($decision === 'NO_GO') {
+                // Archivage étape 3 (abandon) — reste à l'étape 3, ne passe PAS à l'étape 8
+                $db->prepare('UPDATE projets SET go_decision = ?, current_step = 3, status = ? WHERE id = ?')
+                   ->execute(['NO_GO', 'archive', $id]);
+                setFlash('success', 'NO GO enregistré — projet archivé comme abandonné (étape 3).');
+            } elseif ($decision === 'GO') {
+                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ? WHERE id = ?')
+                   ->execute(['GO', min(8, $currentStep + 1), 'actif', $id]);
+                setFlash('success', 'Décision enregistrée : GO');
+            } elseif ($decision === 'CONFORME') {
+                // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
                 $next = min(8, $currentStep + 1);
-                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$next, $id]);
+                if ($currentStep >= 7 || $next === 8) {
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
+                       ->execute(['termine', $id]);
+                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
+                } else {
+                    $db->prepare('UPDATE projets SET current_step = ?, status = ? WHERE id = ?')
+                       ->execute([$next, 'actif', $id]);
+                    setFlash('success', 'Décision enregistrée : CONFORME');
+                }
+            } elseif ($decision === 'DONE') {
+                $next = min(8, $currentStep + 1);
+                if ($next === 8) {
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
+                       ->execute(['termine', $id]);
+                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 8).');
+                } else {
+                    $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$next, $id]);
+                    setFlash('success', 'Décision enregistrée : DONE');
+                }
             } elseif ($decision === 'NON_CONFORME') {
                 $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([max(1, $currentStep - 1), $id]);
+                setFlash('success', 'Décision enregistrée : NON_CONFORME');
             }
-            setFlash('success', 'Décision enregistrée : ' . $decision);
         }
         redirect('projet.php?id=' . $id . '&view=processus');
     }
@@ -557,7 +580,12 @@ function stepClass(int $n, int $current): string
 
         <?php elseif ($currentStep === 3): ?>
           <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
-          <?php if (!empty($projet['go_decision'])): ?>
+          <?php if (($projet['go_decision'] ?? '') === 'NO_GO'): ?>
+            <div class="r1b-info-box" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;">
+              <strong>NO GO</strong> — Projet archivé comme <strong>abandonné</strong> (étape 3).
+              Ce n’est pas l’archivage validé/vente (étape 8).
+            </div>
+          <?php elseif (!empty($projet['go_decision'])): ?>
             <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
           <?php endif; ?>
 
@@ -739,9 +767,13 @@ function stepClass(int $n, int $current): string
             <li>Rapport de tests</li>
             <li>CDC validé</li>
           </ul>
+          <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 8).</div>
 
         <?php else: ?>
-          <div class="r1b-info-box">Projet en phase d'archivage<?= (!empty($projet['go_decision']) && $projet['go_decision'] === 'NO_GO') ? ' (NO GO)' : '' ?>.</div>
+          <div class="r1b-info-box" style="border-color:#a7f3d0;background:#ecfdf5;color:#065f46;">
+            <strong>Archivage validé / vente</strong> (étape 8) — suite à une conformité / livraison DG.
+            <br><span class="text-sm">Distinct de l’abandon NO GO resté à l’étape 3.</span>
+          </div>
         <?php endif; ?>
 
         <form method="POST" class="mt-3">
@@ -753,17 +785,22 @@ function stepClass(int $n, int $current): string
         </form>
 
         <div class="r1b-actions">
-          <?php if ($currentStep === 3): ?>
+          <?php if ($currentStep === 3 && ($projet['go_decision'] ?? '') !== 'NO_GO'): ?>
             <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="GO">
               <button class="btn btn-success">GO</button></form>
             <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NO_GO">
-              <button class="btn btn-danger">NO GO → Archivage</button></form>
-          <?php elseif ($currentStep === 6 || $currentStep === 7): ?>
+              <button class="btn btn-danger">NO GO → Abandon (étape 3)</button></form>
+          <?php elseif ($currentStep === 6): ?>
             <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="CONFORME">
-              <button class="btn btn-success">✓ Conforme</button></form>
+              <button class="btn btn-success">✓ Conforme → Livraison DG</button></form>
             <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NON_CONFORME">
               <button class="btn btn-danger">Non conforme</button></form>
-          <?php elseif ($currentStep < 8): ?>
+          <?php elseif ($currentStep === 7): ?>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="CONFORME">
+              <button class="btn btn-success">✓ Conforme → Archivage validé/vente</button></form>
+            <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="NON_CONFORME">
+              <button class="btn btn-danger">Non conforme</button></form>
+          <?php elseif ($currentStep < 8 && ($projet['go_decision'] ?? '') !== 'NO_GO'): ?>
             <form method="POST" style="display:inline"><input type="hidden" name="action" value="decide"><input type="hidden" name="decision" value="DONE">
               <button class="btn btn-primary">Valider l'étape</button></form>
           <?php endif; ?>
