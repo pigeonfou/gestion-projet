@@ -2,6 +2,7 @@
 $pageTitle = 'Article stock';
 $activePage = 'stocks';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/stock/stock_helpers.php';
 requerirConnexion();
 runSchemaMigrations();
 
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     $designation = trim($_POST['designation'] ?? '');
     $type = ($_POST['type'] ?? 'piece') === 'equipement' ? 'equipement' : 'piece';
     $description = trim($_POST['description'] ?? '');
-    $qStock = (float)str_replace(',', '.', (string)($_POST['quantite_stock'] ?? '0'));
+    $qStockInitial = (float)str_replace(',', '.', (string)($_POST['quantite_stock'] ?? '0'));
     $qMin = (float)str_replace(',', '.', (string)($_POST['quantite_min'] ?? '0'));
     $unite = trim($_POST['unite'] ?? 'u') ?: 'u';
     $valeur = (float)str_replace(',', '.', (string)($_POST['valeur_unitaire'] ?? '0'));
@@ -38,12 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 
     try {
         if ($id > 0) {
-            $db->prepare('UPDATE stock_articles SET reference=?, designation=?, type=?, description=?, quantite_stock=?, quantite_min=?, unite=?, valeur_unitaire=?, taxe=?, documentation=?, emplacement=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
-               ->execute([$reference, $designation, $type, $description, $qStock, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes, $id]);
+            // La quantité n'est plus modifiable directement : elle provient du journal.
+            $db->prepare('UPDATE stock_articles SET reference=?, designation=?, type=?, description=?, quantite_min=?, unite=?, valeur_unitaire=?, taxe=?, documentation=?, emplacement=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
+               ->execute([$reference, $designation, $type, $description, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes, $id]);
+            stockSyncLegacyQuantity($id);
         } else {
             $db->prepare('INSERT INTO stock_articles (reference, designation, type, description, quantite_stock, quantite_min, unite, valeur_unitaire, taxe, documentation, emplacement, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-               ->execute([$reference, $designation, $type, $description, $qStock, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes]);
+               ->execute([$reference, $designation, $type, $description, 0, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes]);
             $id = (int)$db->lastInsertId();
+
+            // À la création, la quantité initiale est enregistrée comme un mouvement.
+            if ($qStockInitial > 0) {
+                $lab = stockDefaultLocationId();
+                stockMovement($id, 'correction_inventaire', $qStockInitial, null, $lab, null, null, null, 'CREATION_ARTICLE', 'Stock initial à la création', (int)($user['id'] ?? 0) ?: null);
+            }
         }
 
         // Fournisseurs liés
@@ -88,18 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
         requerirAccesProjet($projetId);
         try {
             $db->beginTransaction();
-            $stmt = $db->prepare('SELECT quantite_stock FROM stock_articles WHERE id = ?');
-            $stmt->execute([$id]);
-            $currentStock = $stmt->fetchColumn();
-            if ($currentStock === false) throw new RuntimeException('Article introuvable.');
-            if (!empty($_POST['decrementer']) && (float)$currentStock < $qty) {
-                throw new RuntimeException('Stock insuffisant.');
+            $currentStock = stockQuantity($id);
+            if (!empty($_POST['decrementer']) && $currentStock < $qty) {
+                throw new RuntimeException('Stock insuffisant (stock calculé : ' . rtrim(rtrim(number_format($currentStock, 3, '.', ''), '0'), '.') . ').');
             }
             $db->prepare('INSERT INTO stock_usages (article_id, projet_id, quantite, note) VALUES (?,?,?,?)')
                ->execute([$id, $projetId, $qty, $note]);
             if (!empty($_POST['decrementer'])) {
-                $db->prepare('UPDATE stock_articles SET quantite_stock = quantite_stock - ?, updated_at=CURRENT_TIMESTAMP WHERE id = ?')
-                   ->execute([$qty, $id]);
+                $lab = stockDefaultLocationId();
+                stockMovement($id, 'consommation', $qty, $lab, null, $projetId, null, null, 'USAGE_PROJET', $note, (int)($user['id'] ?? 0) ?: null);
             }
             $db->commit();
         } catch (Throwable $e) {
@@ -180,8 +186,9 @@ $a = $article ?: [
       <textarea name="description" class="form-control" rows="2"><?= e($a['description']) ?></textarea>
     </div>
     <div class="form-group">
-      <label>Quantité en stock</label>
-      <input type="number" step="any" name="quantite_stock" class="form-control" value="<?= e((string)$a['quantite_stock']) ?>">
+      <label>Stock physique calculé</label>
+      <input type="text" class="form-control" readonly value="<?= e(rtrim(rtrim(number_format((float)$a['quantite_stock'], 3, '.', ''), '0'), '.')) ?> <?= e($a['unite'] ?: 'u') ?>">
+      <small class="text-muted">Le stock est désormais piloté par les mouvements, pas par une saisie directe.</small>
     </div>
     <div class="form-group">
       <label>Seuil minimum (alerte)</label>
