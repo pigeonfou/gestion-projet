@@ -70,11 +70,18 @@ $articles = $stmt->fetchAll();
 // KPI
 $kpi = $db->query("SELECT
     COUNT(*) AS total,
-    SUM(CASE WHEN type='piece' THEN 1 ELSE 0 END) AS pieces,
-    SUM(CASE WHEN type='equipement' THEN 1 ELSE 0 END) AS equipements,
-    SUM(CASE WHEN quantite_stock <= quantite_min THEN 1 ELSE 0 END) AS alertes,
-    SUM(quantite_stock * valeur_unitaire) AS valeur_totale
-    FROM stock_articles")->fetch();
+    SUM(CASE WHEN a.type='piece' THEN 1 ELSE 0 END) AS pieces,
+    SUM(CASE WHEN a.type='equipement' THEN 1 ELSE 0 END) AS equipements,
+    SUM(CASE WHEN q.stock_calcule <= a.quantite_min THEN 1 ELSE 0 END) AS alertes,
+    SUM(q.stock_calcule * a.valeur_unitaire) AS valeur_totale
+    FROM stock_articles a
+    LEFT JOIN (
+        SELECT article_id, SUM(CASE
+            WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
+            WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite
+            ELSE 0 END) AS stock_calcule
+        FROM stock_mouvements GROUP BY article_id
+    ) q ON q.article_id=a.id")->fetch();
 
 require __DIR__ . '/includes/header.php';
 ?>
