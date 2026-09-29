@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('login.php');
 }
+csrfRequire();
 
 $identifiant = trim($_POST['identifiant'] ?? '');
 $mot_de_passe = $_POST['mot_de_passe'] ?? '';
