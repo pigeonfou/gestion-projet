@@ -3,6 +3,7 @@ $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
+require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 seedSettingsIfEmpty();
@@ -90,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             saveComposantsSt($cid, $composants);
             $techs = loadSpecs($cid)['specs_techniques'] ?? [];
             syncTasksFromComposants($id, $composants, is_array($techs) ? $techs : []);
+            syncStockUsagesFromComposants($id, $composants);
             $n = 0;
             foreach ($composants as $items) { $n += count($items); }
             setFlash('success', $n > 0

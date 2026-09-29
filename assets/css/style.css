@@ -623,3 +623,22 @@ tr:hover td { background:#f8fafc; }
   .r1b-kanban,
   .r1b-kanban.r1b-kanban-4 { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Stocks & Matériel */
+.stocks-header { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem; }
+.stocks-header-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.stocks-kpi { margin-bottom:1.25rem; }
+.stocks-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.stocks-table th, .stocks-table td { padding:.55rem .65rem; border-bottom:1px solid var(--border,#e2e8f0); text-align:left; vertical-align:middle; }
+.stocks-table th { background:#f8fafc; font-weight:600; }
+.stocks-table tr.stock-low { background:#fef2f2; }
+.stock-ref { font-weight:700; color:#5b21b6; text-decoration:none; font-family:ui-monospace,monospace; }
+.stock-ref:hover { text-decoration:underline; }
+.stock-alert { color:#dc2626; margin-left:.25rem; }
+.badge-type { display:inline-block; padding:.15rem .45rem; border-radius:999px; font-size:.7rem; font-weight:600; }
+.badge-piece { background:#ede9fe; color:#5b21b6; }
+.badge-equipement { background:#e0f2fe; color:#0369a1; }
+.table-actions { white-space:nowrap; display:flex; gap:.25rem; align-items:center; }
+.btn-sf-del { background:transparent; border:none; color:#dc2626; font-size:1.25rem; cursor:pointer; line-height:1; padding:.15rem .35rem; border-radius:4px; }
+.btn-sf-del:hover { background:#fef2f2; }

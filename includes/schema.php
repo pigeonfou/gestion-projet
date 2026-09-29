@@ -75,6 +75,57 @@ function runSchemaMigrations(): void
         }
     }
 
+    // Stocks & Matériel R&D
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_fournisseurs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom TEXT NOT NULL,
+        contact TEXT,
+        email TEXT,
+        telephone TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reference TEXT NOT NULL UNIQUE,
+        designation TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'piece' CHECK(type IN ('piece','equipement')),
+        description TEXT,
+        quantite_stock REAL NOT NULL DEFAULT 0,
+        quantite_min REAL NOT NULL DEFAULT 0,
+        unite TEXT DEFAULT 'u',
+        valeur_unitaire REAL DEFAULT 0,
+        taxe TEXT DEFAULT 'HT',
+        documentation TEXT,
+        emplacement TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_article_fournisseur (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        fournisseur_id INTEGER NOT NULL,
+        reference_fournisseur TEXT,
+        prix REAL DEFAULT 0,
+        delai_jours INTEGER,
+        preferentiel INTEGER DEFAULT 0,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (fournisseur_id) REFERENCES stock_fournisseurs(id) ON DELETE CASCADE,
+        UNIQUE(article_id, fournisseur_id)
+    )");
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_usages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        projet_id INTEGER NOT NULL,
+        quantite REAL NOT NULL DEFAULT 1,
+        date_usage DATETIME DEFAULT CURRENT_TIMESTAMP,
+        note TEXT,
+        source_key TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
+    )");
+
     // Index
     foreach ([
         'CREATE INDEX IF NOT EXISTS idx_taches_projet ON taches(projet_id)',
@@ -83,6 +134,11 @@ function runSchemaMigrations(): void
         'CREATE INDEX IF NOT EXISTS idx_jalons_cahier ON jalons(cahier_id)',
         'CREATE INDEX IF NOT EXISTS idx_documents_projet ON documents(projet_id)',
         'CREATE INDEX IF NOT EXISTS idx_cahiers_projet ON cahiers(projet_id)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_articles_ref ON stock_articles(reference)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_articles_type ON stock_articles(type)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_usages_article ON stock_usages(article_id)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_usages_projet ON stock_usages(projet_id)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_af_article ON stock_article_fournisseur(article_id)',
     ] as $sql) {
         try { $db->exec($sql); } catch (Throwable $e) {}
     }
