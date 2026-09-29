@@ -497,39 +497,38 @@ function stepClass(int $n, int $current): string
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
         <?php if ($currentStep === 1): ?>
-          <p class="text-sm text-muted mb-3">Origine de l’entrée projet (Direction générale), destination du besoin, puis mise en forme du besoin.</p>
-          <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=1') ?>">
+          <div class="r1b-info-box mb-3">
+            <p class="font-medium mb-2">Origine de l’entrée projet</p>
+            <div style="display:flex;flex-wrap:wrap;gap:1.5rem;">
+              <div>
+                <span class="text-sm font-medium">Direction générale via :</span>
+                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
+                  <input type="checkbox" name="cadrage_commerciale" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
+                  <span>Service <strong>Commercial</strong></span>
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
+                  <input type="checkbox" name="cadrage_technique" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
+                  <span>Service <strong>Technique</strong></span>
+                </label>
+              </div>
+              <div>
+                <span class="text-sm font-medium">Destination du besoin :</span>
+                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
+                  <input type="radio" name="cadrage_destination" value="interne" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
+                  <span><strong>Interne</strong></span>
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
+                  <input type="radio" name="cadrage_destination" value="externe" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
+                  <span><strong>Externe</strong> (client)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <form id="form-cadrage-step1" method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=1') ?>">
             <input type="hidden" name="id" value="<?= (int)$id ?>">
             <input type="hidden" name="action" value="save_cadrage">
             <?= csrfField() ?>
-
-            <div class="r1b-info-box mb-3">
-              <p class="font-medium mb-2">Entrée du projet provenant de la Direction générale via :</p>
-              <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
-                <input type="checkbox" name="cadrage_commerciale" value="1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
-                <span>Service <strong>Commercial</strong></span>
-              </label>
-              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-                <input type="checkbox" name="cadrage_technique" value="1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
-                <span>Service <strong>Technique</strong></span>
-              </label>
-            </div>
-
-            <div class="r1b-info-box mb-3">
-              <p class="font-medium mb-2">Projet à destination d’un besoin :</p>
-              <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
-                <input type="radio" name="cadrage_destination" value="interne" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
-                <span><strong>Interne</strong></span>
-              </label>
-              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-                <input type="radio" name="cadrage_destination" value="externe" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
-                <span><strong>Externe</strong> (client)</span>
-              </label>
-            </div>
-
-            <div class="r1b-actions" style="border-top:none;padding-top:0;">
-              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer la note de cadrage</button>
-            </div>
           </form>
 
           <hr class="my-4">
