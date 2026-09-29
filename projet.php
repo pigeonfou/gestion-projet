@@ -844,6 +844,7 @@ function stepClass(int $n, int $current): string
 
         <form method="POST" class="mt-3">
           <input type="hidden" name="action" value="save_notes">
+          <?= csrfField() ?>
           <input type="hidden" name="redir_view" value="processus">
           <label class="text-sm font-medium">Notes / résultats</label>
           <textarea name="step_notes" class="form-control" rows="3" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
@@ -857,12 +858,14 @@ function stepClass(int $n, int $current): string
           ?>
           <?php if ($currentStep === 3): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="GO">
               <button type="submit" class="btn btn-success">GO</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NO_GO">
@@ -870,12 +873,14 @@ function stepClass(int $n, int $current): string
             </form>
           <?php elseif ($currentStep === 6): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="CONFORME">
               <button type="submit" class="btn btn-success">✓ Conforme → Livraison DG</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
@@ -883,12 +888,14 @@ function stepClass(int $n, int $current): string
             </form>
           <?php elseif ($currentStep === 7): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="CONFORME">
               <button type="submit" class="btn btn-success">✓ Conforme → Archivage validé/vente</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
@@ -896,6 +903,7 @@ function stepClass(int $n, int $current): string
             </form>
           <?php elseif ($currentStep > 0 && $currentStep < 8 && $goDecision !== 'NO_GO'): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
+              <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="DONE">
@@ -952,6 +960,7 @@ function stepClass(int $n, int $current): string
                 <div class="kanban-card-foot">
                   <span class="text-xs text-muted"><?= e($t['assigne_a'] ?? 'Non assigné') ?></span>
                   <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="kanban-status-form">
+                    <?= csrfField() ?>
                     <input type="hidden" name="action" value="update_task_status">
                     <input type="hidden" name="id" value="<?= (int)$id ?>">
                     <input type="hidden" name="task_id" value="<?= (int)$t['id'] ?>">
