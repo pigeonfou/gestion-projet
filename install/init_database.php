@@ -3,7 +3,12 @@
  * Initialisation de la base de données SQLite
  * Usage : php install/init_database.php
  */
-$dbPath = dirname(__DIR__) . '/database.sqlite';
+$dbPath = getenv('PROJECTFLOW_DB_PATH') ?: '/var/lib/projectflow/database.sqlite';
+$dbDir = dirname($dbPath);
+if (!is_dir($dbDir) && !mkdir($dbDir, 0770, true) && !is_dir($dbDir)) {
+    fwrite(STDERR, "Impossible de créer le répertoire de base : $dbDir\n");
+    exit(1);
+}
 
 if (file_exists($dbPath)) {
     echo "La base existe déjà : $dbPath\n";
@@ -80,6 +85,7 @@ try {
     echo "✓ Base créée : $dbPath\n";
     echo "✓ Compte admin : admin / admin123\n";
     echo "⚠ Changez le mot de passe dès la première connexion !\n";
+    echo "ℹ Base : $dbPath\n";
 } catch (PDOException $e) {
     echo "Erreur : " . $e->getMessage() . "\n";
     exit(1);
