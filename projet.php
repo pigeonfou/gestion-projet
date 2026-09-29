@@ -551,37 +551,6 @@ function stepClass(int $n, int $current): string
           <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
 
         <?php elseif ($currentStep === 2): ?>
-
-          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
-          <?php
-            $hasContexte = trim($specs['objectifs'] ?? '') !== ''
-                || trim($specs['resultats_attendus'] ?? '') !== ''
-                || trim($specs['cas_usage'] ?? '') !== ''
-                || trim($specs['profils_utilisateurs'] ?? '') !== '';
-          ?>
-          <?php if ($hasContexte): ?>
-            <div class="r1b-info-box">
-              <p><strong>Objectifs et contexte</strong></p>
-              <p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['objectifs'] ?: '—') ?></p>
-            </div>
-            <div class="r1b-info-box">
-              <p><strong>Hors périmètre du projet</strong></p>
-              <p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['resultats_attendus'] ?: '—') ?></p>
-            </div>
-            <div class="r1b-info-box">
-              <p><strong>Contraintes</strong></p>
-              <p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['cas_usage'] ?: '—') ?></p>
-            </div>
-            <div class="r1b-info-box">
-              <p><strong>Profils des utilisateurs finaux</strong></p>
-              <p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['profils_utilisateurs'] ?: '—') ?></p>
-            </div>
-          <?php else: ?>
-            <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
-          <?php endif; ?>
-          <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
-
-        <?php elseif ($currentStep === 2): ?>
           <?php
             $fonctionsSF = $specs['fonctions'] ?? [];
             $techniquesAll = $specs['specs_techniques'] ?? [];
