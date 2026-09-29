@@ -34,6 +34,7 @@ if (estConnecte()) {
             </div>
         <?php endif; ?>
         <form action="<?= url('verification_connexion.php') ?>" method="POST" autocomplete="off">
+            <?= csrfField() ?>
             <div class="form-group">
                 <label for="identifiant"><i class="fas fa-user"></i> Identifiant</label>
                 <input type="text" id="identifiant" name="identifiant" class="form-control" required autofocus placeholder="Votre identifiant">
