@@ -18,8 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
     $aid = (int)($_POST['article_id'] ?? 0);
     if ($aid > 0) {
-        $db->prepare('DELETE FROM stock_articles WHERE id = ?')->execute([$aid]);
-        setFlash('success', 'Article supprimé.');
+        $st = $db->prepare('SELECT COUNT(*) FROM stock_mouvements WHERE article_id=?');
+        $st->execute([$aid]);
+        if ((int)$st->fetchColumn() > 0) {
+            setFlash('error', 'Impossible de supprimer une référence ayant un historique de stock. Désactivez-la ou conservez-la pour préserver la traçabilité.');
+        } else {
+            $db->prepare('DELETE FROM stock_articles WHERE id = ?')->execute([$aid]);
+            setFlash('success', 'Article supprimé.');
+        }
     }
     redirect('stocks.php');
 }
@@ -91,6 +97,8 @@ require __DIR__ . '/includes/header.php';
     <p class="text-muted text-sm mt-1">Pièces détachées et équipements du service R&amp;D — liés aux projets</p>
   </div>
   <div class="stocks-header-actions">
+    <a href="<?= url('stock_mouvements.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+    <a href="<?= url('stock_emplacements.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-map-marker-alt"></i> Emplacements</a>
     <a href="<?= url('stock_fournisseurs.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-truck"></i> Fournisseurs</a>
     <?php if (estAdmin()): ?>
     <a href="<?= url('stock_article.php?action=creer') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvel article</a>
