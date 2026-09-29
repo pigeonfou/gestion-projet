@@ -37,7 +37,13 @@ function stockQuantity(int $articleId, ?int $locationId = null): float {
         $st->execute([$articleId, $locationId]);
         return $in - (float)$st->fetchColumn();
     }
-    $st = $db->prepare("SELECT COALESCE(SUM(quantite),0) FROM stock_mouvements WHERE article_id=?");
+    $st = $db->prepare("SELECT COALESCE(SUM(
+        CASE
+            WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
+            WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite
+            ELSE 0
+        END
+    ),0) FROM stock_mouvements WHERE article_id=?");
     $st->execute([$articleId]);
     return (float)$st->fetchColumn();
 }
