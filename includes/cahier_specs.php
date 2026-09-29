@@ -466,19 +466,35 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
  * Les composants de l'étape 4 utilisent une synchronisation distincte
  * (syncTasksFromComposants) avec des clés source "cp:*".
  */
-function syncTasksFromSpecsTechniques(int $projetId, array $techniques): void {
+function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $techniques): void {
     ensureTachesExtendedColumns();
     $db = getDB();
-
     $wanted = [];
+
+    // Une S.F. du cahier des charges structuré devient une tâche.
+    foreach ($fonctions as $sf) {
+        if (!is_array($sf)) continue;
+        $sfId = trim((string)($sf['id'] ?? ''));
+        $desc = trim((string)($sf['description'] ?? ''));
+        if ($sfId === '' || $desc === '') continue;
+
+        $key = 'sf:' . $projetId . ':' . $sfId;
+        $ind = trim((string)($sf['indicateur'] ?? ''));
+        $wanted[$key] = [
+            'titre' => '[' . $sfId . '] ' . $desc,
+            'description' => $ind !== '' ? 'Indicateur : ' . $ind : '',
+            'assigne_a' => null,
+        ];
+    }
+
+    // Chaque S.T., quel que soit son type (Matériel, Logiciel, 3D, PCB),
+    // devient une tâche.
     foreach ($techniques as $tech) {
         if (!is_array($tech)) continue;
-
         $stId = trim((string)($tech['id'] ?? ''));
-        $type = trim((string)($tech['type'] ?? ''));
         $desc = trim((string)($tech['description'] ?? ''));
-
-        if ($stId === '' || $desc === '' || !in_array($type, ['Logiciel', '3D', 'PCB'], true)) {
+        $type = trim((string)($tech['type'] ?? 'Matériel'));
+        if ($stId === '' || $desc === '' || !in_array($type, ['Matériel', 'Logiciel', '3D', 'PCB'], true)) {
             continue;
         }
 
@@ -490,7 +506,11 @@ function syncTasksFromSpecsTechniques(int $projetId, array $techniques): void {
         ];
     }
 
-    $stmt = $db->prepare("SELECT id, source_key FROM taches WHERE projet_id = ? AND source_key LIKE 'st:%'");
+    // Synchronisation uniquement des tâches automatiques issues du CDC/S.T.
+    $stmt = $db->prepare(
+        "SELECT id, source_key FROM taches
+         WHERE projet_id = ? AND (source_key LIKE 'sf:%' OR source_key LIKE 'st:%')"
+    );
     $stmt->execute([$projetId]);
     $existing = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -498,7 +518,8 @@ function syncTasksFromSpecsTechniques(int $projetId, array $techniques): void {
     }
 
     $ins = $db->prepare(
-        'INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status)
+        'INSERT INTO taches
+         (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status)
          VALUES (?,?,?,?,?,?,?,?)'
     );
     $upd = $db->prepare('UPDATE taches SET titre=?, description=? WHERE id=?');
@@ -524,19 +545,17 @@ function syncTasksFromSpecsTechniques(int $projetId, array $techniques): void {
             }
         }
 
-        // Supprime les tâches automatiques liées aux S.T. qui ont été
-        // supprimées, renommées ou transformées en Matériel.
+        // Nettoie les tâches automatiques correspondant aux éléments
+        // supprimés du CDC ou des S.T.
         foreach ($existing as $idLeft) {
             $del->execute([$idLeft]);
         }
-
         $db->commit();
     } catch (Throwable $e) {
         $db->rollBack();
         throw $e;
     }
 }
-
 
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
