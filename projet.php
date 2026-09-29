@@ -498,7 +498,7 @@ function stepClass(int $n, int $current): string
 
         <?php if ($currentStep === 1): ?>
           <div class="r1b-info-box mb-3">
-            <p class="font-medium mb-2">Origine de l’entrée projet</p>
+            <p class="font-medium mb-2">Origine de l’entrée et destination de sortie du projet</p>
             <div style="display:flex;flex-wrap:wrap;gap:1.5rem;">
               <div>
                 <span class="text-sm font-medium">Direction générale via :</span>
