@@ -43,7 +43,7 @@ function defaultSettings(): array {
         'nextcloud_password' => getenv('PROJECTFLOW_NEXTCLOUD_PASSWORD') ?: '',
         'nextcloud_webdav' => getenv('PROJECTFLOW_NEXTCLOUD_WEBDAV') ?: '',
         'nextcloud_root' => 'ProjectFlow',
-        'nextcloud_enabled' => '1',
+        'nextcloud_enabled' => '0',
         'items_per_page' => '20',
         'timezone' => 'Europe/Paris',
         'date_format' => 'd/m/Y',
