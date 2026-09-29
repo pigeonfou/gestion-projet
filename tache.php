@@ -7,7 +7,7 @@ requerirConnexion();
 $db = getDB();
 $user = utilisateurCourant();
 $action = $_GET['action'] ?? '';
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
 $projet_id = isset($_GET['projet_id']) ? (int)$_GET['projet_id'] : 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'supprimer' && $id > 0) {
@@ -82,6 +82,8 @@ if ($projet_id <= 0) {
     setFlash('error', 'Projet non spécifié.');
     redirect('projets.php');
 }
+
+requerirAccesProjet($projet_id);
 
 $stmt = $db->prepare('SELECT nom FROM projets WHERE id = ?');
 $stmt->execute([$projet_id]);
