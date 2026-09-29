@@ -25,7 +25,7 @@ function runSchemaMigrations(): void
     // Projets (processus R1b + cadrage)
     $pcols = $db->query('PRAGMA table_info(projets)')->fetchAll(PDO::FETCH_COLUMN, 1);
     $projetCols = [
-        'current_step' => 'INTEGER DEFAULT 0',
+        'current_step' => 'INTEGER DEFAULT 1',
         'go_decision' => 'TEXT',
         'step_notes' => 'TEXT',
         'status' => "TEXT DEFAULT 'actif'",
@@ -38,6 +38,10 @@ function runSchemaMigrations(): void
             $db->exec("ALTER TABLE projets ADD COLUMN $col $def");
         }
     }
+
+    // Les anciennes installations utilisaient l'étape 0 pour la note de cadrage.
+    // Elle est désormais intégrée à l'étape 1.
+    try { $db->exec('UPDATE projets SET current_step = 1 WHERE current_step = 0'); } catch (Throwable $e) {}
 
     // Jalons
     $db->exec("CREATE TABLE IF NOT EXISTS jalons (
