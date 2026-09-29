@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             require_once __DIR__ . '/includes/r1b_steps.php';
             ensureProjectProcessColumns();
-            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id, current_step, status) VALUES (?, ?, ?, 0, ?)');
+            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id, current_step, status) VALUES (?, ?, ?, 1, ?)');
             $stmt->execute([$nom, $description, $user['id'], 'actif']);
             $newId = $db->lastInsertId();
             setFlash('success', 'Projet créé avec succès.');
