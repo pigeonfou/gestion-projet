@@ -130,6 +130,277 @@ function runSchemaMigrations(): void
         FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
     )");
 
+    // ------------------------------------------------------------------
+    // Architecture Stock R&D v2
+    // Catalogue / emplacements / lots / unités / mouvements / réservations
+    // ------------------------------------------------------------------
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_id INTEGER,
+        code TEXT NOT NULL UNIQUE,
+        nom TEXT NOT NULL,
+        type_article TEXT,
+        actif INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (parent_id) REFERENCES stock_categories(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_emplacements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_id INTEGER,
+        code TEXT NOT NULL UNIQUE,
+        nom TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'zone',
+        chemin TEXT NOT NULL,
+        niveau INTEGER NOT NULL DEFAULT 0,
+        actif INTEGER NOT NULL DEFAULT 1,
+        notes TEXT,
+        FOREIGN KEY (parent_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_lots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        fournisseur_id INTEGER,
+        reference_lot TEXT,
+        date_reception DATE,
+        quantite_initiale REAL NOT NULL DEFAULT 0,
+        cout_unitaire_ht REAL DEFAULT 0,
+        tva REAL,
+        statut TEXT NOT NULL DEFAULT 'libere',
+        date_peremption DATE,
+        certificat TEXT,
+        notes TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (fournisseur_id) REFERENCES stock_fournisseurs(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_unites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        numero_serie TEXT,
+        code_barres TEXT,
+        uid_rfid TEXT,
+        statut TEXT NOT NULL DEFAULT 'en_stock',
+        emplacement_id INTEGER,
+        projet_id INTEGER,
+        date_acquisition DATE,
+        date_mise_service DATE,
+        date_fin_vie DATE,
+        notes TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        UNIQUE(numero_serie),
+        UNIQUE(code_barres),
+        UNIQUE(uid_rfid)
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_mouvements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK(type IN (
+            'reception','consommation','affectation_projet','retour_projet',
+            'transfert','correction_inventaire','rebut','demontage',
+            'recuperation','reservation','liberation_reservation'
+        )),
+        quantite REAL NOT NULL CHECK(quantite > 0),
+        emplacement_source_id INTEGER,
+        emplacement_destination_id INTEGER,
+        projet_id INTEGER,
+        fournisseur_id INTEGER,
+        lot_id INTEGER,
+        unite_id INTEGER,
+        reference_externe TEXT,
+        note TEXT,
+        user_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (emplacement_source_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL,
+        FOREIGN KEY (emplacement_destination_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (fournisseur_id) REFERENCES stock_fournisseurs(id) ON DELETE SET NULL,
+        FOREIGN KEY (lot_id) REFERENCES stock_lots(id) ON DELETE SET NULL,
+        FOREIGN KEY (unite_id) REFERENCES stock_unites(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        projet_id INTEGER NOT NULL,
+        quantite REAL NOT NULL CHECK(quantite > 0),
+        statut TEXT NOT NULL DEFAULT 'active' CHECK(statut IN ('active','liberee','consommee','annulee')),
+        emplacement_id INTEGER,
+        date_reservation DATETIME DEFAULT CURRENT_TIMESTAMP,
+        date_fin DATETIME,
+        note TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE,
+        FOREIGN KEY (emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_equipements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        unite_id INTEGER,
+        numero_serie TEXT,
+        etat TEXT NOT NULL DEFAULT 'en_stock',
+        projet_id INTEGER,
+        emplacement_id INTEGER,
+        date_achat DATE,
+        date_affectation DATE,
+        date_integration DATE,
+        date_demontage DATE,
+        origine TEXT,
+        documentation TEXT,
+        notes TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (unite_id) REFERENCES stock_unites(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_recuperations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipement_id INTEGER NOT NULL,
+        article_id INTEGER NOT NULL,
+        unite_id INTEGER,
+        quantite REAL NOT NULL DEFAULT 1,
+        provenance TEXT,
+        etat TEXT,
+        test_resultat TEXT,
+        destination_emplacement_id INTEGER,
+        projet_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        notes TEXT,
+        FOREIGN KEY (equipement_id) REFERENCES stock_equipements(id) ON DELETE CASCADE,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (unite_id) REFERENCES stock_unites(id) ON DELETE SET NULL,
+        FOREIGN KEY (destination_emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_boms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_parent_id INTEGER,
+        projet_id INTEGER,
+        reference TEXT,
+        designation TEXT,
+        version TEXT NOT NULL DEFAULT '1.0',
+        statut TEXT NOT NULL DEFAULT 'brouillon',
+        notes TEXT,
+        FOREIGN KEY (article_parent_id) REFERENCES stock_articles(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_bom_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bom_id INTEGER NOT NULL,
+        article_id INTEGER NOT NULL,
+        quantite REAL NOT NULL DEFAULT 1,
+        designation TEXT,
+        reference_position TEXT,
+        obligatoire INTEGER NOT NULL DEFAULT 1,
+        notes TEXT,
+        FOREIGN KEY (bom_id) REFERENCES stock_boms(id) ON DELETE CASCADE,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_inventaires (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE,
+        date_inventaire DATETIME DEFAULT CURRENT_TIMESTAMP,
+        emplacement_id INTEGER,
+        statut TEXT NOT NULL DEFAULT 'ouvert',
+        valide_par INTEGER,
+        date_validation DATETIME,
+        notes TEXT,
+        FOREIGN KEY (emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_inventaire_lignes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        inventaire_id INTEGER NOT NULL,
+        article_id INTEGER NOT NULL,
+        quantite_theorique REAL NOT NULL DEFAULT 0,
+        quantite_comptee REAL,
+        ecart REAL,
+        emplacement_id INTEGER,
+        note TEXT,
+        FOREIGN KEY (inventaire_id) REFERENCES stock_inventaires(id) ON DELETE CASCADE,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        FOREIGN KEY (emplacement_id) REFERENCES stock_emplacements(id) ON DELETE SET NULL
+    )");
+
+    // Attributs techniques communs au catalogue. Les attributs spécifiques
+    // pourront ensuite être spécialisés par catégorie sans gonfler stock_articles.
+    $extraArticleCols = [
+        'categorie_id' => 'INTEGER',
+        'fabricant' => 'TEXT',
+        'reference_fabricant' => 'TEXT',
+        'boitier' => 'TEXT',
+        'valeur_technique' => 'TEXT',
+        'tolerance' => 'TEXT',
+        'puissance' => 'TEXT',
+        'tension' => 'TEXT',
+        'plage_temperature' => 'TEXT',
+        'rohs_reach' => 'TEXT',
+        'masse_g' => 'REAL',
+        'matiere' => 'TEXT',
+        'dangereux' => 'INTEGER DEFAULT 0',
+        'flux_dechet' => 'TEXT',
+        'recyclable' => 'INTEGER DEFAULT 0',
+    ];
+    foreach ($extraArticleCols as $col => $def) {
+        $acols = $db->query('PRAGMA table_info(stock_articles)')->fetchAll(PDO::FETCH_COLUMN, 1);
+        if (!in_array($col, $acols, true)) {
+            try { $db->exec("ALTER TABLE stock_articles ADD COLUMN $col $def"); } catch (Throwable $e) {}
+        }
+    }
+
+    // Emplacement racine et catégories de base : idempotent.
+    $root = $db->query("SELECT id FROM stock_emplacements WHERE code='LABO' LIMIT 1")->fetchColumn();
+    if ($root === false) {
+        $db->prepare("INSERT INTO stock_emplacements (code,nom,type,chemin,niveau) VALUES (?,?,?,?,0)")
+           ->execute(['LABO','LABO','zone','LABO']);
+        $root = (int)$db->lastInsertId();
+    }
+    $defaultLocations = [
+        ['CMS','CMS','zone','LABO/CMS'],
+        ['TRAVERSANTS','Composants traversants','zone','LABO/TRAVERSANTS'],
+        ['CONNECTIQUE','Connectique','zone','LABO/CONNECTIQUE'],
+        ['MODULES','Modules','zone','LABO/MODULES'],
+        ['EQUIPEMENTS','Équipements','zone','LABO/EQUIPEMENTS'],
+        ['MECANIQUE','Mécanique','zone','LABO/MECANIQUE'],
+        ['BOITIERS','Boîtiers','zone','LABO/BOITIERS'],
+        ['CABLES','Câbles','zone','LABO/CABLES'],
+        ['PROJETS','Projets','zone','LABO/PROJETS'],
+    ];
+    foreach ($defaultLocations as $loc) {
+        $st = $db->prepare("INSERT OR IGNORE INTO stock_emplacements (parent_id,code,nom,type,chemin,niveau) VALUES (?,?,?,?,?,1)");
+        $st->execute([(int)$root,$loc[0],$loc[1],$loc[2],$loc[3]]);
+    }
+
+    // Migration idempotente de l'ancien stock direct vers le journal.
+    $mig = $db->query("SELECT valeur FROM parametres WHERE cle='stock_v2_legacy_migrated'")->fetchColumn();
+    if ($mig !== '1') {
+        $lab = (int)$root;
+        $rows = $db->query("SELECT id, quantite_stock, valeur_unitaire FROM stock_articles")->fetchAll(PDO::FETCH_ASSOC);
+        $ins = $db->prepare("INSERT INTO stock_mouvements
+            (article_id,type,quantite,emplacement_destination_id,reference_externe,note)
+            VALUES (?,?,?,?,?,?)");
+        foreach ($rows as $row) {
+            $qty = (float)$row['quantite_stock'];
+            if ($qty > 0) {
+                $exists = $db->prepare("SELECT 1 FROM stock_mouvements WHERE article_id=? AND type='correction_inventaire' AND reference_externe='MIGRATION_V2' LIMIT 1");
+                $exists->execute([(int)$row['id']]);
+                if (!$exists->fetchColumn()) {
+                    $ins->execute([(int)$row['id'],'correction_inventaire',$qty,$lab,'MIGRATION_V2','Reprise du stock historique avant passage au journal des mouvements']);
+                }
+            }
+        }
+        $db->prepare("INSERT INTO parametres(cle,valeur) VALUES('stock_v2_legacy_migrated','1') ON CONFLICT(cle) DO UPDATE SET valeur=excluded.valeur, updated_at=CURRENT_TIMESTAMP")->execute();
+    }
+
     // Index
     foreach ([
         'CREATE INDEX IF NOT EXISTS idx_taches_projet ON taches(projet_id)',
