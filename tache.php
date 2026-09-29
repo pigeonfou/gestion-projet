@@ -10,11 +10,13 @@ $action = $_GET['action'] ?? '';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $projet_id = isset($_GET['projet_id']) ? (int)$_GET['projet_id'] : 0;
 
-if ($action === 'supprimer' && $id > 0) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'supprimer' && $id > 0) {
+    csrfRequire();
     $stmt = $db->prepare('SELECT projet_id FROM taches WHERE id = ?');
     $stmt->execute([$id]);
     $t = $stmt->fetch();
     if ($t) {
+        requerirAccesProjet((int)$t['projet_id']);
         $db->prepare('DELETE FROM taches WHERE id = ?')->execute([$id]);
         setFlash('success', 'Tâche supprimée.');
         redirect('projet.php?id=' . (int)$t['projet_id']);
@@ -23,7 +25,7 @@ if ($action === 'supprimer' && $id > 0) {
     redirect('projets.php');
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'supprimer') {
     $titre = trim($_POST['titre'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $priorite = $_POST['priorite'] ?? 'moyenne';
@@ -40,6 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('error', 'Données invalides.');
         redirect('tache.php?action=' . ($editId ? 'modifier&id=' . $editId : 'creer&projet_id=' . $projet_id));
     }
+
+    requerirAccesProjet($projet_id);
 
     try {
         if ($editId > 0) {
@@ -98,8 +102,10 @@ require __DIR__ . '/includes/header.php';
     <div class="card-body">
         <p class="text-muted mb-2">Projet : <strong><?= e($projetNom) ?></strong></p>
         <form method="POST" action="<?= url('tache.php') ?>">
+            <?= csrfField() ?>
             <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
             <?php if ($tache): ?><input type="hidden" name="id" value="<?= (int)$tache['id'] ?>"><?php endif; ?>
+            <input type="hidden" name="action" value="save">
             <div class="form-group">
                 <label for="titre">Titre *</label>
                 <input type="text" id="titre" name="titre" class="form-control" required value="<?= e($tache['titre'] ?? '') ?>" maxlength="200">
