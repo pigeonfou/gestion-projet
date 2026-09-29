@@ -33,6 +33,14 @@ sudo chmod -R 755 gestion-projet
 
 La base SQLite est stockée par défaut hors du DocumentRoot, dans `/var/lib/projectflow/database.sqlite`.
 
+Créez d'abord son répertoire avec les bons droits :
+
+```bash
+sudo install -d -o www-data -g www-data -m 750 /var/lib/projectflow
+```
+
+Puis initialisez la base :
+
 ```bash
 cd /var/www/html/gestion-projet
 sudo -u www-data php install/init_database.php
