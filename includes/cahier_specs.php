@@ -471,24 +471,11 @@ function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $te
     $db = getDB();
     $wanted = [];
 
-    // Une S.F. du cahier des charges structuré devient une tâche.
-    foreach ($fonctions as $sf) {
-        if (!is_array($sf)) continue;
-        $sfId = trim((string)($sf['id'] ?? ''));
-        $desc = trim((string)($sf['description'] ?? ''));
-        if ($sfId === '' || $desc === '') continue;
-
-        $key = 'sf:' . $projetId . ':' . $sfId;
-        $ind = trim((string)($sf['indicateur'] ?? ''));
-        $wanted[$key] = [
-            'titre' => '[' . $sfId . '] ' . $desc,
-            'description' => $ind !== '' ? 'Indicateur : ' . $ind : '',
-            'assigne_a' => null,
-        ];
-    }
+    // Les S.F. ne sont PAS des tâches.
+    // Une S.F. sert à générer/porter ses S.T. dans l'étape 2.
 
     // Chaque S.T., quel que soit son type (Matériel, Logiciel, 3D, PCB),
-    // devient une tâche.
+    // devient une tâche dès qu'elle possède une description.
     foreach ($techniques as $tech) {
         if (!is_array($tech)) continue;
         $stId = trim((string)($tech['id'] ?? ''));
@@ -506,7 +493,8 @@ function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $te
         ];
     }
 
-    // Synchronisation uniquement des tâches automatiques issues du CDC/S.T.
+    // Synchronisation uniquement des tâches automatiques issues des S.T.
+    // Les éventuelles anciennes tâches issues des S.F. sont supprimées.
     $stmt = $db->prepare(
         "SELECT id, source_key FROM taches
          WHERE projet_id = ? AND (source_key LIKE 'sf:%' OR source_key LIKE 'st:%')"
@@ -545,8 +533,8 @@ function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $te
             }
         }
 
-        // Nettoie les tâches automatiques correspondant aux éléments
-        // supprimés du CDC ou des S.T.
+        // Supprime les tâches automatiques correspondant aux S.T. supprimées
+        // ainsi que les anciennes tâches automatiques issues des S.F.
         foreach ($existing as $idLeft) {
             $del->execute([$idLeft]);
         }
@@ -556,7 +544,6 @@ function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $te
         throw $e;
     }
 }
-
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
     return [
