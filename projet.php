@@ -426,11 +426,11 @@ function stepClass(int $n, int $current): string
           <div class="r1b-card">
             <div class="flex-between mb-3">
               <h3>Jalons</h3>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Éditer</a>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-secondary btn-sm">Éditer</a>
             </div>
             <?php if (empty($jalonsProjet)): ?>
               <p class="text-muted text-sm">Aucun jalon défini.</p>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter</a>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter</a>
             <?php else: ?>
               <div class="dash-jalon-list">
                 <?php foreach ($jalonsProjet as $j): ?>
@@ -475,7 +475,7 @@ function stepClass(int $n, int $current): string
             <p class="text-sm"><strong>Créateur :</strong> <?= e($projet['createur'] ?? '—') ?></p>
             <p class="text-sm mt-1"><strong>Statut :</strong> <?= e($projet['status'] ?? 'actif') ?></p>
             <p class="text-sm mt-1"><strong>CDC :</strong>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>">Ouvrir le cahier des charges</a>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">Ouvrir le cahier des charges</a>
             </p>
           </div>
         </div>
@@ -594,7 +594,7 @@ function stepClass(int $n, int $current): string
           <?php if (empty($fonctionsSF)): ?>
             <div class="r1b-info-box">
               <p>Aucune spécification fonctionnelle dans le cahier des charges.</p>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
+              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
             </div>
           <?php else: ?>
             <form method="POST" id="formSpecsTech" action="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>">
