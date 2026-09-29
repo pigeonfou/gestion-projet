@@ -33,6 +33,7 @@ if (!$projet) {
     setFlash('error', 'Projet introuvable.');
     redirect('projets.php');
 }
+requerirAccesProjet($projet_id);
 
 $file = $_FILES['fichier'];
 if ($file['error'] !== UPLOAD_ERR_OK) {
