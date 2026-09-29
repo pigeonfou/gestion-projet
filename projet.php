@@ -64,20 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $comm = !empty($_POST['cadrage_commerciale']) ? 1 : 0;
         $tech = !empty($_POST['cadrage_technique']) ? 1 : 0;
         $dest = $_POST['cadrage_destination'] ?? '';
-        if (!in_array($dest, ['interne', 'externe'], true)) {
-            $dest = null;
-        }
+        if (!in_array($dest, ['interne', 'externe'], true)) $dest = null;
         $db->prepare('UPDATE projets SET cadrage_commerciale = ?, cadrage_technique = ?, cadrage_destination = ? WHERE id = ?')
            ->execute([$comm, $tech, $dest, $id]);
-        // Avancer à l'étape 1 si encore à 0
-        $dbStep = r1bClampStep((int)($projet['current_step'] ?? 0));
-        if ($dbStep === 0 && !empty($_POST['valider_etape'])) {
-            $db->prepare('UPDATE projets SET current_step = 1 WHERE id = ?')->execute([$id]);
-            setFlash('success', 'Note de cadrage enregistrée — passage à l\'étape 1.');
-            redirect('projet.php?id=' . $id . '&view=processus&step=1');
-        }
         setFlash('success', 'Note de cadrage enregistrée.');
-        redirect('projet.php?id=' . $id . '&view=processus&step=0');
+        redirect('projet.php?id=' . $id . '&view=processus&step=1');
     }
     if ($action === 'save_specs_techniques') {
         try {
@@ -505,23 +496,21 @@ function stepClass(int $n, int $current): string
       <div class="r1b-card">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
-        <?php if ($currentStep === 0): ?>
-          <p class="text-sm text-muted mb-3">Origine de l’entrée projet (Direction générale) et destination du besoin.</p>
-          <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=0') ?>">
+        <?php if ($currentStep === 1): ?>
+          <p class="text-sm text-muted mb-3">Origine de l’entrée projet (Direction générale), destination du besoin, puis mise en forme du besoin.</p>
+          <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=1') ?>">
             <input type="hidden" name="id" value="<?= (int)$id ?>">
             <input type="hidden" name="action" value="save_cadrage">
-              <?= csrfField() ?>
+            <?= csrfField() ?>
 
             <div class="r1b-info-box mb-3">
               <p class="font-medium mb-2">Entrée du projet provenant de la Direction générale via :</p>
               <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
-                <input type="checkbox" name="cadrage_commerciale" value="1"
-                  <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
+                <input type="checkbox" name="cadrage_commerciale" value="1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
                 <span>Service <strong>Commercial</strong></span>
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-                <input type="checkbox" name="cadrage_technique" value="1"
-                  <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
+                <input type="checkbox" name="cadrage_technique" value="1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
                 <span>Service <strong>Technique</strong></span>
               </label>
             </div>
@@ -529,26 +518,40 @@ function stepClass(int $n, int $current): string
             <div class="r1b-info-box mb-3">
               <p class="font-medium mb-2">Projet à destination d’un besoin :</p>
               <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;cursor:pointer;">
-                <input type="radio" name="cadrage_destination" value="interne"
-                  <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
+                <input type="radio" name="cadrage_destination" value="interne" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
                 <span><strong>Interne</strong></span>
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-                <input type="radio" name="cadrage_destination" value="externe"
-                  <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
+                <input type="radio" name="cadrage_destination" value="externe" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
                 <span><strong>Externe</strong> (client)</span>
               </label>
             </div>
 
             <div class="r1b-actions" style="border-top:none;padding-top:0;">
-              <button type="submit" class="btn btn-secondary"><i class="fas fa-save"></i> Enregistrer</button>
-              <button type="submit" name="valider_etape" value="1" class="btn btn-primary">
-                Enregistrer et passer à l’étape suivante
-              </button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer la note de cadrage</button>
             </div>
           </form>
 
-        <?php elseif ($currentStep === 1): ?>
+          <hr class="my-4">
+          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
+          <?php
+            $hasContexte = trim($specs['objectifs'] ?? '') !== ''
+                || trim($specs['resultats_attendus'] ?? '') !== ''
+                || trim($specs['cas_usage'] ?? '') !== ''
+                || trim($specs['profils_utilisateurs'] ?? '') !== '';
+          ?>
+          <?php if ($hasContexte): ?>
+            <div class="r1b-info-box"><p><strong>Objectifs et contexte</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['objectifs'] ?: '—') ?></p></div>
+            <div class="r1b-info-box"><p><strong>Hors périmètre du projet</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['resultats_attendus'] ?: '—') ?></p></div>
+            <div class="r1b-info-box"><p><strong>Contraintes</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['cas_usage'] ?: '—') ?></p></div>
+            <div class="r1b-info-box"><p><strong>Profils des utilisateurs finaux</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['profils_utilisateurs'] ?: '—') ?></p></div>
+          <?php else: ?>
+            <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
+          <?php endif; ?>
+          <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
+
+        <?php elseif ($currentStep === 2): ?>
+
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
           <?php
             $hasContexte = trim($specs['objectifs'] ?? '') !== ''
