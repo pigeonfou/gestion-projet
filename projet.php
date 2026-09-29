@@ -37,8 +37,10 @@ $steps = r1bSteps();
 // ——— Actions POST ———
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
-    requerirAccesProjet($id);
     $action = $_POST['action'] ?? '';
+    if ($action !== 'update_task_status') {
+        requerirAccesProjet($id);
+    }
     if ($action === 'save_notes') {
         $notes = trim($_POST['step_notes'] ?? '');
         $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
