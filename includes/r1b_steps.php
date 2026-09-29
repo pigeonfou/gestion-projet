@@ -2,11 +2,10 @@
 require_once __DIR__ . '/schema.php';
 /**
  * Processus R1b – étapes alignées sur Processus-R1b
- * Étape 0 = Note de cadrage (entrée DG)
+ * Étape 1 = Mise en forme du besoin (inclut désormais la note de cadrage)
  */
 function r1bSteps(): array {
     return [
-        0 => ['key' => 'cadrage',        'title' => 'Note de cadrage',                   'phase' => 'cadrage'],
         1 => ['key' => 'besoin',         'title' => 'Mise en forme du besoin',           'phase' => 'cahier'],
         2 => ['key' => 'etudes',         'title' => 'Études capacités & investissement', 'phase' => 'capacite'],
         3 => ['key' => 'go_nogo',        'title' => 'GO / NO GO',                        'phase' => 'go_nogo'],
@@ -23,7 +22,7 @@ function r1bMaxStep(): int {
 }
 
 function r1bMinStep(): int {
-    return 0;
+    return 1;
 }
 
 function r1bClampStep(int $step): int {
