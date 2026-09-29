@@ -9,6 +9,29 @@ $user = utilisateurCourant();
 $action = $_GET['action'] ?? 'liste';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'supprimer') {
+    csrfRequire();
+    $deleteId = (int)($_POST['id'] ?? 0);
+    $stmt = $db->prepare('SELECT createur_id FROM projets WHERE id = ?');
+    $stmt->execute([$deleteId]);
+    $proj = $stmt->fetch();
+    if (!$proj) {
+        setFlash('error', 'Projet introuvable.');
+    } elseif ((int)$proj['createur_id'] !== (int)$user['id'] && !estAdmin()) {
+        setFlash('error', 'Seul le créateur peut supprimer ce projet.');
+    } else {
+        $nbTaches = $db->prepare('SELECT COUNT(*) FROM taches WHERE projet_id = ?');
+        $nbTaches->execute([$deleteId]);
+        if ((int)$nbTaches->fetchColumn() > 0) {
+            setFlash('error', 'Impossible de supprimer : des tâches sont associées.');
+        } else {
+            $db->prepare('DELETE FROM projets WHERE id = ?')->execute([$deleteId]);
+            setFlash('success', 'Projet supprimé.');
+        }
+    }
+    redirect('projets.php');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nom = trim($_POST['nom'] ?? '');
     $description = trim($_POST['description'] ?? '');
@@ -47,28 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if ($action === 'supprimer' && $id > 0) {
-    $stmt = $db->prepare('SELECT createur_id FROM projets WHERE id = ?');
-    $stmt->execute([$id]);
-    $proj = $stmt->fetch();
-    if (!$proj) {
-        setFlash('error', 'Projet introuvable.');
-        redirect('projets.php');
-    }
-    $nbTaches = $db->prepare('SELECT COUNT(*) FROM taches WHERE projet_id = ?');
-    $nbTaches->execute([$id]);
-    $count = (int)$nbTaches->fetchColumn();
-
-    if ($proj['createur_id'] != $user['id'] && !estAdmin()) {
-        setFlash('error', 'Seul le créateur peut supprimer ce projet.');
-    } elseif ($count > 0) {
-        setFlash('error', 'Impossible de supprimer : des tâches sont associées.');
-    } else {
-        $db->prepare('DELETE FROM projets WHERE id = ?')->execute([$id]);
-        setFlash('success', 'Projet supprimé.');
-    }
-    redirect('projets.php');
-}
 
 if ($action === 'creer' || $action === 'modifier') {
     $projet = null;
@@ -236,7 +237,12 @@ $renderProjetCard = static function (array $p, array $steps, array $user) use ($
         <a href="<?= url('projets.php?action=modifier&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-secondary btn-r1b-sm"><i class="fas fa-edit"></i></a>
         <?php endif; ?>
         <?php if ($peutSupprimer): ?>
-        <a href="<?= url('projets.php?action=supprimer&id=' . (int)$p['id']) ?>" class="btn-r1b btn-r1b-danger btn-r1b-sm" data-confirm="Supprimer définitivement ce projet ?"><i class="fas fa-trash"></i></a>
+        <form method="POST" action="<?= url('projets.php') ?>" style="display:inline" onsubmit="return confirm('Supprimer définitivement ce projet ?');">
+          <?= csrfField() ?>
+          <input type="hidden" name="action" value="supprimer">
+          <input type="hidden" name="id" value="<?= (int)$p['id'] ?>">
+          <button type="submit" class="btn-r1b btn-r1b-danger btn-r1b-sm"><i class="fas fa-trash"></i></button>
+        </form>
         <?php endif; ?>
       </div>
     </div>
