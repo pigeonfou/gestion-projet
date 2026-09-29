@@ -31,9 +31,17 @@ sudo chmod -R 755 gestion-projet
 
 ### 3. Initialiser la base de données
 
+La base SQLite est stockée par défaut hors du DocumentRoot, dans `/var/lib/projectflow/database.sqlite`.
+
 ```bash
 cd /var/www/html/gestion-projet
 sudo -u www-data php install/init_database.php
+```
+
+Le script génère un mot de passe administrateur aléatoire. Pour fournir un mot de passe précis lors de l'installation :
+
+```bash
+sudo -u www-data env PROJECTFLOW_ADMIN_PASSWORD='votre-mot-de-passe' php install/init_database.php
 ```
 
 ### 4. Accéder à l’application
@@ -42,12 +50,7 @@ sudo -u www-data php install/init_database.php
 http://IP_DU_SERVEUR/gestion-projet/
 ```
 
-**Identifiants par défaut :**
-| Identifiant | Mot de passe |
-|-------------|--------------|
-| admin       | admin123     |
-
-**Changez le mot de passe immédiatement** après la première connexion.
+**Compte initial :** `admin` avec le mot de passe affiché par le script d'installation. Il n'existe plus de mot de passe par défaut codé dans le dépôt.
 
 ### 5. (Optionnel) Pare-feu
 
@@ -65,6 +68,7 @@ Le fichier `config/config.php` contient :
 
 ```php
 define('BASE_PATH', '/gestion-projet');
+// DB_PATH peut être surchargé par la variable d'environnement PROJECTFLOW_DB_PATH.
 ```
 
 - Laissez `/gestion-projet` si le projet est dans un sous-dossier (recommandé).
@@ -96,4 +100,7 @@ gestion-projet/
 - Requêtes préparées PDO
 - Échappement HTML (`htmlspecialchars`)
 - Vérification des droits à chaque action sensible
-- Sessions régénérées à la connexion
+- Protection CSRF des mutations
+- Suppression des actions destructives en GET
+- Sessions sécurisées et régénérées à la connexion
+- Base SQLite hors du DocumentRoot
