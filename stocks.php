@@ -78,8 +78,8 @@ $kpi = $db->query("SELECT
     COUNT(*) AS total,
     SUM(CASE WHEN a.type='piece' THEN 1 ELSE 0 END) AS pieces,
     SUM(CASE WHEN a.type='equipement' THEN 1 ELSE 0 END) AS equipements,
-    SUM(CASE WHEN q.stock_calcule <= a.quantite_min THEN 1 ELSE 0 END) AS alertes,
-    SUM(q.stock_calcule * a.valeur_unitaire) AS valeur_totale
+    SUM(CASE WHEN COALESCE(q.stock_calcule,0) <= a.quantite_min THEN 1 ELSE 0 END) AS alertes,
+    SUM(COALESCE(q.stock_calcule,0) * a.valeur_unitaire) AS valeur_totale
     FROM stock_articles a
     LEFT JOIN (
         SELECT article_id, SUM(CASE
