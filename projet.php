@@ -34,6 +34,12 @@ if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
 $phase = r1bPhaseFromStep($currentStep);
 $steps = r1bSteps();
 
+// Contexte de retour utilisé par le CDC : revenir exactement à la vue/étape qui l'a ouvert.
+$cdcReturnQuery = '&return_view=' . rawurlencode($view);
+if ($view === 'processus') {
+    $cdcReturnQuery .= '&return_step=' . $currentStep;
+}
+
 // ——— Actions POST ———
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
@@ -296,7 +302,7 @@ function stepClass(int $n, int $current): string
       <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
         <i class="fas fa-folder-open"></i> Documents
       </a>
-      <a href="<?= url('cahier_form.php?projet_id=' . $id) ?>">
+      <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
     </nav>
@@ -570,7 +576,7 @@ function stepClass(int $n, int $current): string
           <?php else: ?>
             <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
           <?php endif; ?>
-          <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
+          <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
 
         <?php elseif ($currentStep === 2): ?>
           <?php
@@ -651,7 +657,7 @@ function stepClass(int $n, int $current): string
               <?php endforeach; ?>
               <div class="mt-3">
                 <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
+                <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
             </form>
           <?php endif; ?>
