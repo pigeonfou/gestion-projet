@@ -17,6 +17,7 @@ if (!$projet) {
     setFlash('error', 'Projet introuvable.');
     redirect('projets.php');
 }
+requerirAccesProjet($projet_id);
 
 $stmt = $db->prepare('SELECT * FROM cahiers WHERE projet_id = ?');
 $stmt->execute([$projet_id]);
