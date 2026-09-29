@@ -521,15 +521,13 @@ tr:hover td { background:#f8fafc; }
 
 
 /* Kanban tâches (global + projet) — style Processus-R1b */
-.r1b-kanban {
+.r1b-kanban,
+.r1b-kanban.r1b-kanban-4 {
   display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   width: 100%;
   align-items: start;
-}
-.r1b-kanban.r1b-kanban-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .r1b-kanban-col {
   background: #f1f5f9;
@@ -549,13 +547,19 @@ tr:hover td { background:#f8fafc; }
   align-items: center;
   color: #0f172a;
 }
-.r1b-kanban-head span {
-  background: rgba(255,255,255,.7);
+.r1b-kanban-head .kanban-col-title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: .875rem;
+}
+.r1b-kanban-head .kanban-col-count {
+  background: #fff;
+  border: 1px solid #94a3b8;
   border-radius: 999px;
-  padding: .1rem .55rem;
+  padding: .15rem .55rem;
   font-size: .75rem;
-  font-weight: 600;
-  color: #475569;
+  font-weight: 700;
+  color: #334155;
 }
 .r1b-kanban-card {
   display: block;
@@ -577,10 +581,10 @@ tr:hover td { background:#f8fafc; }
   color: #0f172a;
   line-height: 1.35;
 }
-.kanban-col-todo { background: #f1f5f9; }
-.kanban-col-progress { background: #eff6ff; }
-.kanban-col-validation { background: #fffbeb; }
-.kanban-col-done { background: #ecfdf5; }
+.kanban-col-todo { background: #f1f5f9; border-top: 3px solid #64748b; }
+.kanban-col-progress { background: #eff6ff; border-top: 3px solid #2563eb; }
+.kanban-col-validation { background: #fffbeb; border-top: 3px solid #d97706; }
+.kanban-col-done { background: #ecfdf5; border-top: 3px solid #16a34a; }
 .kanban-card-foot {
   display: flex;
   justify-content: space-between;
@@ -616,6 +620,21 @@ tr:hover td { background:#f8fafc; }
 .taches-page-wrap {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 .25rem 1.5rem;
+}
+.taches-page-wrap .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.taches-page-wrap .page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 @media (max-width: 1100px) {
   .r1b-kanban.r1b-kanban-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

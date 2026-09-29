@@ -952,15 +952,21 @@ function stepClass(int $n, int $current): string
       <div class="r1b-kanban r1b-kanban-4">
         <?php foreach ($colsK as $key => $col): ?>
           <div class="r1b-kanban-col <?= e($col['bg']) ?>">
-            <div class="r1b-kanban-head"><span class="kanban-col-title"><?= e($col['title']) ?></span> <span class="kanban-col-count"><?= count($col['items']) ?></span></div>
+            <div class="r1b-kanban-head">
+              <span class="kanban-col-title"><?= e($col['title']) ?></span>
+              <span class="kanban-col-count"><?= count($col['items']) ?></span>
+            </div>
+            <?php if (empty($col['items'])): ?>
+              <p class="text-muted text-sm" style="padding:.35rem 0;margin:0;">Aucune tâche</p>
+            <?php endif; ?>
             <?php foreach ($col['items'] as $t): ?>
               <div class="r1b-kanban-card">
                 <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
                 <?php if (!empty($t['description'])): ?>
-                  <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
+                  <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
                 <?php endif; ?>
                 <div class="kanban-card-foot">
-                  <span class="text-xs text-muted"><?= e($t['assigne_a'] ?? 'Non assigné') ?></span>
+                  <span class="kanban-assignee"><?= e($t['assigne_a'] ?? 'Non assigné') ?></span>
                   <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="kanban-status-form">
                     <?= csrfField() ?>
                     <input type="hidden" name="action" value="update_task_status">
