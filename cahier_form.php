@@ -56,6 +56,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         setFlash('error', implode(' ', $errors));
     } else {
         saveSpecs($cahier_id, $specs);
+
+        // Les S.F. du cahier des charges structuré sont elles aussi des tâches.
+        // Les S.T. sont synchronisées ici si elles existent déjà.
+        $existingTechniques = $specs['specs_techniques'] ?? [];
+        syncTasksFromStructuredSpecs(
+            $projet_id,
+            $specs['fonctions'],
+            is_array($existingTechniques) ? $existingTechniques : []
+        );
+
         saveJalonsFromPost($cahier_id, $_POST);
         // Mirror some fields into classic cahier columns
         $db->prepare('UPDATE cahiers SET objectifs=?, contexte=?, contraintes=?, date_maj=CURRENT_TIMESTAMP WHERE id=?')
