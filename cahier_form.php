@@ -10,6 +10,21 @@ $user = utilisateurCourant();
 $projet_id = (int)($_GET['projet_id'] ?? $_POST['projet_id'] ?? 0);
 if ($projet_id <= 0) redirect('projets.php');
 
+// Conserver le contexte d'origine pour que « Retour au projet »
+// ramène à la vue/étape qui a ouvert le CDC.
+$returnView = $_GET['return_view'] ?? $_POST['return_view'] ?? 'processus';
+$returnStep = (int)($_GET['return_step'] ?? $_POST['return_step'] ?? 1);
+if (!in_array($returnView, ['dashboard', 'processus', 'taches', 'documents'], true)) {
+    $returnView = 'processus';
+}
+if ($returnView === 'processus') {
+    $returnStep = max(0, min(6, $returnStep));
+}
+$returnUrl = 'projet.php?id=' . $projet_id . '&view=' . rawurlencode($returnView);
+if ($returnView === 'processus') {
+    $returnUrl .= '&step=' . $returnStep;
+}
+
 $stmt = $db->prepare('SELECT * FROM projets WHERE id = ?');
 $stmt->execute([$projet_id]);
 $projet = $stmt->fetch();
@@ -85,10 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $text = generateCahierText($specs, $projet['nom'], loadJalons($cahier_id));
             $_SESSION['cdc_generated'] = $text;
             setFlash('success', 'Cahier des charges généré et enregistré.');
-            redirect('cahier_form.php?projet_id=' . $projet_id . '&generated=1');
+            redirect('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep . '&generated=1');
         }
         setFlash('success', 'Brouillon enregistré.');
-        redirect('cahier_form.php?projet_id=' . $projet_id);
+        redirect('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep);
     }
 }
 
@@ -121,7 +136,7 @@ function sel(?string $cur, string $val): string {
         <h1><i class="fas fa-file-alt"></i> Cahier des charges structuré</h1>
         <p class="text-muted text-sm mt-1">Projet : <strong><?= e($projet['nom']) ?></strong></p>
     </div>
-    <a href="<?= url('projet.php?id=' . $projet_id . '&view=processus') ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour au projet</a>
+    <a href="<?= url($returnUrl) ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour au projet</a>
 </div>
 
 <?php if ($generated): ?>
@@ -147,8 +162,10 @@ function sel(?string $cur, string $val): string {
 </div>
 <div class="cdc-progress"><div class="cdc-progress-bar" id="cdcProgress" style="width:33%"></div></div>
 
-<form method="POST" id="cdcForm" action="<?= url('cahier_form.php') ?>">
+<form method="POST" id="cdcForm" action="<?= url('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep) ?>">
     <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
+    <input type="hidden" name="return_view" value="<?= e($returnView) ?>">
+    <input type="hidden" name="return_step" value="<?= $returnStep ?>">
     <input type="hidden" name="form_action" id="formAction" value="save">
     <?= csrfField() ?>
 
