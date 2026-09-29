@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'suppr
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $nom = trim($_POST['nom'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $editId = (int)($_POST['id'] ?? 0);
@@ -95,6 +96,7 @@ if ($action === 'creer' || $action === 'modifier') {
     <div class="card" style="max-width:600px;">
         <div class="card-body">
             <form method="POST" action="<?= url('projets.php') ?>">
+                <?= csrfField() ?>
                 <?php if ($projet): ?><input type="hidden" name="id" value="<?= (int)$projet['id'] ?>"><?php endif; ?>
                 <div class="form-group">
                     <label for="nom">Nom du projet *</label>
