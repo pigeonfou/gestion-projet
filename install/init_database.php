@@ -77,13 +77,15 @@ try {
         FOREIGN KEY (cahier_id) REFERENCES cahiers(id) ON DELETE CASCADE
     )");
 
-    $hash = password_hash('admin123', PASSWORD_DEFAULT);
+    $adminPassword = getenv('PROJECTFLOW_ADMIN_PASSWORD') ?: bin2hex(random_bytes(12));
+    $hash = password_hash($adminPassword, PASSWORD_DEFAULT);
     $db->prepare('INSERT INTO utilisateurs (identifiant, mot_de_passe, role) VALUES (?,?,?)')
        ->execute(['admin', $hash, 'admin']);
 
-    chmod($dbPath, 0664);
+    chmod($dbPath, 0660);
     echo "✓ Base créée : $dbPath\n";
-    echo "✓ Compte admin : admin / admin123\n";
+    echo "✓ Compte admin : admin / mot de passe généré ci-dessous\n";
+    echo "  Mot de passe initial : $adminPassword\n";
     echo "⚠ Changez le mot de passe dès la première connexion !\n";
     echo "ℹ Base : $dbPath\n";
 } catch (PDOException $e) {
