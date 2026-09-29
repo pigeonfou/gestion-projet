@@ -79,11 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $techniques = parseSpecsTechniquesFromPost($_POST);
             saveSpecsTechniques($cid, $techniques);
 
-            // Les S.T. de type Logiciel / 3D / PCB constituent des tâches.
-            // Synchroniser dès l'enregistrement de l'étape 2 afin qu'elles
-            // apparaissent immédiatement dans les vues Tâches du projet et globales.
-            $composants = loadSpecs($cid)['composants_st'] ?? [];
-            syncTasksFromComposants($id, is_array($composants) ? $composants : [], $techniques);
+            // À l'étape 2, chaque S.T. de type Logiciel / 3D / PCB
+            // devient immédiatement une tâche du projet.
+            syncTasksFromSpecsTechniques($id, $techniques);
 
             $n = count($techniques);
             setFlash('success', $n > 0
