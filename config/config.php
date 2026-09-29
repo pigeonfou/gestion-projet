@@ -9,7 +9,7 @@
 define('BASE_PATH', '/gestion-projet');
 
 // Chemin absolu vers la base de données
-define('DB_PATH', __DIR__ . '/../database.sqlite');
+define('DB_PATH', getenv('PROJECTFLOW_DB_PATH') ?: '/var/lib/projectflow/database.sqlite');
 
 /**
  * Génère une URL relative à la base de l'application
