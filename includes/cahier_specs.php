@@ -459,6 +459,85 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
 }
 
 
+/**
+ * Synchronise les spécifications techniques Logiciel / 3D / PCB de l'étape 2
+ * vers la table taches. Une S.T. correspond à une tâche de projet.
+ *
+ * Les composants de l'étape 4 utilisent une synchronisation distincte
+ * (syncTasksFromComposants) avec des clés source "cp:*".
+ */
+function syncTasksFromSpecsTechniques(int $projetId, array $techniques): void {
+    ensureTachesExtendedColumns();
+    $db = getDB();
+
+    $wanted = [];
+    foreach ($techniques as $tech) {
+        if (!is_array($tech)) continue;
+
+        $stId = trim((string)($tech['id'] ?? ''));
+        $type = trim((string)($tech['type'] ?? ''));
+        $desc = trim((string)($tech['description'] ?? ''));
+
+        if ($stId === '' || $desc === '' || !in_array($type, ['Logiciel', '3D', 'PCB'], true)) {
+            continue;
+        }
+
+        $key = 'st:' . $projetId . ':' . $stId;
+        $wanted[$key] = [
+            'titre' => '[' . $stId . '] ' . $desc,
+            'description' => 'Type : ' . $type,
+            'assigne_a' => null,
+        ];
+    }
+
+    $stmt = $db->prepare("SELECT id, source_key FROM taches WHERE projet_id = ? AND source_key LIKE 'st:%'");
+    $stmt->execute([$projetId]);
+    $existing = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $existing[$row['source_key']] = (int)$row['id'];
+    }
+
+    $ins = $db->prepare(
+        'INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status)
+         VALUES (?,?,?,?,?,?,?,?)'
+    );
+    $upd = $db->prepare('UPDATE taches SET titre=?, description=? WHERE id=?');
+    $del = $db->prepare('DELETE FROM taches WHERE id=?');
+
+    $db->beginTransaction();
+    try {
+        foreach ($wanted as $key => $payload) {
+            if (isset($existing[$key])) {
+                $upd->execute([$payload['titre'], $payload['description'], $existing[$key]]);
+                unset($existing[$key]);
+            } else {
+                $ins->execute([
+                    $projetId,
+                    $payload['titre'],
+                    $payload['description'],
+                    'moyenne',
+                    'a_faire',
+                    $payload['assigne_a'],
+                    $key,
+                    'a_faire'
+                ]);
+            }
+        }
+
+        // Supprime les tâches automatiques liées aux S.T. qui ont été
+        // supprimées, renommées ou transformées en Matériel.
+        foreach ($existing as $idLeft) {
+            $del->execute([$idLeft]);
+        }
+
+        $db->commit();
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+
 /** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
     return [
