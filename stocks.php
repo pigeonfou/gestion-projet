@@ -71,7 +71,9 @@ require __DIR__ . '/includes/header.php';
   </div>
   <div class="stocks-header-actions">
     <a href="<?= url('stock_fournisseurs.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-truck"></i> Fournisseurs</a>
+    <?php if (estAdmin()): ?>
     <a href="<?= url('stock_article.php?action=creer') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvel article</a>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -154,7 +156,11 @@ require __DIR__ . '/includes/header.php';
           <td><?= (int)$a['nb_usages'] ?></td>
           <td class="text-sm"><?= e($a['emplacement'] ?: '—') ?></td>
           <td class="table-actions">
+            <?php if (estAdmin()): ?>
             <a href="<?= url('stock_article.php?id=' . (int)$a['id']) ?>" class="btn btn-secondary btn-sm" title="Voir / éditer"><i class="fas fa-edit"></i></a>
+            <?php else: ?>
+            <a href="<?= url('stock_article.php?id=' . (int)$a['id']) ?>" class="btn btn-secondary btn-sm" title="Voir"><i class="fas fa-eye"></i></a>
+            <?php endif; ?>
             <?php if (estAdmin()): ?>
             <form method="POST" style="display:inline" onsubmit="return confirm('Supprimer cet article ?');">
               <?= csrfField() ?>
