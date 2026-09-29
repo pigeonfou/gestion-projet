@@ -47,8 +47,8 @@ function defaultSettings(): array {
         'items_per_page' => '20',
         'timezone' => 'Europe/Paris',
         'date_format' => 'd/m/Y',
-        'allow_all_mime' => '1',
-        'max_upload_mb' => '0', // 0 = illimité
+        'allow_all_mime' => '0',
+        'max_upload_mb' => '50',
     ];
 }
 
