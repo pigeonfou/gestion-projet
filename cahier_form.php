@@ -46,6 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Spécifications fonctionnelles (liste dynamique)
     $specs['fonctions'] = parseFonctionsFromPost($_POST);
 
+    // Conserver les S.T. et composants déjà enregistrés dans le CDC :
+    // l'édition des S.F. ne doit pas effacer les données de l'étape 2/4.
+    $previousSpecs = loadSpecs($cahier_id);
+    $specs['specs_techniques'] = is_array($previousSpecs['specs_techniques'] ?? null)
+        ? $previousSpecs['specs_techniques']
+        : [];
+    $specs['composants_st'] = is_array($previousSpecs['composants_st'] ?? null)
+        ? $previousSpecs['composants_st']
+        : [];
+
     // Required validation on "generate"
     $errors = [];
     if ($action === 'generate') {
@@ -57,12 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         saveSpecs($cahier_id, $specs);
 
-        // Les S.F. du cahier des charges structuré sont elles aussi des tâches.
-        // Les S.T. sont synchronisées ici si elles existent déjà.
+        // Les S.F. ne sont pas des tâches.
+        // Les S.T. existantes restent synchronisées comme tâches.
         $existingTechniques = $specs['specs_techniques'] ?? [];
         syncTasksFromStructuredSpecs(
             $projet_id,
-            $specs['fonctions'],
+            [],
             is_array($existingTechniques) ? $existingTechniques : []
         );
 
