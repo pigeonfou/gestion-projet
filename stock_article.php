@@ -132,6 +132,8 @@ if ($id > 0) {
 $fournisseursAll = $db->query('SELECT * FROM stock_fournisseurs ORDER BY nom')->fetchAll();
 $liensFourn = [];
 $usages = [];
+$locationsStock = [];
+$mouvements = [];
 $projets = $db->query('SELECT id, nom FROM projets ORDER BY nom')->fetchAll();
 
 if ($article) {
@@ -141,6 +143,14 @@ if ($article) {
     $stmt = $db->prepare('SELECT u.*, p.nom AS projet_nom FROM stock_usages u JOIN projets p ON p.id = u.projet_id WHERE u.article_id = ? ORDER BY u.date_usage DESC');
     $stmt->execute([$id]);
     $usages = $stmt->fetchAll();
+    $locationsStock = stockByLocation($id);
+    $stmt = $db->prepare("SELECT m.*, es.nom AS source_nom, ed.nom AS destination_nom
+        FROM stock_mouvements m
+        LEFT JOIN stock_emplacements es ON es.id=m.emplacement_source_id
+        LEFT JOIN stock_emplacements ed ON ed.id=m.emplacement_destination_id
+        WHERE m.article_id=? ORDER BY m.created_at DESC,m.id DESC LIMIT 100");
+    $stmt->execute([$id]);
+    $mouvements = $stmt->fetchAll();
     $pageTitle = $article['reference'];
 } else {
     $pageTitle = 'Nouvel article';
@@ -254,6 +264,33 @@ $a = $article ?: [
 </form>
 
 <?php if ($article): ?>
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Stock physique par emplacement</h3>
+  <?php if (empty(array_filter($locationsStock, static fn($l) => abs((float)$l['quantite']) > 0.000001))): ?>
+    <p class="text-muted text-sm">Aucun stock affecté à un emplacement.</p>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
+      <?php foreach ($locationsStock as $loc): if (abs((float)$loc['quantite']) < 0.000001) continue; ?>
+        <div style="padding:.75rem;border:1px solid var(--border-color,#ddd);border-radius:.5rem;">
+          <strong><?= e($loc['nom']) ?></strong><br>
+          <span class="text-muted text-xs"><?= e($loc['chemin']) ?></span><br>
+          <span><?= e(rtrim(rtrim(number_format((float)$loc['quantite'],3,'.',''),'0'),'.')) ?> <?= e($article['unite'] ?: 'u') ?></span>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</div>
+
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Journal des mouvements</h3>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Qté</th><th>Source</th><th>Destination</th><th>Projet</th><th>Note</th></tr></thead><tbody>
+  <?php foreach($mouvements as $m): ?>
+    <tr><td class="text-sm"><?= e($m['created_at']) ?></td><td><?= e(str_replace('_',' ',$m['type'])) ?></td><td><?= e((string)$m['quantite']) ?></td><td><?= e($m['source_nom'] ?: '—') ?></td><td><?= e($m['destination_nom'] ?: '—') ?></td><td><?= e($m['projet_id'] ? (string)$m['projet_id'] : '—') ?></td><td><?= e($m['note'] ?: '') ?></td></tr>
+  <?php endforeach; ?>
+  <?php if(!$mouvements): ?><tr><td colspan="7" class="text-muted">Aucun mouvement.</td></tr><?php endif; ?>
+  </tbody></table></div>
+</div>
+
 <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
   <h3 style="margin:0 0 1rem;font-size:1rem;">Projets ayant utilisé cette référence</h3>
   <?php if (empty($usages)): ?>
