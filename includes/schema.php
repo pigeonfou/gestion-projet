@@ -401,6 +401,165 @@ function runSchemaMigrations(): void
         $db->prepare("INSERT INTO parametres(cle,valeur) VALUES('stock_v2_legacy_migrated','1') ON CONFLICT(cle) DO UPDATE SET valeur=excluded.valeur, updated_at=CURRENT_TIMESTAMP")->execute();
     }
 
+    // ------------------------------------------------------------------
+    // Socle système de management : qualité / environnement / traçabilité.
+    // Générique volontairement : les exigences ISO sont portées par les
+    // processus et documents, pas codées en dur dans le module Stock.
+    // ------------------------------------------------------------------
+    $db->exec("CREATE TABLE IF NOT EXISTS processus (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE,
+        nom TEXT NOT NULL,
+        pilote TEXT,
+        description TEXT,
+        actif INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS documents_controles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reference TEXT NOT NULL UNIQUE,
+        titre TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'document',
+        processus_id INTEGER,
+        projet_id INTEGER,
+        statut TEXT NOT NULL DEFAULT 'brouillon',
+        version TEXT NOT NULL DEFAULT '1.0',
+        auteur TEXT,
+        verificateur TEXT,
+        approbateur TEXT,
+        date_creation DATE,
+        date_approbation DATE,
+        date_effet DATE,
+        date_revue DATE,
+        document_parent_id INTEGER,
+        chemin_fichier TEXT,
+        mime TEXT,
+        confidentialite TEXT DEFAULT 'interne',
+        description TEXT,
+        FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (document_parent_id) REFERENCES documents_controles(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS documents_controles_revisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        document_id INTEGER NOT NULL,
+        version TEXT NOT NULL,
+        motif TEXT,
+        auteur TEXT,
+        date_revision DATETIME DEFAULT CURRENT_TIMESTAMP,
+        chemin_fichier TEXT,
+        FOREIGN KEY (document_id) REFERENCES documents_controles(id) ON DELETE CASCADE,
+        UNIQUE(document_id, version)
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS risques_opportunites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        processus_id INTEGER,
+        projet_id INTEGER,
+        type TEXT NOT NULL DEFAULT 'risque',
+        description TEXT NOT NULL,
+        cause TEXT,
+        consequence TEXT,
+        probabilite INTEGER,
+        impact INTEGER,
+        criticite INTEGER,
+        action_prevue TEXT,
+        responsable TEXT,
+        echeance DATE,
+        statut TEXT NOT NULL DEFAULT 'ouvert',
+        efficacite TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS actions_qualite (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        processus_id INTEGER,
+        projet_id INTEGER,
+        type TEXT NOT NULL DEFAULT 'action',
+        origine TEXT,
+        description TEXT NOT NULL,
+        responsable TEXT,
+        echeance DATE,
+        statut TEXT NOT NULL DEFAULT 'ouverte',
+        date_cloture DATE,
+        preuve_document_id INTEGER,
+        verification_efficacite TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (preuve_document_id) REFERENCES documents_controles(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS non_conformites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reference TEXT NOT NULL UNIQUE,
+        processus_id INTEGER,
+        projet_id INTEGER,
+        article_id INTEGER,
+        lot_id INTEGER,
+        unite_id INTEGER,
+        mouvement_id INTEGER,
+        description TEXT NOT NULL,
+        detection TEXT,
+        disposition TEXT,
+        cause TEXT,
+        action_immediate TEXT,
+        action_corrective TEXT,
+        responsable TEXT,
+        echeance DATE,
+        statut TEXT NOT NULL DEFAULT 'ouverte',
+        date_detection DATETIME DEFAULT CURRENT_TIMESTAMP,
+        date_cloture DATE,
+        verification_efficacite TEXT,
+        FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE SET NULL,
+        FOREIGN KEY (lot_id) REFERENCES stock_lots(id) ON DELETE SET NULL,
+        FOREIGN KEY (unite_id) REFERENCES stock_unites(id) ON DELETE SET NULL,
+        FOREIGN KEY (mouvement_id) REFERENCES stock_mouvements(id) ON DELETE SET NULL
+    )");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS enregistrements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        reference TEXT,
+        processus_id INTEGER,
+        projet_id INTEGER,
+        document_id INTEGER,
+        source_table TEXT,
+        source_id INTEGER,
+        date_evenement DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resultat TEXT,
+        statut TEXT,
+        donnees_json TEXT,
+        notes TEXT,
+        FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
+        FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
+        FOREIGN KEY (document_id) REFERENCES documents_controles(id) ON DELETE SET NULL
+    );
+
+    $db->exec("CREATE TABLE IF NOT EXISTS stock_environnement (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        masse_g REAL,
+        matiere TEXT,
+        substance_reglementee TEXT,
+        dangereux INTEGER NOT NULL DEFAULT 0,
+        filiere_dechet TEXT,
+        recyclage_possible INTEGER NOT NULL DEFAULT 0,
+        emballage TEXT,
+        consignes TEXT,
+        FOREIGN KEY (article_id) REFERENCES stock_articles(id) ON DELETE CASCADE,
+        UNIQUE(article_id)
+    )");
+
     // Index
     foreach ([
         'CREATE INDEX IF NOT EXISTS idx_taches_projet ON taches(projet_id)',
