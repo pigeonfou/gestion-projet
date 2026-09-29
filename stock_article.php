@@ -13,6 +13,10 @@ $action = $_GET['action'] ?? ($id > 0 ? 'modifier' : 'creer');
 // Enregistrement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_article') {
     csrfRequire();
+    if (!estAdmin()) {
+        setFlash('error', 'La gestion du catalogue stock est réservée aux administrateurs.');
+        redirect('stocks.php');
+    }
     $id = (int)($_POST['id'] ?? 0);
     $reference = trim($_POST['reference'] ?? '');
     $designation = trim($_POST['designation'] ?? '');
@@ -81,12 +85,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
     $qty = (float)str_replace(',', '.', (string)($_POST['quantite'] ?? '1'));
     $note = trim($_POST['note'] ?? '');
     if ($id > 0 && $projetId > 0 && $qty > 0) {
-        $db->prepare('INSERT INTO stock_usages (article_id, projet_id, quantite, note) VALUES (?,?,?,?)')
-           ->execute([$id, $projetId, $qty, $note]);
-        // Décrémenter stock optionnel
-        if (!empty($_POST['decrementer'])) {
-            $db->prepare('UPDATE stock_articles SET quantite_stock = CASE WHEN quantite_stock > ? THEN quantite_stock - ? ELSE 0 END, updated_at=CURRENT_TIMESTAMP WHERE id = ?')
-               ->execute([$qty, $qty, $id]);
+        requerirAccesProjet($projetId);
+        try {
+            $db->beginTransaction();
+            $stmt = $db->prepare('SELECT quantite_stock FROM stock_articles WHERE id = ?');
+            $stmt->execute([$id]);
+            $currentStock = $stmt->fetchColumn();
+            if ($currentStock === false) throw new RuntimeException('Article introuvable.');
+            if (!empty($_POST['decrementer']) && (float)$currentStock < $qty) {
+                throw new RuntimeException('Stock insuffisant.');
+            }
+            $db->prepare('INSERT INTO stock_usages (article_id, projet_id, quantite, note) VALUES (?,?,?,?)')
+               ->execute([$id, $projetId, $qty, $note]);
+            if (!empty($_POST['decrementer'])) {
+                $db->prepare('UPDATE stock_articles SET quantite_stock = quantite_stock - ?, updated_at=CURRENT_TIMESTAMP WHERE id = ?')
+                   ->execute([$qty, $id]);
+            }
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            setFlash('error', $e->getMessage());
+            redirect('stock_article.php?id=' . $id);
         }
         setFlash('success', 'Usage projet enregistré.');
     }
