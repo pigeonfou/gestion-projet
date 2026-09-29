@@ -36,13 +36,13 @@ function r1bStepFromPhase(string $phase): int {
     return match ($phase) {
         'investissement' => 2,
         'production' => 5,
-        default => 0,
+        default => 1,
     };
 }
 
 function r1bPhaseFromStep(int $step): string {
     $steps = r1bSteps();
-    return $steps[$step]['phase'] ?? 'cadrage';
+    return $steps[$step]['phase'] ?? 'cahier';
 }
 
 function ensureProjectProcessColumns(): void {
