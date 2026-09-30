@@ -36,6 +36,8 @@ install_packages(){
   export DEBIAN_FRONTEND=noninteractive
   info "Mise à jour de l'index APT..."
   apt-get update
+  info "Mise à niveau des paquets système..."
+  apt-get upgrade -y
   info "Installation d'Apache, PHP, SQLite, Git et outils..."
   apt-get install -y apache2 git curl ca-certificates php php-cli php-common php-sqlite3 php-mbstring libapache2-mod-php sqlite3
   ok "Paquets installés."
