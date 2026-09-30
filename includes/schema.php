@@ -543,7 +543,7 @@ function runSchemaMigrations(): void
         FOREIGN KEY (processus_id) REFERENCES processus(id) ON DELETE SET NULL,
         FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE SET NULL,
         FOREIGN KEY (document_id) REFERENCES documents_controles(id) ON DELETE SET NULL
-    );
+    )");
 
     $db->exec("CREATE TABLE IF NOT EXISTS stock_environnement (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
