@@ -32,7 +32,7 @@ echo "      Sauvegarde : $BACKUP_FILE"
 echo
 
 echo "[2/7] Récupération de GitHub..."
-sudo -u www-data git fetch origin
+sudo -u www-data git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 echo
 
 echo "[3/7] Vérification de la branche..."
