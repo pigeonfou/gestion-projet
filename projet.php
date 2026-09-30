@@ -710,6 +710,12 @@ function stepClass(int $n, int $displayed, array $validated): string
                   $stDesc = $stRow['description'] ?? '';
                   if ($stId === '') continue;
                   $items = $composantsSt[$stId] ?? [];
+                  $stCostHT = 0.0; $stCostTTC = 0.0;
+                  foreach ($items as $costItem) {
+                      $costValue = (float)($costItem['cout_total'] ?? 0);
+                      if (($costItem['cout_unitaire_taxe'] ?? $costItem['cout_total_taxe'] ?? 'HT') === 'TTC') $stCostTTC += $costValue;
+                      else $stCostHT += $costValue;
+                  }
                   if (empty($items)) {
                       $items = [[]]; // ligne vide
                   }
@@ -726,6 +732,11 @@ function stepClass(int $n, int $displayed, array $validated): string
                     <span class="st-id"><?= e($stId) ?></span>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
+                    <?php if ($stType === 'Matériel'): ?>
+                      <span class="st-sf-badge cp-st-cost">Coût <?= e($stId) ?> :
+                        <span class="cp-st-cost-value"><?= number_format($stCostHT, 2, ',', ' ') ?> € HT<?= $stCostTTC > 0 ? ' + ' . number_format($stCostTTC, 2, ',', ' ') . ' € TTC' : '' ?></span>
+                      </span>
+                    <?php endif; ?>
                   </div>
                   <div class="sf-table-wrap">
                     <?php if ($stType === 'Matériel'): ?>
@@ -756,7 +767,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value="<?= e((string)($it['quantite'] ?? '')) ?>"></td>
                             <td>
                               <div class="cp-cost-cell">
-                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
+                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" inputmode="decimal" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
                                 <select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe">
                                   <option value="HT" <?= (($it['cout_unitaire_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
                                   <option value="TTC" <?= (($it['cout_unitaire_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
@@ -766,10 +777,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <td>
                               <div class="cp-cost-cell">
                                 <input type="text" class="form-control cp-total" value="<?= e((string)($it['cout_total'] ?? '')) ?>" readonly tabindex="-1">
-                                <select name="cp_cout_total_taxe[]" class="form-control cp-taxe">
-                                  <option value="HT" <?= (($it['cout_total_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
-                                  <option value="TTC" <?= (($it['cout_total_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
-                                </select>
+                                <span class="form-control cp-total-taxe" aria-label="Taxe du coût total"><?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?></span>
+                                <input type="hidden" name="cp_cout_total_taxe[]" value="<?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?>" class="cp-total-taxe-input">
                               </div>
                               <!-- champs fantômes pour aligner les index des tableaux non-matériel -->
                               <input type="hidden" name="cp_affectation[]" value="">
