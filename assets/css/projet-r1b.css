@@ -195,3 +195,7 @@
 .cp-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
 .cp-table input.form-control, .cp-table select.form-control { font-size: .8rem; padding: .3rem .4rem; }
 
+
+/* Etape 2 : laisser suffisamment de place au montant décimal et à HT/TTC. */
+.st-table .st-cost { min-width: 7.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+.st-table .st-tax { width: 4.5rem; min-width: 4.5rem; flex: 0 0 4.5rem; }
