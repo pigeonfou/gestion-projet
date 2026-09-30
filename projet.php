@@ -613,9 +613,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                     <?php if (!empty($sf['indicateur'])): ?>
                       <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
                     <?php endif; ?>
-                    <span class="st-sf-badge">Estimation coût S.F. :
-                      <?= number_format($sfCostHT, 2, ',', ' ') ?> € HT
-                      <?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?>
+                    <span class="st-sf-badge sf-cost-badge">Estimation coût <?= e($sfId) ?> :
+                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?></span>
                     </span>
                   </div>
                   <div class="sf-table-wrap">
