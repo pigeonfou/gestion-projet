@@ -185,6 +185,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
     $sfs = $post['st_sf'] ?? [];
     $descs = $post['st_description'] ?? [];
     $types = $post['st_type'] ?? [];
+    $costs = $post['st_cout_estime'] ?? [];
+    $taxes = $post['st_cout_taxe'] ?? [];
     if (!is_array($sfs) || !is_array($descs)) {
         return [];
     }
@@ -195,6 +197,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
         $sf = trim((string)$sf);
         $desc = trim((string)($descs[$i] ?? ''));
         $type = trim((string)($types[$i] ?? 'Matériel'));
+        $cost = max(0, (float)str_replace(',', '.', (string)($costs[$i] ?? '0')));
+        $taxe = (($taxes[$i] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
         if (!in_array($type, $allowedTypes, true)) {
             $type = 'Matériel';
         }
@@ -213,6 +217,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
             'sf' => 'S.F.' . $n,
             'description' => $desc,
             'type' => $type,
+            'cout_estime' => round($cost, 2),
+            'cout_taxe' => $taxe,
         ];
     }
     ksort($bySf, SORT_NUMERIC);
@@ -226,6 +232,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
                 'id' => 'S.T.' . $n . '.' . $m,
                 'description' => $row['description'],
                 'type' => $row['type'],
+                'cout_estime' => $row['cout_estime'] ?? 0,
+                'cout_taxe' => $row['cout_taxe'] ?? 'HT',
             ];
         }
     }
