@@ -2,6 +2,7 @@
 $pageTitle = 'Stocks & Matériel';
 $activePage = 'stocks';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/stock/stock_helpers.php';
 requerirConnexion();
 runSchemaMigrations();
 
@@ -17,8 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     }
     $aid = (int)($_POST['article_id'] ?? 0);
     if ($aid > 0) {
-        $db->prepare('DELETE FROM stock_articles WHERE id = ?')->execute([$aid]);
-        setFlash('success', 'Article supprimé.');
+        $st = $db->prepare('SELECT COUNT(*) FROM stock_mouvements WHERE article_id=?');
+        $st->execute([$aid]);
+        if ((int)$st->fetchColumn() > 0) {
+            setFlash('error', 'Impossible de supprimer une référence ayant un historique de stock. Désactivez-la ou conservez-la pour préserver la traçabilité.');
+        } else {
+            $db->prepare('DELETE FROM stock_articles WHERE id = ?')->execute([$aid]);
+            setFlash('success', 'Article supprimé.');
+        }
     }
     redirect('stocks.php');
 }
@@ -27,16 +34,29 @@ $q = trim($_GET['q'] ?? '');
 $typeFilter = $_GET['type'] ?? '';
 $alertOnly = !empty($_GET['alerte']);
 
-$sql = 'SELECT a.*,
+$sql = "SELECT a.*,
+    COALESCE((SELECT SUM(CASE
+        WHEN m.type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN m.quantite
+        WHEN m.type IN ('consommation','affectation_projet','rebut','demontage') THEN -m.quantite
+        ELSE 0 END)
+        FROM stock_mouvements m WHERE m.article_id=a.id),0) AS stock_calcule,
     (SELECT COUNT(*) FROM stock_usages u WHERE u.article_id = a.id) AS nb_usages,
-    (SELECT GROUP_CONCAT(f.nom, ", ") FROM stock_article_fournisseur af
+    (SELECT GROUP_CONCAT(f.nom, ', ') FROM stock_article_fournisseur af
         JOIN stock_fournisseurs f ON f.id = af.fournisseur_id
-        WHERE af.article_id = a.id) AS fournisseurs
-    FROM stock_articles a WHERE 1=1';
+        WHERE af.article_id = a.id) AS fournisseurs,
+    (SELECT GROUP_CONCAT(e.nom, ', ') FROM stock_emplacements e
+        WHERE e.id IN (
+            SELECT emplacement_destination_id FROM stock_mouvements m WHERE m.article_id=a.id AND m.emplacement_destination_id IS NOT NULL
+            UNION
+            SELECT emplacement_source_id FROM stock_mouvements m WHERE m.article_id=a.id AND m.emplacement_source_id IS NOT NULL
+        )) AS emplacements
+    FROM stock_articles a WHERE 1=1";
+
 $params = [];
 if ($q !== '') {
-    $sql .= ' AND (a.reference LIKE ? OR a.designation LIKE ? OR a.emplacement LIKE ?)';
+    $sql .= ' AND (a.reference LIKE ? OR a.designation LIKE ? OR a.emplacement LIKE ? OR EXISTS (SELECT 1 FROM stock_emplacements e WHERE e.nom LIKE ? AND (e.id IN (SELECT emplacement_destination_id FROM stock_mouvements WHERE article_id=a.id) OR e.id IN (SELECT emplacement_source_id FROM stock_mouvements WHERE article_id=a.id))))';
     $like = '%' . $q . '%';
+    $params[] = $like;
     $params[] = $like;
     $params[] = $like;
     $params[] = $like;
@@ -46,7 +66,7 @@ if (in_array($typeFilter, ['piece', 'equipement'], true)) {
     $params[] = $typeFilter;
 }
 if ($alertOnly) {
-    $sql .= ' AND a.quantite_stock <= a.quantite_min';
+    $sql .= ' AND (SELECT COALESCE(SUM(CASE WHEN m.type IN (\'reception\',\'retour_projet\',\'recuperation\',\'correction_inventaire\') THEN m.quantite WHEN m.type IN (\'consommation\',\'affectation_projet\',\'rebut\',\'demontage\') THEN -m.quantite ELSE 0 END),0) FROM stock_mouvements m WHERE m.article_id=a.id) <= a.quantite_min';
 }
 $sql .= ' ORDER BY a.reference ASC';
 $stmt = $db->prepare($sql);
@@ -56,11 +76,18 @@ $articles = $stmt->fetchAll();
 // KPI
 $kpi = $db->query("SELECT
     COUNT(*) AS total,
-    SUM(CASE WHEN type='piece' THEN 1 ELSE 0 END) AS pieces,
-    SUM(CASE WHEN type='equipement' THEN 1 ELSE 0 END) AS equipements,
-    SUM(CASE WHEN quantite_stock <= quantite_min THEN 1 ELSE 0 END) AS alertes,
-    SUM(quantite_stock * valeur_unitaire) AS valeur_totale
-    FROM stock_articles")->fetch();
+    SUM(CASE WHEN a.type='piece' THEN 1 ELSE 0 END) AS pieces,
+    SUM(CASE WHEN a.type='equipement' THEN 1 ELSE 0 END) AS equipements,
+    SUM(CASE WHEN COALESCE(q.stock_calcule,0) <= a.quantite_min THEN 1 ELSE 0 END) AS alertes,
+    SUM(COALESCE(q.stock_calcule,0) * a.valeur_unitaire) AS valeur_totale
+    FROM stock_articles a
+    LEFT JOIN (
+        SELECT article_id, SUM(CASE
+            WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
+            WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite
+            ELSE 0 END) AS stock_calcule
+        FROM stock_mouvements GROUP BY article_id
+    ) q ON q.article_id=a.id")->fetch();
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -70,6 +97,8 @@ require __DIR__ . '/includes/header.php';
     <p class="text-muted text-sm mt-1">Pièces détachées et équipements du service R&amp;D — liés aux projets</p>
   </div>
   <div class="stocks-header-actions">
+    <a href="<?= url('stock_mouvements.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-exchange-alt"></i> Mouvements</a>
+    <a href="<?= url('stock_emplacements.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-map-marker-alt"></i> Emplacements</a>
     <a href="<?= url('stock_fournisseurs.php') ?>" class="btn btn-secondary btn-sm"><i class="fas fa-truck"></i> Fournisseurs</a>
     <?php if (estAdmin()): ?>
     <a href="<?= url('stock_article.php?action=creer') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvel article</a>
@@ -139,7 +168,7 @@ require __DIR__ . '/includes/header.php';
       <?php endif; ?>
       <?php foreach ($articles as $a): ?>
         <?php
-          $low = (float)$a['quantite_stock'] <= (float)$a['quantite_min'];
+          $low = (float)$a['stock_calcule'] <= (float)$a['quantite_min'];
           $typeLabel = $a['type'] === 'equipement' ? 'Équipement' : 'Pièce';
         ?>
         <tr class="<?= $low ? 'stock-low' : '' ?>">
@@ -147,14 +176,14 @@ require __DIR__ . '/includes/header.php';
           <td><?= e($a['designation']) ?></td>
           <td><span class="badge-type badge-<?= e($a['type']) ?>"><?= e($typeLabel) ?></span></td>
           <td>
-            <strong><?= e(rtrim(rtrim(number_format((float)$a['quantite_stock'], 2, '.', ''), '0'), '.')) ?></strong>
+            <strong><?= e(rtrim(rtrim(number_format((float)$a['stock_calcule'], 2, '.', ''), '0'), '.')) ?></strong>
             <?= e($a['unite'] ?: 'u') ?>
             <?php if ($low): ?><span class="stock-alert" title="Sous le seuil min. (<?= e((string)$a['quantite_min']) ?>)">⚠</span><?php endif; ?>
           </td>
           <td><?= number_format((float)$a['valeur_unitaire'], 2, ',', ' ') ?> € <?= e($a['taxe'] ?: 'HT') ?></td>
           <td class="text-sm text-muted"><?= e($a['fournisseurs'] ?: '—') ?></td>
           <td><?= (int)$a['nb_usages'] ?></td>
-          <td class="text-sm"><?= e($a['emplacement'] ?: '—') ?></td>
+          <td class="text-sm"><?= e($a['emplacements'] ?: ($a['emplacement'] ?: '—')) ?></td>
           <td class="table-actions">
             <?php if (estAdmin()): ?>
             <a href="<?= url('stock_article.php?id=' . (int)$a['id']) ?>" class="btn btn-secondary btn-sm" title="Voir / éditer"><i class="fas fa-edit"></i></a>
