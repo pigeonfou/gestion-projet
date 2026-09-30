@@ -625,7 +625,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                           <th style="width:5.5rem">ID</th>
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
-                          <th style="width:11rem">Estimation coût</th>
+                          <th style="width:10rem">Coût unitaire</th>
+                          <th style="width:10rem">Coût total</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
@@ -647,11 +648,17 @@ function stepClass(int $n, int $displayed, array $validated): string
                           </td>
                           <td>
                             <div class="cp-cost-cell">
-                              <input type="number" min="0" step="0.01" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
+                              <input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
                               <select name="st_cout_taxe[]" class="form-control st-tax">
                                 <option value="HT" <?= (($tr['cout_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
                                 <option value="TTC" <?= (($tr['cout_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
                               </select>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="cp-cost-cell">
+                              <input type="text" class="form-control st-total" value="<?= number_format((float)($tr['cout_estime'] ?? 0), 2, '.', '') ?>" readonly tabindex="-1">
+                              <span class="form-control st-total-tax"><?= e($tr['cout_taxe'] ?? 'HT') ?></span>
                             </div>
                           </td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
