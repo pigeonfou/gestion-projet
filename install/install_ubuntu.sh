@@ -44,9 +44,6 @@ install_packages(){
   php -v | head -n 1; apache2 -v | head -n 1; git --version
 }
 deploy_application(){
-  # Le code est ensuite détenu par www-data pour l’exécution Apache. Git doit
-  # donc explicitement considérer ce dépôt comme sûr lorsqu’il est relu par root.
-  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
   if [[ -d "$APP_DIR/.git" ]]; then
     warn "Dépôt existant détecté dans $APP_DIR : mise à jour vers origin/$BRANCH."
     git -C "$APP_DIR" fetch origin
@@ -62,8 +59,11 @@ deploy_application(){
   find "$APP_DIR" -type d -exec chmod 755 {} +
   find "$APP_DIR" -type f -exec chmod 644 {} +
   [[ -f "$APP_DIR/install/install_ubuntu.sh" ]] && chmod 755 "$APP_DIR/install/install_ubuntu.sh" || true
+  # Le dépôt est détenu par www-data pour l’exécution Apache. Les commandes Git
+  # lancées par root doivent donc déclarer explicitement ce chemin comme sûr.
+  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
   ok "Projet déployé depuis $BRANCH."
-  info "Commit : $(git -C "$APP_DIR" rev-parse --short HEAD)"
+  info "Commit : $(git -c safe.directory="$APP_DIR" -C "$APP_DIR" rev-parse --short HEAD)"
 }
 configure_database(){
   install -d -o www-data -g www-data -m 0750 "$DB_DIR"
@@ -154,7 +154,7 @@ show_summary(){
   echo "Le mot de passe n'est volontairement pas affiché."
   echo; echo "Apache : $(systemctl is-active apache2)"
   echo "PHP    : $(php -r 'echo PHP_VERSION;')"
-  echo "Commit : $(git -C "$APP_DIR" rev-parse --short HEAD)"
+  echo "Commit : $(git -c safe.directory="$APP_DIR" -C "$APP_DIR" rev-parse --short HEAD)"
   echo; echo "Pare-feu recommandé :"
   echo "  ufw allow OpenSSH"; echo "  ufw allow 'Apache Full'"; echo "  ufw enable"
 }
