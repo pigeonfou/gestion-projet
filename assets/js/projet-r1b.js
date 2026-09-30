@@ -11,8 +11,9 @@
     });
   }
 
-  document.querySelectorAll('.st-sf-block').forEach(block => {
+  document.querySelectorAll('.st-sf-block:not(.cp-st-block)').forEach(block => {
     const body = block.querySelector('.st-body');
+    if (!body) return;
     const sfNum = block.getAttribute('data-sf-num');
     const sfId = block.getAttribute('data-sf');
 
@@ -48,6 +49,8 @@
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
           '</select></td>' +
+          '<td><div class="cp-cost-cell"><input type="number" min="0" step="0.01" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
+          '<select name="st_cout_taxe[]" class="form-control st-tax"><option value="HT">HT</option><option value="TTC">TTC</option></select></div></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
