@@ -10,15 +10,16 @@ function r1bSteps(): array {
         2 => ['key' => 'etudes',         'title' => 'Études capacités & investissement', 'phase' => 'capacite'],
         3 => ['key' => 'go_nogo',        'title' => 'GO / NO GO',                        'phase' => 'go_nogo'],
         4 => ['key' => 'composants',     'title' => 'Recherche composants & matériels',  'phase' => 'composants'],
-        5 => ['key' => 'proto',          'title' => 'Fabrication / Prototypage',         'phase' => 'proto'],
-        6 => ['key' => 'tests',          'title' => 'Tests de conformité',               'phase' => 'tests'],
-        7 => ['key' => 'livraison',      'title' => 'Livraison DG',                      'phase' => 'livraison'],
-        8 => ['key' => 'archivage',      'title' => 'Archivage → R2 Vente',              'phase' => 'archivage'],
+        5 => ['key' => 'achats',         'title' => 'Achat composants & matériels',      'phase' => 'achats'],
+        6 => ['key' => 'proto',          'title' => 'Fabrication / Prototypage',         'phase' => 'proto'],
+        7 => ['key' => 'tests',          'title' => 'Tests de conformité',               'phase' => 'tests'],
+        8 => ['key' => 'livraison',      'title' => 'Livraison DG',                      'phase' => 'livraison'],
+        9 => ['key' => 'archivage',      'title' => 'Archivage → R2 Vente',              'phase' => 'archivage'],
     ];
 }
 
 function r1bMaxStep(): int {
-    return 8;
+    return 9;
 }
 
 function r1bMinStep(): int {
@@ -35,7 +36,7 @@ function r1bStepFromPhase(string $phase): int {
     }
     return match ($phase) {
         'investissement' => 2,
-        'production' => 5,
+        'production' => 6,
         default => 1,
     };
 }
