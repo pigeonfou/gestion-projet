@@ -32,7 +32,10 @@ echo "      Sauvegarde : $BACKUP_FILE"
 echo
 
 echo "[2/7] Récupération de GitHub..."
-sudo -u www-data git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+# The leading '+' forces the remote-tracking ref to move even when the local
+# origin/<branch> ref cannot be fast-forwarded (for example after a rewritten
+# branch or when a stale remote-tracking ref exists).
+sudo -u www-data git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 echo
 
 echo "[3/7] Vérification de la branche..."
