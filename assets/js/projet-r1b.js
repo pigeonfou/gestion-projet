@@ -49,14 +49,36 @@
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
           '</select></td>' +
-          '<td><div class="cp-cost-cell"><input type="number" min="0" step="0.01" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
+          '<td><div class="cp-cost-cell"><input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
           '<select name="st_cout_taxe[]" class="form-control st-tax"><option value="HT">HT</option><option value="TTC">TTC</option></select></div></td>' +
+          '<td><div class="cp-cost-cell"><input type="text" class="form-control st-total" value="0.00" readonly tabindex="-1"><span class="form-control st-total-tax">HT</span></div></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
         renumberBlock(block);
       });
     }
+
+    function syncStCost(row) {
+      const cost = row.querySelector('.st-cost');
+      const tax = row.querySelector('.st-tax');
+      const total = row.querySelector('.st-total');
+      const totalTax = row.querySelector('.st-total-tax');
+      if (total && cost) {
+        const value = parseFloat(String(cost.value || '0').replace(',', '.')) || 0;
+        total.value = value.toFixed(2);
+      }
+      if (totalTax && tax) totalTax.textContent = tax.value;
+    }
+    body.addEventListener('input', e => {
+      const row = e.target.closest('.st-row');
+      if (row && e.target.matches('.st-cost')) syncStCost(row);
+    });
+    body.addEventListener('change', e => {
+      const row = e.target.closest('.st-row');
+      if (row && e.target.matches('.st-tax')) syncStCost(row);
+    });
+    body.querySelectorAll('.st-row').forEach(syncStCost);
   });
 })();
 
@@ -138,7 +160,21 @@
       if (unitTax) unitTax.addEventListener('change', () => recalc(row));
     }
 
-    body.querySelectorAll('.cp-row').forEach(bindRow);
+    body.querySelectorAll('.cp-row').forEach(row => {
+      bindRow(row);
+      if (type === 'Matériel') recalc(row);
+    });
+    if (type === 'Matériel') {
+      body.addEventListener('input', e => {
+        const row = e.target.closest('.cp-row');
+        if (row && (e.target.matches('.cp-qty') || e.target.matches('.cp-unit'))) recalc(row);
+      });
+      body.addEventListener('change', e => {
+        const row = e.target.closest('.cp-row');
+        if (row && e.target.matches('select[name="cp_cout_unitaire_taxe[]"]')) recalc(row);
+      });
+      recalcBlock(block);
+    }
 
     const addBtn = block.querySelector('.btn-cp-add');
     if (addBtn) {
