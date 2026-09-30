@@ -22,6 +22,12 @@ echo
 
 cd "$PROJECT_DIR"
 
+# Toutes les opérations Git sont exécutées par www-data. Répare les droits
+# d'un dépôt anciennement manipulé par root avant tout fetch.
+chown -R www-data:www-data "$PROJECT_DIR/.git"
+find "$PROJECT_DIR/.git" -type d -exec chmod u+rwx,go+rx {} +
+find "$PROJECT_DIR/.git" -type f -exec chmod u+rw,go+r {} +
+
 echo "[1/7] Sauvegarde de la base de données..."
 mkdir -p "$BACKUP_DIR"
 
