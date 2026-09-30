@@ -46,18 +46,23 @@ install_packages(){
 deploy_application(){
   if [[ -d "$APP_DIR/.git" ]]; then
     warn "Dépôt existant détecté dans $APP_DIR : mise à jour vers origin/$BRANCH."
-    git -C "$APP_DIR" fetch origin
-    git -C "$APP_DIR" checkout "$BRANCH"
-    git -C "$APP_DIR" reset --hard "origin/$BRANCH"
+    chown -R www-data:www-data "$APP_DIR/.git"
+    runuser -u www-data -- git -C "$APP_DIR" fetch origin
+    runuser -u www-data -- git -C "$APP_DIR" checkout "$BRANCH"
+    runuser -u www-data -- git -C "$APP_DIR" reset --hard "origin/$BRANCH"
   elif [[ -e "$APP_DIR" ]]; then
     die "$APP_DIR existe mais n'est pas un dépôt Git."
   else
     mkdir -p /var/www/html
     git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
   fi
+  # Propriétaire Git unique : www-data. Cela évite les objets .git créés par
+  # root puis impossibles à mettre à jour par les scripts de déploiement.
   chown -R www-data:www-data "$APP_DIR"
   find "$APP_DIR" -type d -exec chmod 755 {} +
   find "$APP_DIR" -type f -exec chmod 644 {} +
+  find "$APP_DIR/.git" -type d -exec chmod u+rwx,go+rx {} +
+  find "$APP_DIR/.git" -type f -exec chmod u+rw,go+r {} +
   [[ -f "$APP_DIR/install/install_ubuntu.sh" ]] && chmod 755 "$APP_DIR/install/install_ubuntu.sh" || true
   # Le dépôt est détenu par www-data pour l’exécution Apache. Les commandes Git
   # lancées par root doivent donc déclarer explicitement ce chemin comme sûr.
