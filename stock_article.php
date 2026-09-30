@@ -2,6 +2,7 @@
 $pageTitle = 'Article stock';
 $activePage = 'stocks';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/stock/stock_helpers.php';
 requerirConnexion();
 runSchemaMigrations();
 
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     $designation = trim($_POST['designation'] ?? '');
     $type = ($_POST['type'] ?? 'piece') === 'equipement' ? 'equipement' : 'piece';
     $description = trim($_POST['description'] ?? '');
-    $qStock = (float)str_replace(',', '.', (string)($_POST['quantite_stock'] ?? '0'));
+    $qStockInitial = (float)str_replace(',', '.', (string)($_POST['quantite_stock'] ?? '0'));
     $qMin = (float)str_replace(',', '.', (string)($_POST['quantite_min'] ?? '0'));
     $unite = trim($_POST['unite'] ?? 'u') ?: 'u';
     $valeur = (float)str_replace(',', '.', (string)($_POST['valeur_unitaire'] ?? '0'));
@@ -38,12 +39,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
 
     try {
         if ($id > 0) {
-            $db->prepare('UPDATE stock_articles SET reference=?, designation=?, type=?, description=?, quantite_stock=?, quantite_min=?, unite=?, valeur_unitaire=?, taxe=?, documentation=?, emplacement=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
-               ->execute([$reference, $designation, $type, $description, $qStock, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes, $id]);
+            // La quantité n'est plus modifiable directement : elle provient du journal.
+            $db->prepare('UPDATE stock_articles SET reference=?, designation=?, type=?, description=?, quantite_min=?, unite=?, valeur_unitaire=?, taxe=?, documentation=?, emplacement=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
+               ->execute([$reference, $designation, $type, $description, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes, $id]);
+            stockSyncLegacyQuantity($id);
         } else {
             $db->prepare('INSERT INTO stock_articles (reference, designation, type, description, quantite_stock, quantite_min, unite, valeur_unitaire, taxe, documentation, emplacement, notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-               ->execute([$reference, $designation, $type, $description, $qStock, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes]);
+               ->execute([$reference, $designation, $type, $description, 0, $qMin, $unite, $valeur, $taxe, $documentation, $emplacement, $notes]);
             $id = (int)$db->lastInsertId();
+
+            // À la création, la quantité initiale est enregistrée comme un mouvement.
+            if ($qStockInitial > 0) {
+                $lab = stockDefaultLocationId();
+                stockMovement($id, 'correction_inventaire', $qStockInitial, null, $lab, null, null, null, 'CREATION_ARTICLE', 'Stock initial à la création', (int)($user['id'] ?? 0) ?: null);
+            }
         }
 
         // Fournisseurs liés
@@ -88,18 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
         requerirAccesProjet($projetId);
         try {
             $db->beginTransaction();
-            $stmt = $db->prepare('SELECT quantite_stock FROM stock_articles WHERE id = ?');
-            $stmt->execute([$id]);
-            $currentStock = $stmt->fetchColumn();
-            if ($currentStock === false) throw new RuntimeException('Article introuvable.');
-            if (!empty($_POST['decrementer']) && (float)$currentStock < $qty) {
-                throw new RuntimeException('Stock insuffisant.');
+            $currentStock = stockQuantity($id);
+            if (!empty($_POST['decrementer']) && $currentStock < $qty) {
+                throw new RuntimeException('Stock insuffisant (stock calculé : ' . rtrim(rtrim(number_format($currentStock, 3, '.', ''), '0'), '.') . ').');
             }
             $db->prepare('INSERT INTO stock_usages (article_id, projet_id, quantite, note) VALUES (?,?,?,?)')
                ->execute([$id, $projetId, $qty, $note]);
             if (!empty($_POST['decrementer'])) {
-                $db->prepare('UPDATE stock_articles SET quantite_stock = quantite_stock - ?, updated_at=CURRENT_TIMESTAMP WHERE id = ?')
-                   ->execute([$qty, $id]);
+                $lab = stockDefaultLocationId();
+                stockMovement($id, 'consommation', $qty, $lab, null, $projetId, null, null, 'USAGE_PROJET', $note, (int)($user['id'] ?? 0) ?: null);
             }
             $db->commit();
         } catch (Throwable $e) {
@@ -126,6 +132,8 @@ if ($id > 0) {
 $fournisseursAll = $db->query('SELECT * FROM stock_fournisseurs ORDER BY nom')->fetchAll();
 $liensFourn = [];
 $usages = [];
+$locationsStock = [];
+$mouvements = [];
 $projets = $db->query('SELECT id, nom FROM projets ORDER BY nom')->fetchAll();
 
 if ($article) {
@@ -135,6 +143,14 @@ if ($article) {
     $stmt = $db->prepare('SELECT u.*, p.nom AS projet_nom FROM stock_usages u JOIN projets p ON p.id = u.projet_id WHERE u.article_id = ? ORDER BY u.date_usage DESC');
     $stmt->execute([$id]);
     $usages = $stmt->fetchAll();
+    $locationsStock = stockByLocation($id);
+    $stmt = $db->prepare("SELECT m.*, es.nom AS source_nom, ed.nom AS destination_nom
+        FROM stock_mouvements m
+        LEFT JOIN stock_emplacements es ON es.id=m.emplacement_source_id
+        LEFT JOIN stock_emplacements ed ON ed.id=m.emplacement_destination_id
+        WHERE m.article_id=? ORDER BY m.created_at DESC,m.id DESC LIMIT 100");
+    $stmt->execute([$id]);
+    $mouvements = $stmt->fetchAll();
     $pageTitle = $article['reference'];
 } else {
     $pageTitle = 'Nouvel article';
@@ -180,8 +196,9 @@ $a = $article ?: [
       <textarea name="description" class="form-control" rows="2"><?= e($a['description']) ?></textarea>
     </div>
     <div class="form-group">
-      <label>Quantité en stock</label>
-      <input type="number" step="any" name="quantite_stock" class="form-control" value="<?= e((string)$a['quantite_stock']) ?>">
+      <label>Stock physique calculé</label>
+      <input type="text" class="form-control" readonly value="<?= e(rtrim(rtrim(number_format((float)$a['quantite_stock'], 3, '.', ''), '0'), '.')) ?> <?= e($a['unite'] ?: 'u') ?>">
+      <small class="text-muted">Le stock est désormais piloté par les mouvements, pas par une saisie directe.</small>
     </div>
     <div class="form-group">
       <label>Seuil minimum (alerte)</label>
@@ -247,6 +264,33 @@ $a = $article ?: [
 </form>
 
 <?php if ($article): ?>
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Stock physique par emplacement</h3>
+  <?php if (empty(array_filter($locationsStock, static fn($l) => abs((float)$l['quantite']) > 0.000001))): ?>
+    <p class="text-muted text-sm">Aucun stock affecté à un emplacement.</p>
+  <?php else: ?>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
+      <?php foreach ($locationsStock as $loc): if (abs((float)$loc['quantite']) < 0.000001) continue; ?>
+        <div style="padding:.75rem;border:1px solid var(--border-color,#ddd);border-radius:.5rem;">
+          <strong><?= e($loc['nom']) ?></strong><br>
+          <span class="text-muted text-xs"><?= e($loc['chemin']) ?></span><br>
+          <span><?= e(rtrim(rtrim(number_format((float)$loc['quantite'],3,'.',''),'0'),'.')) ?> <?= e($article['unite'] ?: 'u') ?></span>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+</div>
+
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Journal des mouvements</h3>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Qté</th><th>Source</th><th>Destination</th><th>Projet</th><th>Note</th></tr></thead><tbody>
+  <?php foreach($mouvements as $m): ?>
+    <tr><td class="text-sm"><?= e($m['created_at']) ?></td><td><?= e(str_replace('_',' ',$m['type'])) ?></td><td><?= e((string)$m['quantite']) ?></td><td><?= e($m['source_nom'] ?: '—') ?></td><td><?= e($m['destination_nom'] ?: '—') ?></td><td><?= e($m['projet_id'] ? (string)$m['projet_id'] : '—') ?></td><td><?= e($m['note'] ?: '') ?></td></tr>
+  <?php endforeach; ?>
+  <?php if(!$mouvements): ?><tr><td colspan="7" class="text-muted">Aucun mouvement.</td></tr><?php endif; ?>
+  </tbody></table></div>
+</div>
+
 <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
   <h3 style="margin:0 0 1rem;font-size:1rem;">Projets ayant utilisé cette référence</h3>
   <?php if (empty($usages)): ?>
