@@ -63,9 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('projet.php?id=' . $id . '&view=' . $redirView . ($redirView === 'processus' ? '&step=' . $currentStep : ''));
     }
     if ($action === 'set_step') {
-        $n = r1bClampStep((int)($_POST['step'] ?? 0));
-        $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$n, $id]);
-        setFlash('success', 'Étape mise à jour.');
+        // La navigation ne valide ni ne modifie l'avancement du projet.
+        $n = r1bClampStep((int)($_POST['step'] ?? $progressStep));
         redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
     }
     if ($action === 'save_cadrage') {
@@ -166,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setFlash('success', 'Décision enregistrée : GO');
             } elseif ($decision === 'CONFORME') {
                 // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
-                $next = r1bClampStep($currentStep + 1);
+                $next = max($progressStep, r1bClampStep($currentStep + 1));
                 if ($currentStep >= 7 || $next === 8) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
                        ->execute(['termine', $id]);
@@ -177,13 +176,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setFlash('success', 'Décision enregistrée : CONFORME');
                 }
             } elseif ($decision === 'DONE') {
-                $validated = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
-                if (!is_array($validated)) $validated = [];
+                $validated = $validatedSteps;
                 $validated[] = $currentStep;
                 $validated = array_values(array_unique(array_map('intval', $validated)));
                 sort($validated);
                 $validatedJson = json_encode($validated);
-                $next = r1bClampStep($currentStep + 1);
+                $next = max($progressStep, r1bClampStep($currentStep + 1));
                 if ($next === 8) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
                        ->execute(['termine', $validatedJson, $id]);
