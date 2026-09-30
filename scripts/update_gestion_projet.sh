@@ -32,7 +32,9 @@ echo "      Sauvegarde : $BACKUP_FILE"
 echo
 
 echo "[2/7] Récupération de GitHub..."
-sudo -u www-data git fetch origin
+# Force the requested remote-tracking branch to refresh, including after
+# rewritten history or when the local origin/<branch> ref is stale.
+sudo -u www-data git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 echo
 
 echo "[3/7] Vérification de la branche..."
