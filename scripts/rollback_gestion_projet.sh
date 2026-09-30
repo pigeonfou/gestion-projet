@@ -23,6 +23,12 @@ echo
 
 cd "$PROJECT_DIR"
 
+# Toutes les opérations Git sont exécutées par www-data. Répare les droits
+# d'un dépôt anciennement manipulé par root avant toute opération Git.
+chown -R www-data:www-data "$PROJECT_DIR/.git"
+find "$PROJECT_DIR/.git" -type d -exec chmod u+rwx,go+rx {} +
+find "$PROJECT_DIR/.git" -type f -exec chmod u+rw,go+r {} +
+
 echo "[1/8] Vérification de l'état Git..."
 echo
 
