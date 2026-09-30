@@ -37,7 +37,9 @@ sudo -u www-data git log -1 --oneline
 echo
 
 echo "[2/8] Récupération de la branche..."
-sudo -u www-data git fetch origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+# Force the requested remote-tracking branch to refresh, including after
+# rewritten history or when the local origin/<branch> ref is stale.
+sudo -u www-data git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 
 if ! sudo -u www-data git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
     echo "ERREUR : la branche 'origin/$BRANCH' n'existe pas."
