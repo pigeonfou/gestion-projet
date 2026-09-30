@@ -119,6 +119,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=4');
     }
+    if ($action === 'create_purchase_tasks') {
+        try {
+            ensureTachesExtendedColumns();
+            $selected = $_POST['purchase_create'] ?? [];
+            $assignees = $_POST['purchase_assignee'] ?? [];
+            $payloads = $_POST['purchase_payload'] ?? [];
+            if (!is_array($selected)) $selected = [];
+            if (!is_array($assignees)) $assignees = [];
+            if (!is_array($payloads)) $payloads = [];
+
+            $validUsers = $db->query('SELECT identifiant FROM utilisateurs')->fetchAll(PDO::FETCH_COLUMN);
+            $validUsers = array_flip(array_map('strval', $validUsers));
+            $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
+            $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE projet_id=? AND source_key=?');
+            $find = $db->prepare('SELECT id FROM taches WHERE projet_id=? AND source_key=? LIMIT 1');
+            $created = 0; $updated = 0;
+
+            foreach ($selected as $key) {
+                $key = (string)$key;
+                if (!isset($payloads[$key])) continue;
+                $p = json_decode(base64_decode((string)$payloads[$key], true) ?: '', true);
+                if (!is_array($p)) continue;
+                $stId = trim((string)($p['st_id'] ?? ''));
+                $itemId = trim((string)($p['item_id'] ?? ''));
+                if ($stId === '' || $itemId === '') continue;
+                $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
+                $assignee = trim((string)($assignees[$key] ?? ''));
+                if ($assignee !== '' && !isset($validUsers[$assignee])) $assignee = '';
+
+                $designation = trim((string)($p['designation'] ?? ''));
+                $reference = trim((string)($p['reference'] ?? ''));
+                $fournisseur = trim((string)($p['fournisseur'] ?? ''));
+                $qty = (float)($p['quantite'] ?? 0);
+                $cu = (float)($p['cout_unitaire'] ?? 0);
+                $tax = (($p['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
+                $total = round($qty * $cu, 2);
+                $titre = '[ACHAT ' . $stId . '/' . $itemId . '] ' . ($designation !== '' ? $designation : ($reference !== '' ? $reference : 'Composant / matériel'));
+                $description = implode("\n", array_filter([
+                    'S.T. : ' . $stId,
+                    'Ligne : ' . $itemId,
+                    $reference !== '' ? 'Référence : ' . $reference : '',
+                    $fournisseur !== '' ? 'Fournisseur : ' . $fournisseur : '',
+                    'Quantité : ' . rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.'),
+                    'Coût unitaire : ' . number_format($cu, 2, ',', ' ') . ' € ' . $tax,
+                    'Coût total estimé : ' . number_format($total, 2, ',', ' ') . ' € ' . $tax,
+                ]));
+
+                $find->execute([$id, $sourceKey]);
+                if ($find->fetchColumn()) {
+                    $upd->execute([$titre, $description, $assignee !== '' ? $assignee : null, $id, $sourceKey]);
+                    $updated++;
+                } else {
+                    $ins->execute([$id, $titre, $description, 'moyenne', 'a_faire', $assignee !== '' ? $assignee : null, $sourceKey, 'a_faire']);
+                    $created++;
+                }
+            }
+            setFlash('success', "Tâches d'achat : $created créée(s), $updated mise(s) à jour.");
+        } catch (Throwable $e) {
+            setFlash('error', "Erreur lors de la génération des tâches d'achat : " . $e->getMessage());
+        }
+        redirect('projet.php?id=' . $id . '&view=processus&step=5');
+    }
     if ($action === 'update_task_status') {
         ensureTachesExtendedColumns();
         $tid = (int)($_POST['task_id'] ?? 0);
@@ -166,15 +228,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    ->execute(['GO', max($progressStep, 4), 'actif', json_encode($validated), $id]);
                 setFlash('success', 'Décision enregistrée : GO');
             } elseif ($decision === 'CONFORME') {
-                // Le bouton Conforme est l'acte explicite de validation des étapes 6/7.
+                // Le bouton Conforme est l'acte explicite de validation des étapes 7/8.
                 $validated = $validatedSteps; $validated[] = $currentStep;
                 $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
                 $validatedJson = json_encode($validated);
                 $next = max($progressStep, r1bClampStep($currentStep + 1));
-                if ($currentStep >= 7 || $next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
+                if ($currentStep >= 8 || $next === 9) {
+                    $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
                        ->execute(['termine', $validatedJson, $id]);
-                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
+                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 9).');
                 } else {
                     $db->prepare('UPDATE projets SET current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
                        ->execute([$next, 'actif', $validatedJson, $id]);
@@ -187,10 +249,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sort($validated);
                 $validatedJson = json_encode($validated);
                 $next = max($progressStep, r1bClampStep($currentStep + 1));
-                if ($next === 8) {
+                if ($next === 9) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
                        ->execute(['termine', $validatedJson, $id]);
-                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 8).');
+                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 9).');
                 } else {
                     $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
                     setFlash('success', 'Étape validée.');
@@ -239,7 +301,7 @@ $ncEnabled = false;
 $needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true);
 $needDocs = in_array($view, ['dashboard', 'documents'], true);
 $needJalons = $view === 'dashboard';
-$needUsers = $view === 'processus' && $currentStep === 4;
+$needUsers = $view === 'processus' && in_array($currentStep, [4, 5], true);
 
 if ($needTasks) {
     ensureTachesExtendedColumns();
@@ -280,7 +342,7 @@ if ($needUsers) {
 
 $pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
-$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [6, 7], true) ? 1 : 0;
+$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [7, 8], true) ? 1 : 0;
 
 $pageTitle = $projet['nom'];
 $useAppShell = true;
@@ -850,6 +912,85 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php endif; ?>
 
         <?php elseif ($currentStep === 5): ?>
+          <?php
+            $purchaseRows = [];
+            $composantsAchat = $specs['composants_st'] ?? [];
+            $techAchat = $specs['specs_techniques'] ?? [];
+            $techAchatById = [];
+            foreach ($techAchat as $ta) if (!empty($ta['id'])) $techAchatById[$ta['id']] = $ta;
+            foreach ($composantsAchat as $stId => $items) {
+                if (($techAchatById[$stId]['type'] ?? '') !== 'Matériel' || !is_array($items)) continue;
+                foreach ($items as $it) {
+                    if (!is_array($it)) continue;
+                    $itemId = trim((string)($it['id'] ?? ''));
+                    if ($itemId === '') continue;
+                    $purchaseRows[] = ['st_id' => $stId, 'st_description' => $techAchatById[$stId]['description'] ?? '', 'item' => $it];
+                }
+            }
+            $purchaseTasks = [];
+            foreach ($tachesAll as $pt) {
+                $sk = (string)($pt['source_key'] ?? '');
+                if (str_starts_with($sk, 'achat:' . $id . ':')) $purchaseTasks[$sk] = $pt;
+            }
+          ?>
+          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Liste des achats issus de l'étape 4</h4>
+          <p class="text-sm text-muted mb-3">Sélectionnez les composants ou matériels à commander, affectez un utilisateur puis générez les tâches d'achat. Une tâche existante est mise à jour plutôt que dupliquée.</p>
+          <?php if (empty($purchaseRows)): ?>
+            <div class="r1b-info-box">Aucune ligne Matériel renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
+          <?php else: ?>
+            <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=5') ?>">
+              <?= csrfField() ?>
+              <input type="hidden" name="action" value="create_purchase_tasks">
+              <div class="sf-table-wrap">
+                <table class="sf-table">
+                  <thead><tr>
+                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Affecter à</th><th>État tâche</th>
+                  </tr></thead>
+                  <tbody>
+                  <?php foreach ($purchaseRows as $pr): ?>
+                    <?php
+                      $it = $pr['item']; $stId = $pr['st_id']; $itemId = (string)$it['id'];
+                      $rowKey = preg_replace('/[^A-Za-z0-9_.-]/', '_', $stId . '__' . $itemId);
+                      $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
+                      $existingTask = $purchaseTasks[$sourceKey] ?? null;
+                      $tax = (($it['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
+                      $total = (float)($it['quantite'] ?? 0) * (float)($it['cout_unitaire'] ?? 0);
+                      $payload = base64_encode(json_encode([
+                        'st_id'=>$stId,'item_id'=>$itemId,'designation'=>$it['designation'] ?? '',
+                        'reference'=>$it['reference'] ?? '','fournisseur'=>$it['fournisseur'] ?? '',
+                        'quantite'=>$it['quantite'] ?? 0,'cout_unitaire'=>$it['cout_unitaire'] ?? 0,
+                        'cout_unitaire_taxe'=>$tax
+                      ], JSON_UNESCAPED_UNICODE));
+                    ?>
+                    <tr>
+                      <td><input type="checkbox" name="purchase_create[]" value="<?= e($rowKey) ?>" <?= $existingTask ? 'checked' : '' ?>></td>
+                      <td><strong><?= e($stId) ?></strong><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
+                      <td><?= e($itemId) ?></td>
+                      <td><?= e($it['designation'] ?? '—') ?></td>
+                      <td><?= e($it['reference'] ?? '—') ?></td>
+                      <td><?= e($it['fournisseur'] ?? '—') ?></td>
+                      <td><?= e((string)($it['quantite'] ?? '0')) ?></td>
+                      <td><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
+                      <td>
+                        <select name="purchase_assignee[<?= e($rowKey) ?>]" class="form-control">
+                          <option value="">— Non affectée —</option>
+                          <?php foreach ($utilisateursListe as $u): ?>
+                            <option value="<?= e($u['identifiant']) ?>" <?= (($existingTask['assigne_a'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <input type="hidden" name="purchase_payload[<?= e($rowKey) ?>]" value="<?= e($payload) ?>">
+                      </td>
+                      <td><?= $existingTask ? e(statutLabel($existingTask['statut'] ?? 'a_faire')) : '<span class="text-muted">Non créée</span>' ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+              <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-shopping-cart"></i> Générer / mettre à jour les tâches d'achat</button>
+            </form>
+          <?php endif; ?>
+
+        <?php elseif ($currentStep === 8): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
@@ -859,22 +1000,22 @@ function stepClass(int $n, int $displayed, array $validated): string
             </div>
           <?php endforeach; ?>
 
-        <?php elseif ($currentStep === 6): ?>
+        <?php elseif ($currentStep === 7): ?>
           <p class="text-sm text-muted mb-2">Tests de conformité.</p>
           <div class="r1b-info-box">Validez la conformité ou signalez une non-conformité pour reboucler.</div>
 
-        <?php elseif ($currentStep === 7): ?>
+        <?php elseif ($currentStep === 8): ?>
           <p class="text-sm text-muted mb-2">Livraison à la direction générale.</p>
           <ul class="r1b-list">
             <li>Dossier technique complet</li>
             <li>Rapport de tests</li>
             <li>CDC validé</li>
           </ul>
-          <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 8).</div>
+          <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 9).</div>
 
         <?php else: ?>
           <div class="r1b-info-box" style="border-color:#a7f3d0;background:#ecfdf5;color:#065f46;">
-            <strong>Archivage validé / vente</strong> (étape 8) — suite à une conformité / livraison DG.
+            <strong>Archivage validé / vente</strong> (étape 9) — suite à une conformité / livraison DG.
             <br><span class="text-sm">Distinct de l’abandon NO GO resté à l’étape 3.</span>
           </div>
         <?php endif; ?>
@@ -938,7 +1079,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="decision" value="NON_CONFORME">
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
-          <?php elseif ($currentStep > 0 && $currentStep < 8 && $goDecision !== 'NO_GO'): ?>
+          <?php elseif ($currentStep > 0 && $currentStep < 9 && $goDecision !== 'NO_GO'): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
