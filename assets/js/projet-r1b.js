@@ -17,6 +17,24 @@
     const sfNum = block.getAttribute('data-sf-num');
     const sfId = block.getAttribute('data-sf');
 
+    function parseStCost(value) {
+      return parseFloat(String(value || '').replace(',', '.')) || 0;
+    }
+
+    function recalcSfCost() {
+      let ht = 0, ttc = 0;
+      body.querySelectorAll('.st-row').forEach(row => {
+        const cost = parseStCost((row.querySelector('.st-cost') || {}).value);
+        const tax = (row.querySelector('.st-tax') || {}).value || 'HT';
+        if (tax === 'TTC') ttc += cost; else ht += cost;
+      });
+      const out = block.querySelector('.sf-cost-value');
+      if (out) {
+        out.textContent = ht.toFixed(2).replace('.', ',') + ' € HT' +
+          (ttc > 0 ? ' + ' + ttc.toFixed(2).replace('.', ',') + ' € TTC' : '');
+      }
+    }
+
     function bindDel(btn) {
       btn.addEventListener('click', () => {
         const rows = body.querySelectorAll('.st-row');
@@ -24,11 +42,17 @@
           const row = rows[0];
           row.querySelector('input[type="text"]').value = '';
           row.querySelector('select').value = 'Matériel';
+          const cost = row.querySelector('.st-cost');
+          if (cost) cost.value = '0';
+          const tax = row.querySelector('.st-tax');
+          if (tax) tax.value = 'HT';
           renumberBlock(block);
+          recalcSfCost();
           return;
         }
         btn.closest('.st-row').remove();
         renumberBlock(block);
+        recalcSfCost();
       });
     }
     body.querySelectorAll('.btn-st-del').forEach(bindDel);
@@ -55,9 +79,17 @@
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
         renumberBlock(block);
+        recalcSfCost();
       });
     }
 
+    body.addEventListener('input', e => {
+      if (e.target.matches('.st-cost')) recalcSfCost();
+    });
+    body.addEventListener('change', e => {
+      if (e.target.matches('.st-tax')) recalcSfCost();
+    });
+    recalcSfCost();
 
   });
 })();
