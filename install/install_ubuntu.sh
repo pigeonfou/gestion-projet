@@ -44,6 +44,9 @@ install_packages(){
   php -v | head -n 1; apache2 -v | head -n 1; git --version
 }
 deploy_application(){
+  # Le code est ensuite détenu par www-data pour l’exécution Apache. Git doit
+  # donc explicitement considérer ce dépôt comme sûr lorsqu’il est relu par root.
+  git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
   if [[ -d "$APP_DIR/.git" ]]; then
     warn "Dépôt existant détecté dans $APP_DIR : mise à jour vers origin/$BRANCH."
     git -C "$APP_DIR" fetch origin
