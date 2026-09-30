@@ -33,6 +33,7 @@ function runSchemaMigrations(): void
         'cadrage_technique' => 'INTEGER DEFAULT 0',
         'cadrage_destination' => 'TEXT',
         'validated_steps' => "TEXT DEFAULT '[]'",
+        'r1b_purchase_step_migrated' => 'INTEGER DEFAULT 0',
     ];
     foreach ($projetCols as $col => $def) {
         if (!in_array($col, $pcols, true)) {
@@ -71,6 +72,21 @@ function runSchemaMigrations(): void
         date_upload DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
     )");
+
+    // Migration R1B : insertion de l'étape 5 "Achat composants & matériels".
+    // Les projets existants positionnés à partir de l'ancienne étape 5 sont décalés d'un rang.
+    $pm = $db->query("SELECT id, current_step, validated_steps FROM projets WHERE COALESCE(r1b_purchase_step_migrated,0)=0")->fetchAll(PDO::FETCH_ASSOC);
+    $updPm = $db->prepare('UPDATE projets SET current_step=?, validated_steps=?, r1b_purchase_step_migrated=1 WHERE id=?');
+    foreach ($pm as $pr) {
+        $cs = (int)($pr['current_step'] ?? 1);
+        if ($cs >= 5) $cs++;
+        $vs = json_decode((string)($pr['validated_steps'] ?? '[]'), true);
+        if (!is_array($vs)) $vs = [];
+        $vs = array_map(static fn($n) => ((int)$n >= 5 ? (int)$n + 1 : (int)$n), $vs);
+        $vs = array_values(array_unique($vs));
+        sort($vs);
+        $updPm->execute([$cs, json_encode($vs), (int)$pr['id']]);
+    }
 
     // Tâches étendues
     $tcols = $db->query('PRAGMA table_info(taches)')->fetchAll(PDO::FETCH_COLUMN, 1);
