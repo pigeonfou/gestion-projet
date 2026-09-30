@@ -187,6 +187,7 @@
 
 .cp-cost-cell { display: flex; gap: .25rem; align-items: center; }
 .cp-cost-cell input { flex: 1; min-width: 0; }
+.cp-cost-cell .cp-unit { min-width: 7rem; text-align: right; font-variant-numeric: tabular-nums; }
 .cp-cost-cell select.cp-taxe { width: 4.2rem; flex-shrink: 0; font-size: .75rem; padding: .25rem; }
 .cp-cost-cell .cp-total { min-width: 5.5rem; text-align: right; }
 .cp-cost-cell .cp-total-taxe { width: 3.4rem; min-width: 3.4rem; flex: 0 0 3.4rem; display: inline-flex; align-items: center; justify-content: center; padding: .25rem; background: #f3f4f6; cursor: default; }
