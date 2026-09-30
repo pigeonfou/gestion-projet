@@ -32,6 +32,7 @@ function runSchemaMigrations(): void
         'cadrage_commerciale' => 'INTEGER DEFAULT 0',
         'cadrage_technique' => 'INTEGER DEFAULT 0',
         'cadrage_destination' => 'TEXT',
+        'validated_steps' => "TEXT DEFAULT '[]'",
     ];
     foreach ($projetCols as $col => $def) {
         if (!in_array($col, $pcols, true)) {
