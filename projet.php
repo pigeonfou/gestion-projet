@@ -27,7 +27,15 @@ if (!$projet) {
     redirect('projets.php');
 }
 
-$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+$progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
+$validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
+if (!is_array($validatedSteps)) $validatedSteps = [];
+$validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
+// Compatibilité des projets existants : les étapes déjà franchies restent validées.
+if (empty($validatedSteps) && $progressStep > 1) {
+    $validatedSteps = range(1, $progressStep - 1);
+}
+$currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
@@ -160,8 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
                 $next = r1bClampStep($currentStep + 1);
                 if ($currentStep >= 7 || $next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
-                       ->execute(['termine', $id]);
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute(['termine', $validatedJson, $id]);
                     setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
                 } else {
                     $db->prepare('UPDATE projets SET current_step = ?, status = ? WHERE id = ?')
@@ -169,14 +177,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setFlash('success', 'Décision enregistrée : CONFORME');
                 }
             } elseif ($decision === 'DONE') {
+                $validated = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
+                if (!is_array($validated)) $validated = [];
+                $validated[] = $currentStep;
+                $validated = array_values(array_unique(array_map('intval', $validated)));
+                sort($validated);
+                $validatedJson = json_encode($validated);
                 $next = r1bClampStep($currentStep + 1);
                 if ($next === 8) {
                     $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
                        ->execute(['termine', $id]);
                     setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 8).');
                 } else {
-                    $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$next, $id]);
-                    setFlash('success', 'Décision enregistrée : DONE');
+                    $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
+                    setFlash('success', 'Étape validée.');
                 }
             } elseif ($decision === 'NON_CONFORME') {
                 $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([r1bClampStep($currentStep - 1), $id]);
@@ -190,7 +204,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Reload after possible updates
 $stmt->execute([$id]);
 $projet = $stmt->fetch();
-$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+$progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
+$validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
+if (!is_array($validatedSteps)) $validatedSteps = [];
+$validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
+if (empty($validatedSteps) && $progressStep > 1) $validatedSteps = range(1, $progressStep - 1);
+$currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
@@ -256,7 +275,7 @@ if ($needUsers) {
 }
 
 
-$pct = (int)round(($currentStep / r1bMaxStep()) * 100);
+$pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
 $validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [6, 7], true) ? 1 : 0;
 
@@ -264,14 +283,10 @@ $pageTitle = $projet['nom'];
 $useAppShell = true;
 require __DIR__ . '/includes/header.php';
 
-function stepClass(int $n, int $current): string
+function stepClass(int $n, int $displayed, array $validated): string
 {
-    if ($n < $current) {
-        return 'r1b-step done';
-    }
-    if ($n === $current) {
-        return 'r1b-step active';
-    }
+    if (in_array($n, $validated, true)) return 'r1b-step done';
+    if ($n === $displayed) return 'r1b-step active';
     return 'r1b-step';
 }
 
@@ -344,8 +359,8 @@ function stepClass(int $n, int $current): string
             <div class="dash-steps">
               <?php foreach ($steps as $n => $s): ?>
                 <?php
-                $done = $n < $currentStep;
-                $active = $n === $currentStep;
+                $done = in_array((int)$n, $validatedSteps, true);
+                $active = !$done && $n === $progressStep;
                 $cls = $done ? 'done' : ($active ? 'active' : '');
                 ?>
                 <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="dash-step <?= $cls ?>">
@@ -366,7 +381,7 @@ function stepClass(int $n, int $current): string
               <div class="dash-progress-fill" style="width:<?= $pct ?>%"></div>
             </div>
             <p class="text-muted text-sm mt-2">
-              Étape actuelle : <strong><?= e($steps[$currentStep]['title'] ?? '') ?></strong>
+              Étape actuelle : <strong><?= e($steps[$progressStep]['title'] ?? '') ?></strong>
               <?php if (!empty($projet['go_decision'])): ?>
                 · Décision GO/NO GO : <strong><?= e($projet['go_decision']) ?></strong>
               <?php endif; ?>
@@ -484,9 +499,9 @@ function stepClass(int $n, int $current): string
       <div class="r1b-stepper-wrap">
         <div class="r1b-stepper">
           <?php $firstStep = true; foreach ($steps as $n => $s): ?>
-            <?php if (!$firstStep): ?><div class="r1b-step-line <?= $n <= $currentStep ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
-            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep) ?>">
-              <div class="r1b-step-circle"><?= $n < $currentStep ? '✓' : $n ?></div>
+            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $validatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>">
+              <div class="r1b-step-circle"><?= in_array((int)$n, $validatedSteps, true) ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
             </a>
           <?php endforeach; ?>
@@ -579,6 +594,11 @@ function stepClass(int $n, int $current): string
                   if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
                   $sfNum = (int)$mSf[1];
                   $rows = $techBySf[$sfId] ?? [];
+                  $sfCostHT = 0.0; $sfCostTTC = 0.0;
+                  foreach ($rows as $costRow) {
+                      $v = (float)($costRow['cout_estime'] ?? 0);
+                      if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
+                  }
                   if (empty($rows)) {
                       $rows = [['id' => 'S.T.' . $sfNum . '.1', 'description' => '', 'type' => 'Matériel']];
                   }
@@ -590,6 +610,10 @@ function stepClass(int $n, int $current): string
                     <?php if (!empty($sf['indicateur'])): ?>
                       <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
                     <?php endif; ?>
+                    <span class="st-sf-badge">Estimation coût S.F. :
+                      <?= number_format($sfCostHT, 2, ',', ' ') ?> € HT
+                      <?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?>
+                    </span>
                   </div>
                   <div class="sf-table-wrap">
                     <table class="sf-table st-table">
@@ -598,6 +622,7 @@ function stepClass(int $n, int $current): string
                           <th style="width:5.5rem">ID</th>
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
+                          <th style="width:11rem">Estimation coût</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
@@ -616,6 +641,15 @@ function stepClass(int $n, int $current): string
                               <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
                             </select>
+                          </td>
+                          <td>
+                            <div class="cp-cost-cell">
+                              <input type="number" min="0" step="0.01" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
+                              <select name="st_cout_taxe[]" class="form-control st-tax">
+                                <option value="HT" <?= (($tr['cout_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
+                                <option value="TTC" <?= (($tr['cout_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
+                              </select>
+                            </div>
                           </td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
