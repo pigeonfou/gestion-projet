@@ -70,11 +70,34 @@
     });
   }
 
+  function parseDecimal(value) {
+    return parseFloat(String(value || '').replace(',', '.')) || 0;
+  }
+
+  function recalcBlock(block) {
+    let ht = 0, ttc = 0;
+    block.querySelectorAll('.cp-row').forEach(row => {
+      const total = parseDecimal((row.querySelector('.cp-total') || {}).value);
+      const tax = (row.querySelector('select[name="cp_cout_unitaire_taxe[]"]') || {}).value || 'HT';
+      if (tax === 'TTC') ttc += total; else ht += total;
+    });
+    const out = block.querySelector('.cp-st-cost-value');
+    if (out) out.textContent = ht.toFixed(2).replace('.', ',') + ' € HT' + (ttc > 0 ? ' + ' + ttc.toFixed(2).replace('.', ',') + ' € TTC' : '');
+  }
+
   function recalc(row) {
-    const qty = parseFloat((row.querySelector('.cp-qty') || {}).value) || 0;
-    const unit = parseFloat((row.querySelector('.cp-unit') || {}).value) || 0;
+    const qty = parseDecimal((row.querySelector('.cp-qty') || {}).value);
+    const unit = parseDecimal((row.querySelector('.cp-unit') || {}).value);
     const tot = row.querySelector('.cp-total');
     if (tot) tot.value = (qty * unit).toFixed(2);
+    const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
+    const totalTax = row.querySelector('.cp-total-taxe');
+    const totalTaxInput = row.querySelector('.cp-total-taxe-input');
+    const tax = unitTax ? unitTax.value : 'HT';
+    if (totalTax) totalTax.textContent = tax;
+    if (totalTaxInput) totalTaxInput.value = tax;
+    const block = row.closest('.cp-st-block');
+    if (block) recalcBlock(block);
   }
 
   document.querySelectorAll('.cp-st-block').forEach(block => {
@@ -99,16 +122,20 @@
             const tot = row.querySelector('.cp-total');
             if (tot) tot.value = '';
             renumber(block);
+            recalcBlock(block);
             return;
           }
           row.remove();
           renumber(block);
+          recalcBlock(block);
         });
       }
       const qty = row.querySelector('.cp-qty');
       const unit = row.querySelector('.cp-unit');
       if (qty) qty.addEventListener('input', () => recalc(row));
       if (unit) unit.addEventListener('input', () => recalc(row));
+      const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
+      if (unitTax) unitTax.addEventListener('change', () => recalc(row));
     }
 
     body.querySelectorAll('.cp-row').forEach(bindRow);
@@ -128,10 +155,10 @@
             '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
             '<td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value=""></td>' +
-            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
+            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" inputmode="decimal" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
             '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
             '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
-            '<select name="cp_cout_total_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div>' +
+            '<span class="form-control cp-total-taxe">HT</span><input type="hidden" name="cp_cout_total_taxe[]" value="HT" class="cp-total-taxe-input"></div>' +
             '<input type="hidden" name="cp_affectation[]" value=""><input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         } else {
@@ -154,6 +181,7 @@
         body.appendChild(tr);
         bindRow(tr);
         renumber(block);
+        recalcBlock(block);
       });
     }
   });
