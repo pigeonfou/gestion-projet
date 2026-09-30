@@ -32,9 +32,8 @@ echo "      Sauvegarde : $BACKUP_FILE"
 echo
 
 echo "[2/7] Récupération de GitHub..."
-# The leading '+' forces the remote-tracking ref to move even when the local
-# origin/<branch> ref cannot be fast-forwarded (for example after a rewritten
-# branch or when a stale remote-tracking ref exists).
+# Force the requested remote-tracking branch to refresh, including after
+# rewritten history or when the local origin/<branch> ref is stale.
 sudo -u www-data git fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 echo
 
