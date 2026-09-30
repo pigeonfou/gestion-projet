@@ -755,8 +755,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th>Référence</th>
                             <th>Fournisseur</th>
                             <th style="width:5rem">Qté</th>
-                            <th style="width:9rem">Coût unitaire</th>
-                            <th style="width:9rem">Coût total</th>
+                            <th style="width:12rem;min-width:12rem">Coût unitaire</th>
+                            <th style="width:10.5rem;min-width:10.5rem">Coût total</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
