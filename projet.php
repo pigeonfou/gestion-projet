@@ -181,42 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=5');
     }
-    if ($action === 'create_purchase_tasks') {
-        try {
-            ensureTachesExtendedColumns();
-            $selected = is_array($_POST['purchase_create'] ?? null) ? $_POST['purchase_create'] : [];
-            $assignees = is_array($_POST['purchase_assignee'] ?? null) ? $_POST['purchase_assignee'] : [];
-            $payloads = is_array($_POST['purchase_payload'] ?? null) ? $_POST['purchase_payload'] : [];
-            $validUsers = array_flip(array_map('strval', $db->query('SELECT identifiant FROM utilisateurs')->fetchAll(PDO::FETCH_COLUMN)));
-            $find = $db->prepare('SELECT id FROM taches WHERE projet_id=? AND source_key=? LIMIT 1');
-            $ins = $db->prepare('INSERT INTO taches (projet_id,titre,description,priorite,statut,assigne_a,source_key,kanban_status) VALUES (?,?,?,?,?,?,?,?)');
-            $upd = $db->prepare('UPDATE taches SET titre=?,description=?,assigne_a=? WHERE projet_id=? AND source_key=?');
-            $created=0; $updated=0;
-            foreach ($selected as $key) {
-                $key=(string)$key;
-                $p=json_decode(base64_decode((string)($payloads[$key] ?? ''),true) ?: '',true);
-                if (!is_array($p)) continue;
-                $st=trim((string)($p['st_id']??'')); $item=trim((string)($p['item_id']??''));
-                if ($st==='' || $item==='') continue;
-                $source='achat:'.$id.':'.$st.':'.$item;
-                $ass=trim((string)($assignees[$key]??''));
-                if ($ass!=='' && !isset($validUsers[$ass])) $ass='';
-                $des=trim((string)($p['designation']??'')); $ref=trim((string)($p['reference']??''));
-                $four=trim((string)($p['fournisseur']??'')); $qty=(float)($p['quantite']??0); $cu=(float)($p['cout_unitaire']??0);
-                $tax=(($p['cout_unitaire_taxe']??'HT')==='TTC')?'TTC':'HT'; $total=round($qty*$cu,2);
-                $titre='[ACHAT '.$st.'/'.$item.'] '.($des!==''?$des:($ref!==''?$ref:'Composant / matériel'));
-                $desc=implode("\n",array_filter(['S.T. : '.$st,'Ligne : '.$item,$ref!==''?'Référence : '.$ref:'',$four!==''?'Fournisseur : '.$four:'',
-                    'Quantité : '.rtrim(rtrim(number_format($qty,3,'.',''),'0'),'.'),
-                    'Coût unitaire : '.number_format($cu,2,',',' ').' € '.$tax,
-                    'Coût total estimé : '.number_format($total,2,',',' ').' € '.$tax]));
-                $find->execute([$id,$source]);
-                if ($find->fetchColumn()) { $upd->execute([$titre,$desc,$ass!==''?$ass:null,$id,$source]); $updated++; }
-                else { $ins->execute([$id,$titre,$desc,'moyenne','a_faire',$ass!==''?$ass:null,$source,'a_faire']); $created++; }
-            }
-            setFlash('success',"Tâches d'achat : $created créée(s), $updated mise(s) à jour.");
-        } catch (Throwable $e) { setFlash('error',"Erreur lors de la génération des tâches d'achat : ".$e->getMessage()); }
-        redirect('projet.php?id='.$id.'&view=processus&step=5');
-    }
     if ($action === 'update_task_status') {
         ensureTachesExtendedColumns();
         $tid = (int)($_POST['task_id'] ?? 0);
