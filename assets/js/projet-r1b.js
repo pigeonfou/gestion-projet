@@ -111,7 +111,7 @@
     const qty = parseDecimal((row.querySelector('.cp-qty') || {}).value);
     const unit = parseDecimal((row.querySelector('.cp-unit') || {}).value);
     const tot = row.querySelector('.cp-total');
-    if (tot) tot.value = (qty * unit).toFixed(2);
+    if (tot) tot.value = (qty * unit).toFixed(2).replace('.', ',') + ' €';
     const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
     const totalTax = row.querySelector('.cp-total-taxe');
     const totalTaxInput = row.querySelector('.cp-total-taxe-input');
