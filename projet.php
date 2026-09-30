@@ -1026,7 +1026,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             </form>
           <?php endif; ?>
 
-        <?php elseif ($currentStep === 8): ?>
+        <?php elseif ($currentStep === 6): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
@@ -1085,7 +1085,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="decision" value="NO_GO">
               <button type="submit" class="btn btn-danger">NO GO → Abandon</button>
             </form>
-          <?php elseif ($currentStep === 6): ?>
+          <?php elseif ($currentStep === 7): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
@@ -1100,7 +1100,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="decision" value="NON_CONFORME">
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
-          <?php elseif ($currentStep === 7): ?>
+          <?php elseif ($currentStep === 8): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
