@@ -10,7 +10,7 @@ DB_PATH="$DB_DIR/database.sqlite"
 APACHE_CONF="/etc/apache2/conf-available/projectflow.conf"
 LOG_FILE="/var/log/projectflow-install.log"
 GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; BLUE="\033[0;34m"; NC="\033[0m"
-STEP=0; TOTAL=10
+STEP=0; TOTAL=9
 mkdir -p "$(dirname "$LOG_FILE")"; touch "$LOG_FILE"; chmod 600 "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'echo -e "$RED ERREUR à l’étape $STEP/$TOTAL. Consultez $LOG_FILE$NC"' ERR
@@ -71,10 +71,10 @@ configure_database(){
   read -r -s -p "Mot de passe admin : " ADMIN_PASSWORD; echo
   if [[ -z "$ADMIN_PASSWORD" ]]; then
     info "Mot de passe aléatoire généré par le programme d'initialisation."
-    sudo -u www-data env PROJECTFLOW_DB_PATH="$DB_PATH" php "$APP_DIR/install/init_database.php"
+    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" php "$APP_DIR/install/init_database.php"
   else
     [[ ${#ADMIN_PASSWORD} -ge 12 ]] || die "Le mot de passe doit comporter au moins 12 caractères."
-    sudo -u www-data env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
+    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
   fi
   unset ADMIN_PASSWORD
   chmod 660 "$DB_PATH"; chown www-data:www-data "$DB_PATH"
@@ -82,8 +82,8 @@ configure_database(){
 }
 run_schema_migrations(){
   info "Exécution des migrations applicatives..."
-  sudo -u www-data env PROJECTFLOW_DB_PATH="$DB_PATH" php -r 'require $argv[1]; runSchemaMigrations(); echo "Migrations OK\n";' "$APP_DIR/includes/schema.php"
-  sudo -u www-data env PROJECTFLOW_DB_PATH="$DB_PATH" php -r 'require $argv[1]; seedSettingsIfEmpty(); echo "Paramètres OK\n";' "$APP_DIR/includes/settings_helper.php"
+  runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" php -r 'require $argv[1]; runSchemaMigrations(); echo "Migrations OK\n";' "$APP_DIR/includes/schema.php"
+  runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" php -r 'require $argv[1]; seedSettingsIfEmpty(); echo "Paramètres OK\n";' "$APP_DIR/includes/settings_helper.php"
   ok "Schéma et paramètres à jour."
 }
 configure_apache(){
@@ -123,7 +123,7 @@ verify_database(){
   [[ -f "$DB_PATH" ]] || die "Base absente : $DB_PATH"
   [[ -r "$DB_PATH" && -w "$DB_PATH" ]] || die "www-data ne peut pas lire/écrire la base."
   local count
-  count=$(sudo -u www-data sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM utilisateurs;')
+  count=$(runuser -u www-data -- sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM utilisateurs;')
   [[ "$count" -ge 1 ]] || die "Aucun utilisateur dans la base."
   ok "SQLite opérationnel. Utilisateurs : $count."
 }
@@ -200,4 +200,14 @@ menu(){
     esac
   done
 }
-menu
+case "${1:-}" in
+  --install) full_install ;;
+  --verify) verify_installation ;;
+  --help|-h)
+    echo "Usage : $0 [--install|--verify]"
+    echo "  sans option : menu interactif"
+    echo "  --install   : installation complète sans menu"
+    echo "  --verify    : vérification uniquement"
+    ;;
+  *) menu ;;
+esac
