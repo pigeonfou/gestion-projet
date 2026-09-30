@@ -1,5 +1,5 @@
 <?php
-$pageTitle='Pilotage stock avancé'; $activePage='stocks';
+$pageTitle='Pilotage stock avancé'; $activePage='stock_pilotage';
 require_once __DIR__.'/includes/bootstrap.php'; require_once __DIR__.'/includes/stock/stock_helpers.php';
 requerirConnexion(); runSchemaMigrations(); $db=getDB();
 $tabs=['reservations'=>'Réservations','lots'=>'Lots & réception','unites'=>'Unités / séries','bom'=>'BOM / nomenclatures','inventaires'=>'Inventaires','environnement'=>'Environnement'];
