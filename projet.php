@@ -160,19 +160,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    ->execute(['NO_GO', 'archive', $id]);
                 setFlash('success', 'NO GO enregistré — projet archivé comme abandonné (étape 3).');
             } elseif ($decision === 'GO') {
-                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ? WHERE id = ?')
-                   ->execute(['GO', r1bClampStep($currentStep + 1), 'actif', $id]);
+                $validated = $validatedSteps; $validated[] = 3;
+                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
+                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
+                   ->execute(['GO', max($progressStep, 4), 'actif', json_encode($validated), $id]);
                 setFlash('success', 'Décision enregistrée : GO');
             } elseif ($decision === 'CONFORME') {
-                // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
+                // Le bouton Conforme est l'acte explicite de validation des étapes 6/7.
+                $validated = $validatedSteps; $validated[] = $currentStep;
+                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
+                $validatedJson = json_encode($validated);
                 $next = max($progressStep, r1bClampStep($currentStep + 1));
                 if ($currentStep >= 7 || $next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
-                       ->execute(['termine', $id]);
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute(['termine', $validatedJson, $id]);
                     setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
                 } else {
-                    $db->prepare('UPDATE projets SET current_step = ?, status = ? WHERE id = ?')
-                       ->execute([$next, 'actif', $id]);
+                    $db->prepare('UPDATE projets SET current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute([$next, 'actif', $validatedJson, $id]);
                     setFlash('success', 'Décision enregistrée : CONFORME');
                 }
             } elseif ($decision === 'DONE') {
