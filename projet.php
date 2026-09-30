@@ -168,8 +168,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
                 $next = r1bClampStep($currentStep + 1);
                 if ($currentStep >= 7 || $next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
-                       ->execute(['termine', $validatedJson, $id]);
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
+                       ->execute(['termine', $id]);
                     setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
                 } else {
                     $db->prepare('UPDATE projets SET current_step = ?, status = ? WHERE id = ?')
@@ -185,8 +185,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $validatedJson = json_encode($validated);
                 $next = r1bClampStep($currentStep + 1);
                 if ($next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
-                       ->execute(['termine', $id]);
+                    $db->prepare('UPDATE projets SET current_step = 8, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute(['termine', $validatedJson, $id]);
                     setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 8).');
                 } else {
                     $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
