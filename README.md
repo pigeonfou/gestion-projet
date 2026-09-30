@@ -11,62 +11,98 @@ Application web PHP de gestion de projets, tâches, utilisateurs et cahiers des 
 
 ---
 
-## Déploiement (fonctionne du premier coup)
+## Déploiement sur un Ubuntu fraîchement installé
 
-### 1. Mise à jour et installation des paquets
+Le dépôt contient un installateur interactif : `install/install_ubuntu.sh`.
 
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y apache2 php php-sqlite3 php-mbstring libapache2-mod-php git
-```
+### Installation recommandée
 
-### 2. Cloner le projet **dans** `/var/www/html`
+Depuis une session SSH sur un serveur Ubuntu 22.04 ou 24.04 fraîchement installé :
 
 ```bash
-cd /var/www/html
-sudo git clone https://github.com/pigeonfou/gestion-projet.git
-sudo chown -R www-data:www-data gestion-projet
-sudo chmod -R 755 gestion-projet
+sudo apt-get update
+sudo apt-get install -y curl ca-certificates
+curl -fsSL https://raw.githubusercontent.com/pigeonfou/gestion-projet/main/install/install_ubuntu.sh -o /tmp/projectflow-install.sh
+sudo bash /tmp/projectflow-install.sh
 ```
 
-### 3. Initialiser la base de données
+Le menu permet de :
 
-La base SQLite est stockée par défaut hors du DocumentRoot, dans `/var/lib/projectflow/database.sqlite`.
+1. installer/déployer la branche `main` ;
+2. vérifier une installation existante ;
+3. consulter le journal d'installation.
 
-Créez d'abord son répertoire avec les bons droits :
+Pour lancer directement l'installation sans menu :
 
 ```bash
-sudo install -d -o www-data -g www-data -m 750 /var/lib/projectflow
+sudo bash /tmp/projectflow-install.sh --install
 ```
 
-Puis initialisez la base :
+### Ce que fait l'installateur
 
-```bash
-cd /var/www/html/gestion-projet
-sudo -u www-data php install/init_database.php
+- vérifie qu'il s'agit d'Ubuntu ;
+- installe Apache 2, PHP, SQLite, Git et les extensions PHP nécessaires ;
+- clone ou met à jour `https://github.com/pigeonfou/gestion-projet.git` sur la branche `main` ;
+- installe le projet dans `/var/www/html/gestion-projet` ;
+- crée `/var/lib/projectflow` avec les droits nécessaires ;
+- initialise la base SQLite si elle n'existe pas ;
+- demande éventuellement le mot de passe initial du compte `admin` ;
+- applique les migrations du schéma et initialise les paramètres ;
+- configure Apache pour autoriser le `.htaccess` du projet ;
+- interdit l'accès HTTP au répertoire `install/` ;
+- effectue un test HTTP local ;
+- écrit le journal dans `/var/log/projectflow-install.log`.
+
+La base SQLite reste hors du DocumentRoot :
+
+```
+/var/lib/projectflow/database.sqlite
 ```
 
-Le script génère un mot de passe administrateur aléatoire. Pour fournir un mot de passe précis lors de l'installation :
+L'installateur **ne réinitialise jamais une base existante**.
 
-```bash
-sudo -u www-data env PROJECTFLOW_ADMIN_PASSWORD='votre-mot-de-passe' php install/init_database.php
-```
+### Accès
 
-### 4. Accéder à l’application
+Après installation :
 
 ```
 http://IP_DU_SERVEUR/gestion-projet/
 ```
 
-**Compte initial :** `admin` avec le mot de passe affiché par le script d'installation. Il n'existe plus de mot de passe par défaut codé dans le dépôt.
+Le compte initial est :
 
-### 5. (Optionnel) Pare-feu
+```
+identifiant : admin
+```
+
+Le mot de passe est soit celui saisi pendant l'installation, soit celui affiché une seule fois par `install/init_database.php` lorsqu'il est généré automatiquement.
+
+### Pare-feu (optionnel)
+
+Si `ufw` est installé :
 
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 'Apache Full'
 sudo ufw enable
 ```
+
+### Installation manuelle
+
+La procédure manuelle reste possible si nécessaire :
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y apache2 php php-sqlite3 php-mbstring libapache2-mod-php git
+cd /var/www/html
+sudo git clone --branch main https://github.com/pigeonfou/gestion-projet.git
+sudo chown -R www-data:www-data gestion-projet
+sudo install -d -o www-data -g www-data -m 750 /var/lib/projectflow
+cd /var/www/html/gestion-projet
+sudo -u www-data php install/init_database.php
+```
+
+Après l'initialisation manuelle, une première exécution de l'application applique les migrations du schéma. L'installateur automatique effectue cette étape immédiatement et vérifie également Apache et SQLite.
 
 ---
 
