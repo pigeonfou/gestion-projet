@@ -281,7 +281,7 @@ function parseComposantsStFromPost(array $post): array {
             $qty = (float)str_replace(',', '.', (string)($post['cp_quantite'][$i] ?? '0'));
             $cu = (float)str_replace(',', '.', (string)($post['cp_cout_unitaire'][$i] ?? '0'));
             $cuTaxe = ($post['cp_cout_unitaire_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
-            $ctTaxe = ($post['cp_cout_total_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
+            $ctTaxe = $cuTaxe;
             if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0) {
                 continue;
             }
