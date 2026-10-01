@@ -190,7 +190,7 @@ function parseSpecsTechniquesFromPost(array $post): array {
     if (!is_array($sfs) || !is_array($descs)) {
         return [];
     }
-    $allowedTypes = ['Matériel', 'Logiciel', '3D', 'PCB'];
+    $allowedTypes = ['Matériel', 'Composant', 'Prestataire', 'Logiciel', '3D', 'PCB'];
     // Group by SF keeping order
     $bySf = [];
     foreach ($sfs as $i => $sf) {
@@ -274,7 +274,7 @@ function parseComposantsStFromPost(array $post): array {
         if ($stId === '') {
             continue;
         }
-        if ($type === 'Matériel') {
+        if (in_array($type, ['Matériel', 'Composant', 'Prestataire'], true)) {
             $des = trim((string)($post['cp_designation'][$i] ?? ''));
             $ref = trim((string)($post['cp_reference'][$i] ?? ''));
             $four = trim((string)($post['cp_fournisseur'][$i] ?? ''));
@@ -286,7 +286,7 @@ function parseComposantsStFromPost(array $post): array {
                 continue;
             }
             if (!isset($bySt[$stId])) {
-                $bySt[$stId] = ['type' => 'Matériel', 'items' => []];
+                $bySt[$stId] = ['type' => $type, 'items' => []];
             }
             $bySt[$stId]['items'][] = [
                 'designation' => $des,
@@ -326,6 +326,8 @@ function parseComposantsStFromPost(array $post): array {
         $type = $pack['type'];
         $prefix = match ($type) {
             'Matériel' => 'M',
+            'Composant' => 'C',
+            'Prestataire' => 'P',
             'Logiciel' => 'L',
             '3D' => '3D',
             'PCB' => 'PCB',
@@ -489,7 +491,7 @@ function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $te
         $stId = trim((string)($tech['id'] ?? ''));
         $desc = trim((string)($tech['description'] ?? ''));
         $type = trim((string)($tech['type'] ?? 'Matériel'));
-        if ($stId === '' || $desc === '' || !in_array($type, ['Matériel', 'Logiciel', '3D', 'PCB'], true)) {
+        if ($stId === '' || $desc === '' || !in_array($type, ['Matériel', 'Composant', 'Prestataire', 'Logiciel', '3D', 'PCB'], true)) {
             continue;
         }
 
