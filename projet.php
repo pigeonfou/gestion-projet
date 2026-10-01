@@ -248,7 +248,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $validated = array_values(array_unique(array_map('intval', $validated)));
                 sort($validated);
                 $validatedJson = json_encode($validated);
-                $next = max($progressStep, r1bClampStep($currentStep + 1));
+                // L'étape 5 (Achats) a été insérée après l'étape 4.
+                // Elle doit être réellement parcourue, y compris pour un projet ancien
+                // dont current_step avait déjà été décalé vers 6+ par la migration.
+                $next = ($currentStep === 4)
+                    ? 5
+                    : max($progressStep, r1bClampStep($currentStep + 1));
                 if ($next === 9) {
                     $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
                        ->execute(['termine', $validatedJson, $id]);
