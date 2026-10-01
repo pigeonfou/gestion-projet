@@ -27,7 +27,4 @@ jobs:
           echo "=== Apache ==="
           apache2ctl -v || true
           echo
-                - name: Vérification autorisation déploiement
-        run: |
-          sudo -n -l
           echo "=== Test terminé avec succès ==="
