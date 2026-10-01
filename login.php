@@ -47,9 +47,6 @@ if (estConnecte()) {
                 <i class="fas fa-sign-in-alt"></i> Se connecter
             </button>
         </form>
-        <p class="text-muted text-sm mt-2" style="text-align:center;">
-            Compte démo : <strong>admin</strong> / <strong>admin123</strong>
-        </p>
     </div>
 </body>
 </html>
