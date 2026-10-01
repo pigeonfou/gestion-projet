@@ -123,6 +123,7 @@ require __DIR__ . '/../includes/header.php';
 ?>
 <div class="page-header">
     <h1><i class="fas fa-users"></i> Utilisateurs</h1>
+    <a href="<?= url('admin/equipe.php') ?>" class="btn btn-secondary">Créer une équipe</a>
     <a href="<?= url('admin/utilisateurs.php?action=creer') ?>" class="btn btn-primary"><i class="fas fa-user-plus"></i> Nouvel utilisateur</a>
 </div>
 <div class="card">
