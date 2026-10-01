@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
+require_once __DIR__ . '/includes/r1b_decisions.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -216,7 +217,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'decide') {
         $decision = $_POST['decision'] ?? '';
-        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
+        $motif = trim((string)($_POST['motif'] ?? $projet['step_notes'] ?? ''));
+        if (!in_array($decision, r1bAllowedDecisions($currentStep), true) || $currentStep > $progressStep) {
+            setFlash('error', 'Décision invalide pour cette étape ou étape non encore atteinte.');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $progressStep);
+        }
+        if (strlen($motif) > 10000 || (in_array($decision, ['NO_GO', 'NON_CONFORME', 'REFUSE'], true) && $motif === '')) {
+            setFlash('error', 'Un motif de refus est obligatoire (10 000 octets maximum).');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
+        }
+        try {
+        $db->beginTransaction();
+        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE', 'REFUSE'], true)) {
             if ($decision === 'NO_GO') {
                 // Archivage étape 3 (abandon) — reste à l'étape 3, ne passe PAS à l'étape 8
                 $db->prepare('UPDATE projets SET go_decision = ?, current_step = 3, status = ? WHERE id = ?')
@@ -263,15 +275,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
                     setFlash('success', 'Étape validée.');
                 }
-            } elseif ($decision === 'NON_CONFORME') {
-                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([r1bClampStep($currentStep - 1), $id]);
-                setFlash('success', 'Décision enregistrée : NON_CONFORME');
+            } elseif ($decision === 'NON_CONFORME' || $decision === 'REFUSE') {
+                $refus = r1bRefusalState($currentStep, $validatedSteps);
+                $db->prepare("UPDATE projets SET current_step = ?, validated_steps = ?, status = 'actif' WHERE id = ?")
+                    ->execute([$refus['step'], json_encode($refus['validated']), $id]);
+                setFlash('success', 'Refus enregistré. Retour à l’étape ' . $refus['step'] . ' ; les validations à partir de cette étape sont à revoir.');
             }
+        }
+        $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id) VALUES(?,?,?,?,?)')
+            ->execute([$id,$currentStep,$decision,$motif,$user['id']]);
+        $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('ProjectFlow décision R1b : ' . get_class($e));
+            setFlash('error', 'Décision non enregistrée. Réessayez après vérification du journal serveur.');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
         }
         // Après une décision/validation, afficher l'étape réellement atteinte.
         // Sans cela, le paramètre GET "step" du formulaire (ex. step=4)
         // reste actif pendant cette requête et réaffiche l'ancienne étape.
-        if (in_array($decision, ['GO', 'CONFORME', 'DONE', 'NON_CONFORME'], true)) {
+        if (in_array($decision, ['GO', 'CONFORME', 'DONE', 'NON_CONFORME', 'REFUSE'], true)) {
             $stmtNext = $db->prepare('SELECT current_step FROM projets WHERE id = ?');
             $stmtNext->execute([$id]);
             $redirectStep = r1bClampStep((int)$stmtNext->fetchColumn());
@@ -1075,6 +1098,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NO_GO">
+              <label>Motif du NO GO <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">NO GO → Abandon</button>
             </form>
           <?php elseif ($currentStep === 7): ?>
@@ -1090,6 +1114,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
+              <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
           <?php elseif ($currentStep === 8): ?>
@@ -1105,6 +1130,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
+              <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
           <?php elseif ($currentStep > 0 && $currentStep < 9 && $goDecision !== 'NO_GO'): ?>
@@ -1115,11 +1141,30 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="decision" value="DONE">
               <button type="submit" class="btn btn-primary">Valider l'étape</button>
             </form>
+            <form method="POST" action="<?= $decideAction ?>" class="mt-2">
+              <?= csrfField() ?>
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="REFUSE">
+              <label for="motif-refus">Motif du refus / corrections attendues</label>
+              <textarea id="motif-refus" name="motif" class="form-control" required maxlength="5000"></textarea>
+              <button type="submit" class="btn btn-danger">Refuser l'étape et revenir en correction</button>
+            </form>
           <?php endif; ?>
           <?php if ($currentStep > r1bMinStep()): ?>
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
           <?php endif; ?>
         </div>
+        <h4>Historique des décisions</h4>
+        <?php
+          $dq = $db->prepare('SELECT d.*, u.identifiant FROM projet_decisions d JOIN utilisateurs u ON u.id=d.utilisateur_id WHERE d.projet_id=? ORDER BY d.id DESC');
+          $dq->execute([$id]); $decisionHistory = $dq->fetchAll();
+        ?>
+        <?php if (!$decisionHistory): ?><p class="text-muted">Aucune décision enregistrée.</p><?php else: ?>
+        <div class="table-wrapper"><table><thead><tr><th>Date serveur</th><th>Étape</th><th>Décision</th><th>Acteur</th><th>Motif / résultats</th></tr></thead><tbody>
+          <?php foreach ($decisionHistory as $d): ?><tr><td><?= e($d['date_decision']) ?></td><td><?= (int)$d['etape'] ?></td><td><?= e($d['decision']) ?></td><td><?= e($d['identifiant']) ?></td><td style="white-space:pre-wrap"><?= e($d['motif']) ?></td></tr><?php endforeach; ?>
+        </tbody></table></div>
+        <?php endif; ?>
       </div>
 
     <?php elseif ($view === 'taches'): ?>

@@ -50,6 +50,9 @@ jobs:
             php -n "$test_dir/tests/nextcloud_sans_curl.php"
           fi
           php -r 'echo "cURL CLI : ", function_exists("curl_init") ? "disponible" : "absent", PHP_EOL;'
+          if [[ -f "$test_dir/tests/r1b_decisions.php" ]]; then
+            php "$test_dir/tests/r1b_decisions.php"
+          fi
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash

@@ -21,6 +21,18 @@ function runSchemaMigrations(): void
         }
     }
 
+    $db->exec("CREATE TABLE IF NOT EXISTS projet_decisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projet_id INTEGER NOT NULL,
+        etape INTEGER NOT NULL CHECK(etape BETWEEN 1 AND 9),
+        decision TEXT NOT NULL,
+        motif TEXT NOT NULL,
+        utilisateur_id INTEGER NOT NULL,
+        date_decision DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(projet_id) REFERENCES projets(id) ON DELETE CASCADE,
+        FOREIGN KEY(utilisateur_id) REFERENCES utilisateurs(id)
+    )");
+
     // Cahiers
     $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array('specs_json', $cols, true)) {
