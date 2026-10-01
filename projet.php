@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $techniques = parseSpecsTechniquesFromPost($_POST);
             saveSpecsTechniques($cid, $techniques);
 
-            // À l'étape 2, toutes les S.T. (Matériel, Logiciel, 3D, PCB)
+            // À l'étape 2, toutes les S.T. (Matériel, Composant, Prestataire, Logiciel, 3D, PCB)
             // sont synchronisées comme tâches.
             $fonctions = loadSpecs($cid)['fonctions'] ?? [];
             syncTasksFromStructuredSpecs(
@@ -766,7 +766,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             $users = $utilisateursListe ?? [];
           ?>
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Composants & affectations</h4>
-          <p class="text-sm text-muted mb-3">Pour chaque spécification technique (S.T.), ajoutez les lignes selon son type (Matériel, Logiciel, 3D, PCB).</p>
+          <p class="text-sm text-muted mb-3">Pour chaque spécification technique (S.T.), ajoutez les lignes selon son type (Matériel, Composant, Prestataire, Logiciel, 3D, PCB).</p>
           <?php if (empty($techniquesAll)): ?>
             <div class="r1b-info-box">
               <p>Aucune spécification technique définie.</p>
@@ -807,14 +807,14 @@ function stepClass(int $n, int $displayed, array $validated): string
                     <span class="st-id"><?= e($stId) ?></span>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
-                    <?php if ($stType === 'Matériel'): ?>
+                    <?php if (in_array($stType, ['Matériel', 'Composant', 'Prestataire'], true)): ?>
                       <span class="st-sf-badge cp-st-cost">Coût <?= e($stId) ?> :
                         <span class="cp-st-cost-value"><?= number_format($stCostHT, 2, ',', ' ') ?> € HT<?= $stCostTTC > 0 ? ' + ' . number_format($stCostTTC, 2, ',', ' ') . ' € TTC' : '' ?></span>
                       </span>
                     <?php endif; ?>
                   </div>
                   <div class="sf-table-wrap">
-                    <?php if ($stType === 'Matériel'): ?>
+                    <?php if (in_array($stType, ['Matériel', 'Composant', 'Prestataire'], true)): ?>
                       <table class="sf-table cp-table">
                         <thead>
                           <tr>
@@ -834,7 +834,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <td>
                               <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
                               <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
-                              <input type="hidden" name="cp_type[]" value="Matériel">
+                              <input type="hidden" name="cp_type[]" value="<?= e($stType) ?>">
                             </td>
                             <td><input type="text" name="cp_designation[]" class="form-control" value="<?= e($it['designation'] ?? '') ?>"></td>
                             <td><input type="text" name="cp_reference[]" class="form-control" value="<?= e($it['reference'] ?? '') ?>"></td>
@@ -933,7 +933,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             $techAchatById = [];
             foreach ($techAchat as $ta) if (!empty($ta['id'])) $techAchatById[$ta['id']] = $ta;
             foreach ($composantsAchat as $stId => $items) {
-                if (($techAchatById[$stId]['type'] ?? '') !== 'Matériel' || !is_array($items)) continue;
+                if (!in_array(($techAchatById[$stId]['type'] ?? ''), ['Matériel', 'Composant', 'Prestataire'], true) || !is_array($items)) continue;
                 foreach ($items as $it) {
                     if (!is_array($it)) continue;
                     $itemId = trim((string)($it['id'] ?? ''));
@@ -950,7 +950,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Liste des achats issus de l'étape 4</h4>
           <p class="text-sm text-muted mb-3">Sélectionnez les composants ou matériels à commander, affectez un utilisateur puis générez les tâches d'achat. Une tâche existante est mise à jour plutôt que dupliquée.</p>
           <?php if (empty($purchaseRows)): ?>
-            <div class="r1b-info-box">Aucune ligne Matériel renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
+            <div class="r1b-info-box">Aucune ligne Matériel, Composant ou Prestataire renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
           <?php else: ?>
             <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=5') ?>">
               <?= csrfField() ?>
