@@ -69,6 +69,8 @@
           '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
           '<td><select name="st_type[]" class="form-control">' +
             '<option value="Matériel" selected>Matériel</option>' +
+            '<option value="Composant">Composant</option>' +
+            '<option value="Prestataire">Prestataire</option>' +
             '<option value="Logiciel">Logiciel</option>' +
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
