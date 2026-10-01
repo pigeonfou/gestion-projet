@@ -262,6 +262,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setFlash('success', 'Décision enregistrée : NON_CONFORME');
             }
         }
+        // Après une décision/validation, afficher l'étape réellement atteinte.
+        // Sans cela, le paramètre GET "step" du formulaire (ex. step=4)
+        // reste actif pendant cette requête et réaffiche l'ancienne étape.
+        if (in_array($decision, ['GO', 'CONFORME', 'DONE', 'NON_CONFORME'], true)) {
+            $stmtNext = $db->prepare('SELECT current_step FROM projets WHERE id = ?');
+            $stmtNext->execute([$id]);
+            $redirectStep = r1bClampStep((int)$stmtNext->fetchColumn());
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $redirectStep);
+        }
         redirect('projet.php?id=' . $id . '&view=processus');
     }
 }
