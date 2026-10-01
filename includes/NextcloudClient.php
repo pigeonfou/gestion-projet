@@ -20,6 +20,10 @@ class NextcloudClient {
     }
 
     private function request(string $method, string $path, $body = null, array $headers = []): array {
+        if (!function_exists('curl_init')) {
+            return ['code'=>0, 'body'=>'', 'error'=>'Extension PHP cURL absente du serveur web. Activez php-curl pour la version PHP utilisée par Apache, puis rechargez Apache.'];
+        }
+        try {
         $url = $this->baseUrl . '/' . ltrim(implode('/', array_map('rawurlencode', explode('/', $path))), '/');
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -43,6 +47,11 @@ class NextcloudClient {
         curl_close($ch);
         $respBody = is_string($response) ? substr($response, $headerSize) : '';
         return ['code' => $code, 'body' => $respBody, 'error' => $err];
+        } catch (Throwable $e) {
+            // Ne jamais exposer URL, authentifiants ou contenu documentaire.
+            error_log('ProjectFlow WebDAV: '.get_class($e));
+            return ['code'=>0, 'body'=>'', 'error'=>'Erreur interne du client Nextcloud ('.get_class($e).'). Consultez le journal PHP du serveur.'];
+        }
     }
 
     /** Test connexion (PROPFIND sur racine) */

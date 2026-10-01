@@ -12,6 +12,7 @@ $nc = new NextcloudClient();
 $result = null;
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     csrfRequire();
+    try {
     if (($_POST['action'] ?? '')==='diagnostic') {
         requerirAdmin();
         $result=$nc->testConnection();
@@ -35,6 +36,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
                 }
             }
         }
+    }
+    } catch (Throwable $e) {
+        error_log('ProjectFlow documents externes: '.get_class($e));
+        $result=['ok'=>false, 'message'=>'Erreur interne documentaire ('.get_class($e).'). Aucun document confirmé comme enregistré. Consultez le journal PHP du serveur.'];
     }
 }
 if (isset($_GET['document'])) {
