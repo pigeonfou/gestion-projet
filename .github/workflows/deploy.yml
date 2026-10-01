@@ -1,0 +1,49 @@
+name: Déployer gestion-projet
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branche Git à déployer"
+        required: true
+        default: "iso"
+        type: string
+
+jobs:
+  deploy:
+    name: Déploiement sur serveur
+    runs-on: self-hosted
+
+    steps:
+      - name: Informations
+        run: |
+          echo "======================================"
+          echo " Déploiement gestion-projet"
+          echo "======================================"
+          echo
+          echo "Serveur : $(hostname)"
+          echo "Branche : ${{ inputs.branch }}"
+          echo "Date    : $(date)"
+
+      - name: Déployer
+        run: |
+          sudo -n /usr/local/sbin/gestion-projet-deploy \
+            deploy "${{ inputs.branch }}"
+
+      - name: État final
+        if: always()
+        run: |
+          echo
+          echo "======================================"
+          echo " État du serveur"
+          echo "======================================"
+          cd /var/www/html/gestion-projet
+          echo
+          echo "Branche :"
+          git branch --show-current
+          echo
+          echo "Commit :"
+          git log -1 --oneline
+          echo
+          echo "État Git :"
+          git status --short
