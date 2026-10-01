@@ -715,6 +715,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <?php $ty = $tr['type'] ?? 'Matériel'; ?>
                             <select name="st_type[]" class="form-control">
                               <option value="Matériel" <?= $ty === 'Matériel' ? 'selected' : '' ?>>Matériel</option>
+                              <option value="Composant" <?= $ty === 'Composant' ? 'selected' : '' ?>>Composant</option>
+                              <option value="Prestataire" <?= $ty === 'Prestataire' ? 'selected' : '' ?>>Prestataire</option>
                               <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
                               <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
