@@ -2,7 +2,7 @@ name: Déployer gestion-projet
 
 on:
   push:
-    branches: [couts-delais-types]
+    branches: [couts-delais-types, Refonte]
   workflow_dispatch:
     inputs:
       branch:

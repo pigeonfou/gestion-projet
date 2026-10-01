@@ -20,16 +20,17 @@ class NextcloudClient {
     }
 
     private function request(string $method, string $path, $body = null, array $headers = []): array {
-        $url = $this->baseUrl . '/' . ltrim(str_replace(' ', '%20', $path), '/');
+        $url = $this->baseUrl . '/' . ltrim(implode('/', array_map('rawurlencode', explode('/', $path))), '/');
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_CUSTOMREQUEST => $method,
             CURLOPT_USERPWD => $this->user . ':' . $this->password,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HEADER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_TIMEOUT => 120,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => $headers,
         ]);
         if ($body !== null) {
@@ -53,7 +54,7 @@ class NextcloudClient {
         if ($r['error']) {
             return ['ok' => false, 'message' => 'Erreur cURL : ' . $r['error']];
         }
-        if (in_array($r['code'], [200, 207, 301, 302])) {
+        if (in_array($r['code'], [200, 207])) {
             return ['ok' => true, 'message' => 'Connexion Nextcloud réussie (HTTP ' . $r['code'] . ').'];
         }
         if ($r['code'] === 401) {
@@ -69,11 +70,7 @@ class NextcloudClient {
         foreach ($parts as $part) {
             $current .= '/' . $part;
             $r = $this->request('MKCOL', $current);
-            // 201 created, 405 already exists, 301/302 redirect ok
-            if (!in_array($r['code'], [201, 405, 301, 302, 200, 207])) {
-                // continue trying deeper sometimes 409
-                if ($r['code'] === 409) continue;
-            }
+            if (!in_array($r['code'], [201, 405], true)) return false;
         }
         return true;
     }
@@ -83,19 +80,20 @@ class NextcloudClient {
         if (!is_readable($localFile)) {
             return ['ok' => false, 'message' => 'Fichier local illisible.'];
         }
-        $dir = dirname($remotePath);
-        if ($dir !== '.' && $dir !== '/') {
-            $this->ensureFolder($dir);
-        }
-        $content = file_get_contents($localFile);
-        $r = $this->request('PUT', $remotePath, $content, [
-            'Content-Type: application/octet-stream',
-            'Content-Length: ' . strlen($content),
-        ]);
-        if (in_array($r['code'], [200, 201, 204])) {
-            return ['ok' => true, 'message' => 'Fichier envoyé.', 'path' => $remotePath];
-        }
-        return ['ok' => false, 'message' => 'Échec upload HTTP ' . $r['code'] . ($r['error'] ? ' — ' . $r['error'] : '')];
+        return $this->uploadContent($remotePath, file_get_contents($localFile));
+    }
+
+    /** Envoi en mémoire : aucun fichier temporaire documentaire sur le serveur. */
+    public function uploadContent(string $remotePath, string $content): array {
+        if (!$this->isConfigured()) return ['ok'=>false, 'message'=>'Nextcloud non configuré.'];
+        if (!$this->ensureFolder(dirname($remotePath))) return ['ok'=>false, 'message'=>'Création du dossier Nextcloud impossible.'];
+        $r = $this->request('PUT', $remotePath, $content, ['Content-Type: text/plain; charset=utf-8']);
+        return ['ok'=>in_array($r['code'], [200,201,204], true), 'message'=>'Envoi HTTP '.$r['code'].($r['error'] ? ' — '.$r['error'] : ''), 'path'=>$remotePath];
+    }
+
+    public function readContent(string $remotePath): array {
+        $r = $this->request('GET', $remotePath);
+        return ['ok'=>$r['code']===200, 'content'=>$r['body'], 'message'=>'Lecture HTTP '.$r['code'].($r['error'] ? ' — '.$r['error'] : '')];
     }
 
     /** Liste fichiers d'un dossier (PROPFIND basique) */

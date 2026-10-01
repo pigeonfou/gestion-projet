@@ -385,7 +385,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="<?= $view === 'taches' ? 'active' : '' ?>">
         <i class="fas fa-tasks"></i> Tâches
       </a>
-      <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
+      <a href="<?= url('documents_externes.php?projet_id=' . $id) ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
         <i class="fas fa-folder-open"></i> Documents
       </a>
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
@@ -537,7 +537,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <div class="r1b-card">
             <div class="flex-between mb-3">
               <h3>Documents récents</h3>
-              <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="btn btn-secondary btn-sm">Voir tout</a>
+              <a href="<?= url('documents_externes.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Voir tout</a>
             </div>
             <?php if (empty($documents)): ?>
               <p class="text-muted text-sm">Aucun document.</p>

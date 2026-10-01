@@ -9,17 +9,8 @@ $action = $_GET['action'] ?? 'liste';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $user = utilisateurCourant();
 
-if ($action === 'supprimer' && $id > 0) {
-    if ($id === (int)$user['id']) {
-        setFlash('error', 'Vous ne pouvez pas supprimer votre propre compte.');
-    } else {
-        $db->prepare('DELETE FROM utilisateurs WHERE id = ?')->execute([$id]);
-        setFlash('success', 'Utilisateur supprimé.');
-    }
-    redirect('admin/utilisateurs.php');
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $identifiant = trim($_POST['identifiant'] ?? '');
     $mot_de_passe = $_POST['mot_de_passe'] ?? '';
     $role = $_POST['role'] ?? 'utilisateur';
@@ -78,6 +69,7 @@ if ($action === 'creer' || $action === 'modifier') {
     <div class="card" style="max-width:500px;">
         <div class="card-body">
             <form method="POST">
+                <?= csrfField() ?>
                 <?php if ($u): ?><input type="hidden" name="id" value="<?= (int)$u['id'] ?>"><?php endif; ?>
                 <div class="form-group">
                     <label for="identifiant">Identifiant *</label>
@@ -126,7 +118,7 @@ require __DIR__ . '/../includes/header.php';
                     <td>
                         <a href="<?= url('admin/utilisateurs.php?action=modifier&id=' . (int)$u['id']) ?>" class="btn btn-secondary btn-sm"><i class="fas fa-edit"></i></a>
                         <?php if ((int)$u['id'] !== (int)$user['id']): ?>
-                        <a href="<?= url('admin/utilisateurs.php?action=supprimer&id=' . (int)$u['id']) ?>" class="btn btn-danger btn-sm" data-confirm="Supprimer cet utilisateur ?"><i class="fas fa-trash"></i></a>
+
                         <?php endif; ?>
                     </td>
                 </tr>
