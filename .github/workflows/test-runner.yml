@@ -1,0 +1,30 @@
+name: Test serveur gestion-projet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-server:
+    runs-on: self-hosted
+
+    steps:
+      - name: Informations serveur
+        run: |
+          echo "=== Runner gestion-projet ==="
+          echo "Utilisateur : $(whoami)"
+          echo "Machine : $(hostname)"
+          echo "Répertoire : $(pwd)"
+          echo
+          echo "=== Système ==="
+          uname -a
+          echo
+          echo "=== PHP ==="
+          php --version || true
+          echo
+          echo "=== Git ==="
+          git --version
+          echo
+          echo "=== Apache ==="
+          apache2ctl -v || true
+          echo
+          echo "=== Test terminé avec succès ==="
