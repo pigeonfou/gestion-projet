@@ -58,7 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'save_notes') {
         $notes = trim($_POST['step_notes'] ?? '');
-        $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
+        if ($currentStep === 1 && !empty($_POST['save_cadrage_with_notes'])) {
+            $dest = $_POST['cadrage_destination'] ?? null;
+            if (!in_array($dest, ['interne', 'externe'], true)) $dest = null;
+            $db->prepare('UPDATE projets SET step_notes=?, cadrage_commerciale=?, cadrage_technique=?, cadrage_destination=? WHERE id=?')
+                ->execute([$notes, !empty($_POST['cadrage_commerciale']) ? 1 : 0, !empty($_POST['cadrage_technique']) ? 1 : 0, $dest, $id]);
+        } else {
+            $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
+        }
         setFlash('success', 'Notes enregistrées.');
         $redirView = $_POST['redir_view'] ?? 'processus';
         redirect('projet.php?id=' . $id . '&view=' . $redirView . ($redirView === 'processus' ? '&step=' . $currentStep : ''));
@@ -621,33 +628,28 @@ function stepClass(int $n, int $displayed, array $validated): string
               <div>
                 <span class="text-sm font-medium">Direction générale via :</span>
                 <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="checkbox" name="cadrage_commerciale" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
+                  <input type="checkbox" name="cadrage_commerciale" value="1" form="form-notes-step1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
                   <span>Service <strong>Commercial</strong></span>
                 </label>
                 <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="checkbox" name="cadrage_technique" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
+                  <input type="checkbox" name="cadrage_technique" value="1" form="form-notes-step1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
                   <span>Service <strong>Technique</strong></span>
                 </label>
               </div>
               <div>
                 <span class="text-sm font-medium">Destination du besoin :</span>
                 <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="radio" name="cadrage_destination" value="interne" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
+                  <input type="radio" name="cadrage_destination" value="interne" form="form-notes-step1" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
                   <span><strong>Interne</strong></span>
                 </label>
                 <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="radio" name="cadrage_destination" value="externe" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
+                  <input type="radio" name="cadrage_destination" value="externe" form="form-notes-step1" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
                   <span><strong>Externe</strong> (client)</span>
                 </label>
               </div>
             </div>
           </div>
 
-          <form id="form-cadrage-step1" method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=1') ?>">
-            <input type="hidden" name="id" value="<?= (int)$id ?>">
-            <input type="hidden" name="action" value="save_cadrage">
-            <?= csrfField() ?>
-          </form>
 
           <hr class="my-4">
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
@@ -1071,7 +1073,8 @@ function stepClass(int $n, int $displayed, array $validated): string
           </div>
         <?php endif; ?>
 
-        <form method="POST" class="mt-3">
+        <form method="POST" class="mt-3" <?= $currentStep === 1 ? 'id="form-notes-step1"' : '' ?>>
+          <?php if ($currentStep === 1): ?><input type="hidden" name="save_cadrage_with_notes" value="1"><?php endif; ?>
           <input type="hidden" name="action" value="save_notes">
           <?= csrfField() ?>
           <input type="hidden" name="redir_view" value="processus">
