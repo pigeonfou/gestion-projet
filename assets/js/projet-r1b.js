@@ -174,9 +174,9 @@
 
     body.querySelectorAll('.cp-row').forEach(row => {
       bindRow(row);
-      if (type === 'Matériel') recalc(row);
+      if (['Matériel', 'Composant', 'Prestataire'].includes(type)) recalc(row);
     });
-    if (type === 'Matériel') {
+    if (['Matériel', 'Composant', 'Prestataire'].includes(type)) {
       body.addEventListener('input', e => {
         const row = e.target.closest('.cp-row');
         if (row && (e.target.matches('.cp-qty') || e.target.matches('.cp-unit'))) recalc(row);
@@ -194,11 +194,11 @@
         const i = body.querySelectorAll('.cp-row').length;
         const tr = document.createElement('tr');
         tr.className = 'cp-row';
-        if (type === 'Matériel') {
+        if (['Matériel', 'Composant', 'Prestataire'].includes(type)) {
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="Matériel"></td>' +
+            '<input type="hidden" name="cp_type[]" value="' + type + '"></td>' +
             '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
