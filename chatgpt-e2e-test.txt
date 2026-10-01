@@ -1,0 +1,2 @@
+Test de bout en bout ChatGPT -> GitHub -> GitHub Actions -> serveur Ubuntu.
+Ce fichier peut être supprimé après validation du déploiement.
