@@ -181,6 +181,17 @@ function saveJalonsFromPost(int $cahierId, array $post): int {
  * Renumérote localement par S.F. : S.T.{n}.{m}
  * @return list<array{sf:string,id:string,description:string,type:string}>
  */
+/** Les achats comportent un coût ; les réalisations internes un délai seul. */
+function stTypeHasCost(string $type): bool {
+    return in_array($type, ['Matériel', 'Composant', 'Prestataire', 'PCB'], true);
+}
+
+function parseDelaiJours($value): ?float {
+    $value = str_replace(',', '.', trim((string)$value));
+    return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0
+        ? round((float)$value, 2) : null;
+}
+
 function parseSpecsTechniquesFromPost(array $post): array {
     $sfs = $post['st_sf'] ?? [];
     $descs = $post['st_description'] ?? [];
@@ -217,7 +228,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
             'sf' => 'S.F.' . $n,
             'description' => $desc,
             'type' => $type,
-            'cout_estime' => round($cost, 2),
+            'cout_estime' => stTypeHasCost($type) ? round($cost, 2) : 0,
+            'delai_jours' => parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
             'cout_taxe' => $taxe,
         ];
     }
@@ -234,6 +246,7 @@ function parseSpecsTechniquesFromPost(array $post): array {
                 'type' => $row['type'],
                 'cout_estime' => $row['cout_estime'] ?? 0,
                 'cout_taxe' => $row['cout_taxe'] ?? 'HT',
+                'delai_jours' => $row['delai_jours'] ?? null,
             ];
         }
     }
@@ -274,7 +287,7 @@ function parseComposantsStFromPost(array $post): array {
         if ($stId === '') {
             continue;
         }
-        if (in_array($type, ['Matériel', 'Composant', 'Prestataire'], true)) {
+        if (stTypeHasCost($type)) {
             $des = trim((string)($post['cp_designation'][$i] ?? ''));
             $ref = trim((string)($post['cp_reference'][$i] ?? ''));
             $four = trim((string)($post['cp_fournisseur'][$i] ?? ''));
@@ -282,7 +295,10 @@ function parseComposantsStFromPost(array $post): array {
             $cu = (float)str_replace(',', '.', (string)($post['cp_cout_unitaire'][$i] ?? '0'));
             $cuTaxe = ($post['cp_cout_unitaire_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
             $ctTaxe = $cuTaxe;
-            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0) {
+            $delai = parseDelaiJours($post['cp_delai_jours'][$i] ?? '');
+            $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
+            $duree = trim((string)($post['cp_duree'][$i] ?? ''));
+            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0 && $delai === null && $aff === '' && $duree === '') {
                 continue;
             }
             if (!isset($bySt[$stId])) {
@@ -297,16 +313,21 @@ function parseComposantsStFromPost(array $post): array {
                 'cout_unitaire_taxe' => $cuTaxe,
                 'cout_total' => round($qty * $cu, 2),
                 'cout_total_taxe' => $ctTaxe,
+                'delai_jours' => $delai,
+                'affectation' => $aff,
+                'duree' => $duree,
+                'variation' => in_array(($post['cp_variation'][$i] ?? ''), ['Forte', 'Moyenne', 'Faible'], true) ? $post['cp_variation'][$i] : 'Moyenne',
             ];
         } else {
-            // Logiciel, 3D, PCB
+            // Logiciel et 3D
             $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
             $duree = trim((string)($post['cp_duree'][$i] ?? ''));
             $var = trim((string)($post['cp_variation'][$i] ?? 'Moyenne'));
             if (!in_array($var, ['Forte', 'Moyenne', 'Faible'], true)) {
                 $var = 'Moyenne';
             }
-            if ($aff === '' && $duree === '') {
+            $delai = parseDelaiJours($post['cp_delai_jours'][$i] ?? '');
+            if ($aff === '' && $duree === '' && $delai === null) {
                 continue;
             }
             if (!isset($bySt[$stId])) {
@@ -315,6 +336,7 @@ function parseComposantsStFromPost(array $post): array {
             $bySt[$stId]['items'][] = [
                 'affectation' => $aff,
                 'duree' => $duree,
+                'delai_jours' => $delai,
                 'variation' => $var,
             ];
         }
@@ -429,7 +451,7 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
             $titre = '[' . $itemId . '] ' . $stId . ($stDesc !== '' ? ' — ' . $stDesc : '');
             $description = implode("\n", array_filter([
                 'Type : ' . $typeLabel,
-                $duree !== '' ? 'Durée : ' . $duree : '',
+                isset($it['delai_jours']) ? 'Délai : ' . $it['delai_jours'] . ' j' : ($duree !== '' ? 'Durée : ' . $duree : ''),
                 $var !== '' ? 'Variation : ' . $var : '',
             ]));
             $wanted[$key] = [

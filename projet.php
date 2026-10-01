@@ -164,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'Quantité : ' . rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.'),
                     'Coût unitaire : ' . number_format($cu, 2, ',', ' ') . ' € ' . $tax,
                     'Coût total estimé : ' . number_format($total, 2, ',', ' ') . ' € ' . $tax,
+                    isset($p['delai_jours']) ? 'Délai : ' . $p['delai_jours'] . ' j' : '',
                 ]));
 
                 $find->execute([$id, $sourceKey]);
@@ -675,7 +676,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   $rows = $techBySf[$sfId] ?? [];
                   $sfCostHT = 0.0; $sfCostTTC = 0.0;
                   foreach ($rows as $costRow) {
-                      $v = (float)($costRow['cout_estime'] ?? 0);
+                      $v = stTypeHasCost($costRow['type'] ?? 'Matériel') ? (float)($costRow['cout_estime'] ?? 0) : 0;
                       if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
                   }
                   if (empty($rows)) {
@@ -701,6 +702,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
                           <th style="width:13rem;min-width:13rem">Coût unitaire</th>
+                          <th>Délai estimé (jours)</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
@@ -723,7 +725,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             </select>
                           </td>
                           <td>
-                            <div class="cp-cost-cell">
+                            <div class="cp-cost-cell" style="<?= stTypeHasCost($ty) ? '' : 'display:none' ?>">
                               <input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
                               <select name="st_cout_taxe[]" class="form-control st-tax">
                                 <option value="HT" <?= (($tr['cout_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
@@ -731,6 +733,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                               </select>
                             </div>
                           </td>
+                          <td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" value="<?= e((string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
                         <?php endforeach; ?>
@@ -768,7 +771,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             $users = $utilisateursListe ?? [];
           ?>
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Composants & affectations</h4>
-          <p class="text-sm text-muted mb-3">Pour chaque spécification technique (S.T.), ajoutez les lignes selon son type (Matériel, Composant, Prestataire, Logiciel, 3D, PCB).</p>
+          <p class="text-sm text-muted mb-3">Matériel, Composant, Prestataire et PCB : coûts et délais. Logiciel et 3D : délais de réalisation uniquement.</p>
           <?php if (empty($techniquesAll)): ?>
             <div class="r1b-info-box">
               <p>Aucune spécification technique définie.</p>
@@ -798,6 +801,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                   }
                   $prefix = match ($stType) {
                       'Matériel' => 'M',
+                      'Composant' => 'C',
+                      'Prestataire' => 'P',
                       'Logiciel' => 'L',
                       '3D' => '3D',
                       'PCB' => 'PCB',
@@ -809,14 +814,14 @@ function stepClass(int $n, int $displayed, array $validated): string
                     <span class="st-id"><?= e($stId) ?></span>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
-                    <?php if (in_array($stType, ['Matériel', 'Composant', 'Prestataire'], true)): ?>
+                    <?php if (stTypeHasCost($stType)): ?>
                       <span class="st-sf-badge cp-st-cost">Coût <?= e($stId) ?> :
                         <span class="cp-st-cost-value"><?= number_format($stCostHT, 2, ',', ' ') ?> € HT<?= $stCostTTC > 0 ? ' + ' . number_format($stCostTTC, 2, ',', ' ') . ' € TTC' : '' ?></span>
                       </span>
                     <?php endif; ?>
                   </div>
                   <div class="sf-table-wrap">
-                    <?php if (in_array($stType, ['Matériel', 'Composant', 'Prestataire'], true)): ?>
+                    <?php if (stTypeHasCost($stType)): ?>
                       <table class="sf-table cp-table">
                         <thead>
                           <tr>
@@ -827,6 +832,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th style="width:5rem">Qté</th>
                             <th style="width:12rem;min-width:12rem">Coût unitaire</th>
                             <th style="width:10.5rem;min-width:10.5rem">Coût total</th>
+                            <th>Délai (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -858,10 +864,13 @@ function stepClass(int $n, int $displayed, array $validated): string
                                 <input type="hidden" name="cp_cout_total_taxe[]" value="<?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?>" class="cp-total-taxe-input">
                               </div>
                               <!-- champs fantômes pour aligner les index des tableaux non-matériel -->
-                              <input type="hidden" name="cp_affectation[]" value="">
-                              <input type="hidden" name="cp_duree[]" value="">
-                              <input type="hidden" name="cp_variation[]" value="">
+                              <?php if ($stType === 'PCB'): ?>
+                              <label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option><?php foreach ($users as $u): ?><option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option><?php endforeach; ?></select>
+                              <?php else: ?><input type="hidden" name="cp_affectation[]" value="<?= e($it['affectation'] ?? '') ?>"><?php endif; ?>
+                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
+                              <input type="hidden" name="cp_variation[]" value="<?= e($it['variation'] ?? '') ?>">
                             </td>
+                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
                           </tr>
                           <?php endforeach; ?>
@@ -873,8 +882,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                           <tr>
                             <th style="width:4rem">ID</th>
                             <th>Affectation</th>
-                            <th style="width:9rem">Durée de réalisation</th>
+
                             <th style="width:9rem">Variation possible</th>
+                            <th>Délai (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -901,8 +911,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                                 <?php endforeach; ?>
                               </select>
                             </td>
-                            <td><input type="text" name="cp_duree[]" class="form-control" value="<?= e($it['duree'] ?? '') ?>" placeholder="ex. 3 j"></td>
                             <td>
+                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
                               <?php $vv = $it['variation'] ?? 'Moyenne'; ?>
                               <select name="cp_variation[]" class="form-control">
                                 <option value="Forte" <?= $vv === 'Forte' ? 'selected' : '' ?>>Forte</option>
@@ -910,6 +920,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                                 <option value="Faible" <?= $vv === 'Faible' ? 'selected' : '' ?>>Faible</option>
                               </select>
                             </td>
+                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
                           </tr>
                           <?php endforeach; ?>
@@ -935,7 +946,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             $techAchatById = [];
             foreach ($techAchat as $ta) if (!empty($ta['id'])) $techAchatById[$ta['id']] = $ta;
             foreach ($composantsAchat as $stId => $items) {
-                if (!in_array(($techAchatById[$stId]['type'] ?? ''), ['Matériel', 'Composant', 'Prestataire'], true) || !is_array($items)) continue;
+                if (!stTypeHasCost($techAchatById[$stId]['type'] ?? '') || !is_array($items)) continue;
                 foreach ($items as $it) {
                     if (!is_array($it)) continue;
                     $itemId = trim((string)($it['id'] ?? ''));
@@ -952,7 +963,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Liste des achats issus de l'étape 4</h4>
           <p class="text-sm text-muted mb-3">Sélectionnez les composants ou matériels à commander, affectez un utilisateur puis générez les tâches d'achat. Une tâche existante est mise à jour plutôt que dupliquée.</p>
           <?php if (empty($purchaseRows)): ?>
-            <div class="r1b-info-box">Aucune ligne Matériel, Composant ou Prestataire renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
+            <div class="r1b-info-box">Aucune ligne Matériel, Composant, Prestataire ou PCB renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
           <?php else: ?>
             <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=5') ?>">
               <?= csrfField() ?>
@@ -960,7 +971,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <div class="sf-table-wrap">
                 <table class="sf-table">
                   <thead><tr>
-                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Affecter à</th><th>État tâche</th>
+                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Délai (jours)</th><th>Affecter à</th><th>État tâche</th>
                   </tr></thead>
                   <tbody>
                   <?php foreach ($purchaseRows as $pr): ?>
@@ -975,7 +986,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                         'st_id'=>$stId,'item_id'=>$itemId,'designation'=>$it['designation'] ?? '',
                         'reference'=>$it['reference'] ?? '','fournisseur'=>$it['fournisseur'] ?? '',
                         'quantite'=>$it['quantite'] ?? 0,'cout_unitaire'=>$it['cout_unitaire'] ?? 0,
-                        'cout_unitaire_taxe'=>$tax
+                        'cout_unitaire_taxe'=>$tax,'delai_jours'=>$it['delai_jours'] ?? null
                       ], JSON_UNESCAPED_UNICODE));
                     ?>
                     <tr>
@@ -987,6 +998,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                       <td><?= e($it['fournisseur'] ?? '—') ?></td>
                       <td><?= e((string)($it['quantite'] ?? '0')) ?></td>
                       <td><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
+                      <td><?= e(isset($it['delai_jours']) ? (string)$it['delai_jours'] : '—') ?></td>
                       <td>
                         <select name="purchase_assignee[<?= e($rowKey) ?>]" class="form-control">
                           <option value="">— Non affectée —</option>

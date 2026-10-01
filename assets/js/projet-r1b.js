@@ -24,7 +24,10 @@
     function recalcSfCost() {
       let ht = 0, ttc = 0;
       body.querySelectorAll('.st-row').forEach(row => {
-        const cost = parseStCost((row.querySelector('.st-cost') || {}).value);
+        const hasCost = ['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(row.querySelector('[name="st_type[]"]').value);
+        row.querySelector('.cp-cost-cell').style.display = hasCost ? '' : 'none';
+        row.querySelector('.st-cost').readOnly = !hasCost;
+        const cost = hasCost ? parseStCost((row.querySelector('.st-cost') || {}).value) : 0;
         const tax = (row.querySelector('.st-tax') || {}).value || 'HT';
         if (tax === 'TTC') ttc += cost; else ht += cost;
       });
@@ -44,6 +47,8 @@
           row.querySelector('select').value = 'Matériel';
           const cost = row.querySelector('.st-cost');
           if (cost) cost.value = '0';
+          const delay = row.querySelector('.st-delay');
+          if (delay) delay.value = '';
           const tax = row.querySelector('.st-tax');
           if (tax) tax.value = 'HT';
           renumberBlock(block);
@@ -77,6 +82,7 @@
           '</select></td>' +
           '<td><div class="cp-cost-cell"><input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
           '<select name="st_cout_taxe[]" class="form-control st-tax"><option value="HT">HT</option><option value="TTC">TTC</option></select></div></td>' +
+          '<td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" aria-label="Délai estimé en jours"></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
@@ -89,7 +95,7 @@
       if (e.target.matches('.st-cost')) recalcSfCost();
     });
     body.addEventListener('change', e => {
-      if (e.target.matches('.st-tax')) recalcSfCost();
+      if (e.target.matches('.st-tax, [name="st_type[]"]')) recalcSfCost();
     });
     recalcSfCost();
 
@@ -176,9 +182,9 @@
 
     body.querySelectorAll('.cp-row').forEach(row => {
       bindRow(row);
-      if (['Matériel', 'Composant', 'Prestataire'].includes(type)) recalc(row);
+      if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) recalc(row);
     });
-    if (['Matériel', 'Composant', 'Prestataire'].includes(type)) {
+    if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
       body.addEventListener('input', e => {
         const row = e.target.closest('.cp-row');
         if (row && (e.target.matches('.cp-qty') || e.target.matches('.cp-unit'))) recalc(row);
@@ -196,7 +202,7 @@
         const i = body.querySelectorAll('.cp-row').length;
         const tr = document.createElement('tr');
         tr.className = 'cp-row';
-        if (['Matériel', 'Composant', 'Prestataire'].includes(type)) {
+        if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
@@ -209,7 +215,8 @@
             '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
             '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
             '<span class="form-control cp-total-taxe">HT</span><input type="hidden" name="cp_cout_total_taxe[]" value="HT" class="cp-total-taxe-input"></div>' +
-            '<input type="hidden" name="cp_affectation[]" value=""><input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            (type === 'PCB' ? '<label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option>' + (window.PROJECTFLOW_USERS || []).map(u => '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>').join('') + '</select>' : '<input type="hidden" name="cp_affectation[]" value="">') + '<input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         } else {
           const userOpts = window.PROJECTFLOW_USERS || [];
@@ -223,9 +230,9 @@
             '<input type="hidden" name="cp_fournisseur[]" value=""><input type="hidden" name="cp_quantite[]" value="">' +
             '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
             '<input type="hidden" name="cp_cout_total_taxe[]" value="HT"></td>' +
-            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select></td>' +
-            '<td><input type="text" name="cp_duree[]" class="form-control" value="" placeholder="ex. 3 j"></td>' +
+            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select><input type="hidden" name="cp_duree[]" value=""></td>' +
             '<td><select name="cp_variation[]" class="form-control"><option value="Forte">Forte</option><option value="Moyenne" selected>Moyenne</option><option value="Faible">Faible</option></select></td>' +
+            '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         }
         body.appendChild(tr);
