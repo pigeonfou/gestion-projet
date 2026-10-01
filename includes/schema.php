@@ -13,6 +13,14 @@ function runSchemaMigrations(): void
     $db = getDB();
     $db->exec('PRAGMA foreign_keys = ON');
 
+    // Profil professionnel : aucune modification du rôle ni de l'authentification.
+    $ucols = $db->query('PRAGMA table_info(utilisateurs)')->fetchAll(PDO::FETCH_COLUMN, 1);
+    foreach (['nom_affiche', 'fonction', 'competences'] as $col) {
+        if (!in_array($col, $ucols, true)) {
+            $db->exec("ALTER TABLE utilisateurs ADD COLUMN $col TEXT NOT NULL DEFAULT ''");
+        }
+    }
+
     // Cahiers
     $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array('specs_json', $cols, true)) {
