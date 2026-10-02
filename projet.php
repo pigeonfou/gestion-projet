@@ -380,7 +380,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=compact-2') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=step-layout-3') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -399,7 +399,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=compact-2') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=step-layout-3') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -428,7 +428,7 @@ function stepClass(int $n, int $displayed, array $validated): string
     </div>
   </aside>
 
-  <div class="r1b-main">
+  <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
     <?php if ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
@@ -604,7 +604,6 @@ function stepClass(int $n, int $displayed, array $validated): string
         <div>
           <h2>Processus R1b – Conception</h2>
           <p class="text-muted text-sm">Projet : <strong><?= e($projet['nom']) ?></strong></p>
-          <a class="btn btn-secondary" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Historique des décisions</a>
       </div>
       </div>
 
@@ -620,7 +619,9 @@ function stepClass(int $n, int $displayed, array $validated): string
         </div>
       </div>
 
-      <div class="r1b-card">
+      <?php $stepEditorActions = ''; ?>
+      <div class="r1b-step-workspace">
+      <div class="r1b-card r1b-step-content">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
         <?php if ($currentStep === 1): ?>
@@ -669,7 +670,9 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php else: ?>
             <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
           <?php endif; ?>
+          <?php ob_start(); ?>
           <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
+          <?php $stepEditorActions = ob_get_clean(); ?>
 
         <?php elseif ($currentStep === 2): ?>
           <?php
@@ -770,10 +773,12 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
                 </div>
               <?php endforeach; ?>
+              <?php ob_start(); ?>
               <div class="mt-3">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
+                <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
                 <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
+              <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
           <?php endif; ?>
 
@@ -958,10 +963,12 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-cp-add"><i class="fas fa-plus"></i> Ajouter une ligne</button>
                 </div>
               <?php endforeach; ?>
+              <?php ob_start(); ?>
               <div class="mt-3">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
+                <button type="submit" form="formComposantsSt" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
                 <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.T. (étape 2)</a>
               </div>
+              <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
           <?php endif; ?>
 
@@ -1075,6 +1082,10 @@ function stepClass(int $n, int $displayed, array $validated): string
           </div>
         <?php endif; ?>
 
+      </div>
+      <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
+        <h3>Actions et revue</h3>
+        <?= $stepEditorActions ?>
         <form method="POST" class="mt-3" <?= $currentStep === 1 ? 'id="form-notes-step1"' : '' ?>>
           <?php if ($currentStep === 1): ?><input type="hidden" name="save_cadrage_with_notes" value="1"><?php endif; ?>
           <input type="hidden" name="action" value="save_notes">
@@ -1160,6 +1171,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
           <?php endif; ?>
         </div>
+      </aside>
       </div>
 
       <section class="r1b-card history-step-panel" aria-label="Historique séparé de l’étape">
