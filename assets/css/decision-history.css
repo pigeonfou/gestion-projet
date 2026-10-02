@@ -56,3 +56,12 @@
 .r1b-process-header { position:sticky; top:52px; z-index:30; background:#e2e8f0; margin:-1.5rem -1.5rem 1rem; padding:.75rem 1.5rem .5rem; box-shadow:0 4px 8px #0f172a12; }
 .r1b-process-header .r1b-page-head { margin-bottom:.75rem; }
 .r1b-process-main .r1b-process-header .r1b-stepper-wrap { position:static; margin-bottom:0; box-shadow:none; }
+
+/* The header never enters the scrolling region, including at the history boundary. */
+body:has(.r1b-process-main) { overflow:hidden; }
+.r1b-layout:has(.r1b-process-main) { height:calc(100dvh - 52px); min-height:0; }
+.r1b-process-main { display:flex; flex-direction:column; height:100%; min-height:0; box-sizing:border-box; overflow:hidden; }
+.r1b-process-header { position:relative; top:auto; flex:none; margin:-1.5rem -1.5rem 0; padding:.75rem 1.5rem .75rem; }
+.r1b-process-scroll { flex:1; min-height:0; overflow:auto; margin:0 -1.5rem -1.5rem; padding:1rem 1.5rem; }
+.r1b-layout:has(.r1b-process-main) > .r1b-sidebar { min-height:0; max-height:100%; overflow:auto; box-sizing:border-box; }
+@media(max-width:900px) { .r1b-layout:has(.r1b-process-main) { grid-template-rows:auto minmax(0,1fr); } .r1b-layout:has(.r1b-process-main) > .r1b-sidebar { max-height:120px; } }

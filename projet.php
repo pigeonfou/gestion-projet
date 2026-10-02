@@ -380,7 +380,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-header-4') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-scroll-5') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -399,7 +399,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-header-4') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-scroll-5') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -600,7 +600,6 @@ function stepClass(int $n, int $displayed, array $validated): string
 
     <?php elseif ($view === 'processus'): ?>
       <!-- ========== PROCESSUS R1b ========== -->
-      <div class="r1b-process-editor">
       <header class="r1b-process-header">
       <div class="r1b-page-head">
         <div>
@@ -622,6 +621,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       </div>
 
       </header>
+      <div class="r1b-process-scroll">
       <?php $stepEditorActions = ''; ?>
       <div class="r1b-step-workspace">
       <div class="r1b-card r1b-step-content">
@@ -1177,12 +1177,12 @@ function stepClass(int $n, int $displayed, array $validated): string
       </aside>
       </div>
 
-      </div><!-- Bandeau fixe limité au contenu de l’étape -->
       <section class="r1b-card history-step-panel" aria-label="Historique séparé de l’étape">
         <div class="r1b-page-head"><div><h3>Historique des décisions</h3><p class="text-sm text-muted">Consultez, filtrez et triez sans perdre la saisie en cours dans cette étape.</p></div><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Ouvrir l’historique complet</a></div>
         <iframe class="history-step-frame" title="Historique des décisions de l’étape <?= $currentStep ?>" src="<?= url('projet.php?id='.$id.'&view=historique&embedded=1&step='.$currentStep) ?>" loading="lazy"></iframe>
       </section>
 
+      </div><!-- Défilement du contenu et de l’historique sous l’en-tête -->
     <?php elseif ($view === 'historique'): ?>
       <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
 
