@@ -101,5 +101,11 @@ require __DIR__.'/includes/header.php';
 <label>Preuve externe conformité<?php qualityDocuments($docs,$r['document_id']??'');?></label><label>Notes et décision / date métier<textarea class="form-control" name="notes" maxlength="10000"><?=e($r['notes']??'')?></textarea></label><button class="btn btn-primary">Enregistrer <?=e($ref)?></button></form>
 <?php if(!empty($r['action_task_id'])):?><p>Action corrective : <a href="<?=url('tache.php?id='.$r['action_task_id'])?>">Tâche #<?=(int)$r['action_task_id']?></a></p><?php elseif($alerts):?><form class="qualityAlertForm" method="post"><?=csrfField()?><input type="hidden" name="projet_id" value="<?=$pid?>"><input type="hidden" name="action" value="alerte"><input type="hidden" name="reference" value="<?=e($ref)?>"><label>Responsable de l’action<?php $choices=[''=>'Choisir'];foreach($users as $u)$choices[$u['identifiant']]=$u['identifiant'].' — '.$u['nom_affiche'];qualitySelect('assigne_a',$choices,'');?></label><button class="btn btn-secondary">Créer l’action corrective <?=e($ref)?></button></form><?php endif;?></section>
 <?php endforeach;?>
+<?php $replaced=array_diff_key($stored,$refs);if($replaced):?>
+<h2>Références remplacées — hors indicateurs actuels</h2>
+<p>Le changement de référence ne clôture pas ses actions et ne supprime pas ses preuves. Les références actuelles doivent recevoir leurs propres déclarations.</p>
+<table class="table"><tr><th>Référence retirée</th><th>RoHS / REACH</th><th>Notes conservées</th><th>Action corrective</th></tr>
+<?php foreach($replaced as $ref=>$old):?><tr><td><?=e($ref)?></td><td><?=e($old['rohs'].' / '.$old['reach'])?></td><td><?=e($old['notes'])?></td><td><?php if($old['action_task_id']):?><a href="<?=url('tache.php?id='.$old['action_task_id'])?>">Tâche #<?=(int)$old['action_task_id']?></a><?php else:?>Aucune<?php endif;?></td></tr><?php endforeach;?></table>
+<?php endif;?>
 <h2>Historique qualité</h2><?php $q=$db->prepare('SELECT h.*,u.identifiant FROM qualite_historique h JOIN utilisateurs u ON u.id=h.utilisateur_id WHERE h.projet_id=? ORDER BY h.id DESC LIMIT 50');$q->execute([$pid]);foreach($q->fetchAll() as $h):?><p><?=e($h['date_action'].' — '.$h['identifiant'].' — '.$h['objet'])?><br><?=e($h['details'])?></p><?php endforeach;?>
 <?php require __DIR__.'/includes/footer.php';?>
