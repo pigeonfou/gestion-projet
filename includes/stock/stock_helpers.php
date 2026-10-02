@@ -39,7 +39,7 @@ function stockQuantity(int $articleId, ?int $locationId = null): float {
     }
     $st = $db->prepare("SELECT COALESCE(SUM(
         CASE
-            WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
+            WHEN type='correction_inventaire' AND emplacement_source_id IS NOT NULL AND emplacement_destination_id IS NULL THEN -quantite WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
             WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite
             ELSE 0
         END

@@ -100,7 +100,7 @@ function productionComplete(PDO $db,int $id,array $p,int $userId): void {
             $move->execute([$snapshot['parent'],'recuperation',1,null,$destination,$order['projet_id'],null,$uid,'OF:'.$id,'Produit assemblé '.$serial.' — date métier '.$order['date_metier'],$userId]);
         }
         $ids=array_column($allocations,0);$ids[]=$snapshot['parent'];
-        $calc=$db->prepare("SELECT COALESCE(SUM(CASE WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite ELSE 0 END),0) FROM stock_mouvements WHERE article_id=?");
+        $calc=$db->prepare("SELECT COALESCE(SUM(CASE WHEN type='correction_inventaire' AND emplacement_source_id IS NOT NULL AND emplacement_destination_id IS NULL THEN -quantite WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite ELSE 0 END),0) FROM stock_mouvements WHERE article_id=?");
         foreach($ids as $article){$calc->execute([$article]);$db->prepare('UPDATE stock_articles SET quantite_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute([(float)$calc->fetchColumn(),$article]);}
         $db->prepare("UPDATE stock_production SET statut='termine',resultat=?,user_id=?,completed_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$result,$userId,$id]);$db->commit();
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}

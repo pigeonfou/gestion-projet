@@ -32,7 +32,7 @@ function stockLotReceive(PDO $db,int $lotId,int $locationId,?int $projectId,int 
             $movement=(int)$db->lastInsertId();
         }
         $db->prepare("UPDATE stock_lots SET statut='libere',emplacement_id=?,projet_id=? WHERE id=?")->execute([$locationId,$projectId,$lotId]);
-        $q=$db->prepare("SELECT COALESCE(SUM(CASE WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite ELSE 0 END),0) FROM stock_mouvements WHERE article_id=?");$q->execute([$lot['article_id']]);
+        $q=$db->prepare("SELECT COALESCE(SUM(CASE WHEN type='correction_inventaire' AND emplacement_source_id IS NOT NULL AND emplacement_destination_id IS NULL THEN -quantite WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite ELSE 0 END),0) FROM stock_mouvements WHERE article_id=?");$q->execute([$lot['article_id']]);
         $db->prepare('UPDATE stock_articles SET quantite_stock=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute([(float)$q->fetchColumn(),$lot['article_id']]);
         if($own)$db->commit();return $movement;
     } catch(Throwable $e){if($own&&$db->inTransaction())$db->rollBack();throw $e;}

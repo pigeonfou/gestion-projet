@@ -36,7 +36,7 @@ $alertOnly = !empty($_GET['alerte']);
 
 $sql = "SELECT a.*,
     COALESCE((SELECT SUM(CASE
-        WHEN m.type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN m.quantite
+        WHEN m.type='correction_inventaire' AND m.emplacement_source_id IS NOT NULL AND m.emplacement_destination_id IS NULL THEN -m.quantite WHEN m.type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN m.quantite
         WHEN m.type IN ('consommation','affectation_projet','rebut','demontage') THEN -m.quantite
         ELSE 0 END)
         FROM stock_mouvements m WHERE m.article_id=a.id),0) AS stock_calcule,
@@ -69,7 +69,7 @@ if (in_array($typeFilter, ['piece', 'equipement'], true)) {
     $params[] = $typeFilter;
 }
 if ($alertOnly) {
-    $sql .= ' AND (SELECT COALESCE(SUM(CASE WHEN m.type IN (\'reception\',\'retour_projet\',\'recuperation\',\'correction_inventaire\') THEN m.quantite WHEN m.type IN (\'consommation\',\'affectation_projet\',\'rebut\',\'demontage\') THEN -m.quantite ELSE 0 END),0) FROM stock_mouvements m WHERE m.article_id=a.id) <= a.quantite_min';
+    $sql .= ' AND (SELECT COALESCE(SUM(CASE WHEN m.type=\'correction_inventaire\' AND m.emplacement_source_id IS NOT NULL AND m.emplacement_destination_id IS NULL THEN -m.quantite WHEN m.type IN (\'reception\',\'retour_projet\',\'recuperation\',\'correction_inventaire\') THEN m.quantite WHEN m.type IN (\'consommation\',\'affectation_projet\',\'rebut\',\'demontage\') THEN -m.quantite ELSE 0 END),0) FROM stock_mouvements m WHERE m.article_id=a.id) <= a.quantite_min';
 }
 $sql .= ' ORDER BY a.reference ASC';
 $stmt = $db->prepare($sql);
@@ -86,7 +86,7 @@ $kpi = $db->query("SELECT
     FROM stock_articles a
     LEFT JOIN (
         SELECT article_id, SUM(CASE
-            WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
+            WHEN type='correction_inventaire' AND emplacement_source_id IS NOT NULL AND emplacement_destination_id IS NULL THEN -quantite WHEN type IN ('reception','retour_projet','recuperation','correction_inventaire') THEN quantite
             WHEN type IN ('consommation','affectation_projet','rebut','demontage') THEN -quantite
             ELSE 0 END) AS stock_calcule
         FROM stock_mouvements GROUP BY article_id
