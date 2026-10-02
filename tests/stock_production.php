@@ -12,7 +12,7 @@ CREATE TABLE stock_mouvements(id INTEGER PRIMARY KEY,article_id INTEGER,type TEX
 CREATE TABLE stock_unites(id INTEGER PRIMARY KEY,article_id INTEGER,numero_serie TEXT UNIQUE,statut TEXT,emplacement_id INTEGER,projet_id INTEGER,date_acquisition TEXT,notes TEXT);
 CREATE TABLE stock_boms(id INTEGER PRIMARY KEY,article_parent_id INTEGER,projet_id INTEGER,reference TEXT,version TEXT,statut TEXT);INSERT INTO stock_boms VALUES(1,2,1,'BOM','B','brouillon');
 CREATE TABLE stock_bom_items(id INTEGER PRIMARY KEY,bom_id INTEGER,article_id INTEGER,quantite REAL,reference_position TEXT,notes TEXT);
-CREATE TABLE stock_reservations(id INTEGER PRIMARY KEY,article_id INTEGER,projet_id INTEGER,quantite REAL,emplacement_id INTEGER,statut TEXT);");
+CREATE TABLE stock_reservations(id INTEGER PRIMARY KEY,article_id INTEGER,projet_id INTEGER,quantite REAL,emplacement_id INTEGER,statut TEXT,date_fin TEXT,note TEXT);");
 productionSchema($db);productionSchema($db);
 function denied(callable $f):void {try{$f();}catch(InvalidArgumentException $e){return;}throw new RuntimeException('Action invalide acceptée');}
 $line=['article_id'=>1,'quantite'=>1,'reference_position'=>'M1'];
@@ -31,9 +31,10 @@ denied(fn()=>productionComplete($db,$id,$complete,1));
 stockLotReceive($db,$lot,1,1,1);
 denied(fn()=>productionComplete($db,$id,array_merge($complete,['source'=>[1=>2]]),1));
 denied(fn()=>productionComplete($db,$id,array_merge($complete,['series'=>"S1\nS1"]),1));
-$db->exec("INSERT INTO stock_reservations VALUES(1,1,2,1,1,'active')");denied(fn()=>productionComplete($db,$id,$complete,1));$db->exec("UPDATE stock_reservations SET statut='liberee'");
+$db->exec("INSERT INTO stock_reservations(id,article_id,projet_id,quantite,emplacement_id,statut) VALUES(1,1,2,1,1,'active')");denied(fn()=>productionComplete($db,$id,$complete,1));$db->exec("UPDATE stock_reservations SET statut='liberee'; INSERT INTO stock_reservations(id,article_id,projet_id,quantite,emplacement_id,statut) VALUES(2,1,1,2,1,'active')");
 productionComplete($db,$id,$complete,1);productionComplete($db,$id,$complete,1);
 if(productionQuantity($db,1,1)!==0.0||productionQuantity($db,2,2)!==2.0||$db->query('SELECT COUNT(*) FROM stock_unites')->fetchColumn()!=2||$db->query('SELECT COUNT(*) FROM stock_production_composants')->fetchColumn()!=2||$db->query('SELECT COUNT(*) FROM stock_mouvements')->fetchColumn()!=5)throw new RuntimeException('Stock, généalogie ou idempotence incorrects');
+if($db->query("SELECT statut FROM stock_reservations WHERE id=2")->fetchColumn()!=='consommee')throw new RuntimeException('Réservation propre non consommée');
 $p['reference']='OF2';$id2=productionPlan($db,1,$p,1);denied(fn()=>productionComplete($db,$id2,$complete,1));
 if($db->query('SELECT COUNT(*) FROM stock_unites')->fetchColumn()!=2||$db->query("SELECT statut FROM stock_production WHERE id=$id2")->fetchColumn()!=='planifie')throw new RuntimeException('Rollback incorrect');
 echo "OK : BOM, documents du projet, lots, disponibilité, réservations, séries, généalogie, atomicité et idempotence production\n";
