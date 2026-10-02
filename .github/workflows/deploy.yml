@@ -62,6 +62,9 @@ jobs:
           if [[ -f "$test_dir/tests/stock_lots.php" ]]; then
             php "$test_dir/tests/stock_lots.php"
           fi
+          if [[ -f "$test_dir/tests/stock_production.php" ]]; then
+            php "$test_dir/tests/stock_production.php"
+          fi
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash
