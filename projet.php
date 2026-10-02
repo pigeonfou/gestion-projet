@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
     $action = $_POST['action'] ?? '';
     if ($action !== 'update_task_status') {
-        requerirAccesProjet($id);
+        requerirGestionProjet($id);
     }
     if ($action === 'save_notes') {
         $notes = trim($_POST['step_notes'] ?? '');
@@ -406,6 +406,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
+      <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
     </nav>
     <div class="r1b-sidebar-foot">
       <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>

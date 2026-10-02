@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
     $qty = (float)str_replace(',', '.', (string)($_POST['quantite'] ?? '1'));
     $note = trim($_POST['note'] ?? '');
     if ($id > 0 && $projetId > 0 && $qty > 0) {
-        requerirAccesProjet($projetId);
+        requerirGestionProjet($projetId);
         try {
             $db->beginTransaction();
             $currentStock = stockQuantity($id);

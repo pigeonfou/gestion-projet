@@ -24,18 +24,18 @@ function estAdmin(): bool {
     return estConnecte() && isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
 }
 
+require_once __DIR__.'/project_members.php';
 function requerirAccesProjet(int $projetId, bool $ecriture = true): void {
     requerirConnexion();
-    if ($projetId <= 0) {
-        setFlash('error', 'Projet invalide.');
+    if (!projectCanContribute(getDB(),$projetId,utilisateurCourant())) {
+        setFlash('error', $ecriture ? 'Contribution non autorisée pour ce projet.' : 'Accès refusé.');
         redirect('projets.php');
     }
-    if (estAdmin()) return;
-    $stmt = getDB()->prepare('SELECT createur_id FROM projets WHERE id = ?');
-    $stmt->execute([$projetId]);
-    $createurId = $stmt->fetchColumn();
-    if ($createurId === false || (int)$createurId !== (int)($_SESSION['user_id'] ?? 0)) {
-        setFlash('error', $ecriture ? 'Vous n\'êtes pas autorisé à modifier ce projet.' : 'Accès refusé.');
+}
+function requerirGestionProjet(int $projetId): void {
+    requerirConnexion();
+    if (!projectCanManage(getDB(),$projetId,utilisateurCourant())) {
+        setFlash('error','Seul le créateur ou un administrateur peut piloter ce projet.');
         redirect('projets.php');
     }
 }

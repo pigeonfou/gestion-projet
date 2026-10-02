@@ -72,6 +72,7 @@ jobs:
             php "$test_dir/tests/stock_reservations.php"
           fi
           php "$test_dir/tests/management_workflow.php"
+          php "$test_dir/tests/project_members.php"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash
