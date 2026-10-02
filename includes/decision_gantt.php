@@ -30,3 +30,12 @@ function ddGantt(array $tasks): array {
     }
     return compact('rows','undated','min','max','days','ticks');
 }
+
+/** Prefer the task source; legacy generated tasks carry their S.T. in the title. */
+function ddGanttTaskLabel(array $task): string {
+    $label = '#'.(int)$task['id'];
+    foreach (['source_key','titre'] as $field) {
+        if (preg_match('/(?<![A-Za-z0-9])S\.T\.(\d+)\.(\d+)(?![\d.])/', (string)($task[$field] ?? ''), $match)) return $label.' · '.$match[0];
+    }
+    return $label;
+}

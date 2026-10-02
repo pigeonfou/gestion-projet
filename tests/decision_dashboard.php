@@ -46,3 +46,7 @@ expectDD(!$g['rows'][0]['milestone'] && abs($g['rows'][0]['width']-100*4/6)<0.00
 expectDD($g['rows'][1]['milestone'] && $g['rows'][1]['start']->format('Y-m-d')==='2027-01-04','Deadline is a milestone, no fabricated start');
 expectDD(ddGantt([])['days']===0 && ddGanttDate('2026-02-30')===null,'Empty and impossible calendar dates');
 echo "Gantt: OK\n";
+
+expectDD(ddGanttTaskLabel(['id'=>28,'source_key'=>'st:3:S.T.2.1','titre'=>'Autre S.T.3.2'])==='#28 · S.T.2.1','Gantt source S.T. takes precedence');
+expectDD(ddGanttTaskLabel(['id'=>42,'titre'=>'[ACHAT S.T.2.2/PCB.1] Carte'])==='#42 · S.T.2.2','Gantt legacy purchase S.T.');
+expectDD(ddGanttTaskLabel(['id'=>66,'titre'=>'Libération'])==='#66','No invented S.T. for manual tasks');

@@ -10,9 +10,9 @@ $ganttStates = ['a_faire'=>'À faire','en_cours'=>'En cours','validation'=>'En v
 <p><strong><?=e($gantt['min']->format('d/m/Y'))?> → <?=e($gantt['max']->format('d/m/Y'))?></strong> · <?=count($gantt['rows'])?> tâches datées · <?=count($gantt['undated'])?> à planifier</p>
 <div class="dd-gantt-scroll" tabindex="0" role="region" aria-label="Diagramme de Gantt, défilement horizontal">
  <div class="dd-gantt">
-  <div class="dd-gantt-row dd-gantt-header"><div>ID tâche</div><div class="dd-gantt-axis"><?php foreach($gantt['ticks'] as $tick):?><span style="left:<?=round($tick['left'],4)?>%;"><?=e($tick['label'])?></span><?php endforeach;?></div></div>
+  <div class="dd-gantt-row dd-gantt-header"><div>ID / S.T.</div><div class="dd-gantt-axis"><?php foreach($gantt['ticks'] as $tick):?><span style="left:<?=round($tick['left'],4)?>%;"><?=e($tick['label'])?></span><?php endforeach;?></div></div>
   <?php foreach($gantt['rows'] as $row): $task=$row['task']; $state=$task['kanban_status']??$task['statut']??'a_faire'; if(!isset($ganttStates[$state]))$state='a_faire'; $period=$row['milestone']?'Échéance '.$row['end']->format('d/m/Y'):$row['start']->format('d/m/Y').' → '.$row['end']->format('d/m/Y'); ?>
-  <div class="dd-gantt-row"><div class="dd-gantt-label"><a href="<?=url('tache.php?id='.(int)$task['id'])?>" title="<?=e($task['titre'].' · '.$period.' · '.$ganttStates[$state].(!empty($task['dependance_id'])?' · après #'.(int)$task['dependance_id']:''))?>">#<?=(int)$task['id']?></a></div>
+  <div class="dd-gantt-row"><div class="dd-gantt-label"><a href="<?=url('tache.php?id='.(int)$task['id'])?>" title="<?=e($task['titre'].' · '.$period.' · '.$ganttStates[$state].(!empty($task['dependance_id'])?' · après #'.(int)$task['dependance_id']:''))?>"><?=e(ddGanttTaskLabel($task))?></a></div>
    <div class="dd-gantt-lane"><?php foreach($gantt['ticks'] as $tick):?><i style="left:<?=round($tick['left'],4)?>%"></i><?php endforeach;?>
     <a class="dd-gantt-bar dd-gantt-<?=e($state)?> <?= $row['milestone']?'dd-gantt-milestone':'' ?>" href="<?=url('tache.php?id='.(int)$task['id'])?>" style="left:<?=round($row['left'],4)?>%;width:<?=round($row['width'],4)?>%" title="<?=e($task['titre'].' · '.$period.' · '.$ganttStates[$state])?>" aria-label="<?=e('#'.$task['id'].' '.$task['titre'].' · '.$period.' · '.$ganttStates[$state])?>"><?= $row['milestone']?'◆':'#'.(int)$task['id'] ?></a>
    </div></div>
@@ -20,5 +20,5 @@ $ganttStates = ['a_faire'=>'À faire','en_cours'=>'En cours','validation'=>'En v
  </div>
 </div>
 <?php else: ?><p class="dd-alert">Aucune échéance valide enregistrée. Renseignez le début prévu et l’échéance des tâches pour construire le Gantt.</p><?php endif;?>
-<?php if($gantt['undated']):?><details class="dd-details"><summary>Tâches à planifier (<?=count($gantt['undated'])?>)</summary><?php foreach($gantt['undated'] as $task):?><p><a href="<?=url('tache.php?id='.(int)$task['id'])?>">#<?=(int)$task['id']?></a> · échéance absente ou période invalide</p><?php endforeach;?></details><?php endif;?>
+<?php if($gantt['undated']):?><details class="dd-details"><summary>Tâches à planifier (<?=count($gantt['undated'])?>)</summary><?php foreach($gantt['undated'] as $task):?><p><a href="<?=url('tache.php?id='.(int)$task['id'])?>"><?=e(ddGanttTaskLabel($task))?></a> · échéance absente ou période invalide</p><?php endforeach;?></details><?php endif;?>
 <p class="dd-muted">Survolez un ID pour consulter le titre, les dates, le statut et la dépendance enregistrée. Le Gantt ne décale pas automatiquement les tâches et ne calcule pas de chemin critique sans durées et disponibilités complètes.</p>
