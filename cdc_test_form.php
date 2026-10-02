@@ -27,9 +27,9 @@ $sections=cdcTestSections();require __DIR__.'/includes/header.php';
   <form method="POST" action="<?= url('cdc_test_form.php?projet_id='.$id) ?>" id="cdc-test-form">
     <?= csrfField() ?><input type="hidden" name="projet_id" value="<?= $id ?>"><input type="hidden" name="revision" value="<?= $revision ?>">
     <div class="cdc-test-toolbar"><button type="submit" class="btn btn-primary">Enregistrer le formulaire</button><span id="cdc-save-state" role="status"><?= $saved?'Enregistré le '.e($saved['updated_at']).' (UTC) · Version '.$revision:'Exemple non enregistré' ?></span></div>
-    <div class="cdc-test-layout"><nav class="cdc-test-nav" aria-label="Sections du cahier des charges"><?php $n=0;foreach($sections as $key=>$section):$n++; ?><a href="#cdc-<?= e($key) ?>"><?= $n ?>. <?= e($section['title']) ?></a><?php endforeach; ?></nav>
+    <div class="cdc-test-layout"><nav class="cdc-test-nav" aria-label="Sections du cahier des charges"><?php $n=0;foreach($sections as $key=>$section):$n++; ?><a href="#cdc-section-<?= e($key) ?>"><?= $n ?>. <?= e($section['title']) ?></a><?php endforeach; ?></nav>
     <div class="cdc-test-sections"><?php $n=0;foreach($sections as $key=>$section):$n++; ?>
-      <section class="cdc-test-section" id="cdc-<?= e($key) ?>"><header><span class="cdc-section-number"><?= $n ?></span><div><h2><?= e($section['title']) ?></h2><p><?= e($section['hint']) ?></p></div></header>
+      <section class="cdc-test-section" id="cdc-section-<?= e($key) ?>"><header><span class="cdc-section-number"><?= $n ?></span><div><h2><?= e($section['title']) ?></h2><p><?= e($section['hint']) ?></p></div></header>
       <div class="cdc-test-fields"><?php foreach($section['fields'] as $fieldKey=>$field):$type=$field[1];$value=$data[$fieldKey]??''; ?>
         <div class="cdc-test-field <?= $type==='textarea'?'cdc-wide':'' ?>"><label for="cdc-<?= e($fieldKey) ?>"><?= e($field[0]) ?><?= $fieldKey==='nom'?' *':'' ?></label>
         <?php if($type==='textarea'): ?><textarea class="form-control" id="cdc-<?= e($fieldKey) ?>" name="cdc[<?= e($fieldKey) ?>]" rows="<?= in_array($fieldKey,['fonctions','inclus','nettoyage'],true)?5:3 ?>" maxlength="20000" placeholder="<?= e($field[3]??'') ?>"><?= e($value) ?></textarea>
