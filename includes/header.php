@@ -35,6 +35,12 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
                 <a href="<?= url('stocks.php') ?>" class="nav-link <?= ($activePage ?? '') === 'stocks' ? 'active' : '' ?>">
                     <i class="fas fa-boxes"></i> Stocks & Matériel
                 </a>
+                <a href="<?= url('stock_pilotage.php') ?>" class="nav-link <?= ($activePage ?? '') === 'stock_pilotage' ? 'active' : '' ?>">
+                    <i class="fas fa-warehouse"></i> Stock avancé
+                </a>
+                <a href="<?= url('management.php') ?>" class="nav-link <?= ($activePage ?? '') === 'management' ? 'active' : '' ?>">
+                    <i class="fas fa-sitemap"></i> Management
+                </a>
             </nav>
             <div class="user-menu">
                 <div class="user-dropdown">

@@ -1,8 +1,10 @@
 <?php
 $pageTitle = 'Cahier des charges';
+require_once __DIR__ . '/includes/decision_dashboard.php';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
+require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 
 $db = getDB();
@@ -18,7 +20,7 @@ if (!in_array($returnView, ['dashboard', 'processus', 'taches', 'documents'], tr
     $returnView = 'processus';
 }
 if ($returnView === 'processus') {
-    $returnStep = max(0, min(6, $returnStep));
+    $returnStep = r1bClampStep($returnStep);
 }
 $returnUrl = 'projet.php?id=' . $projet_id . '&view=' . rawurlencode($returnView);
 if ($returnView === 'processus') {
@@ -73,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Required validation on "generate"
     $errors = [];
+    try { $specs['decision_cibles'] = ddTargets($_POST); }
+    catch (InvalidArgumentException $e) { $errors[]=$e->getMessage(); }
     if ($action === 'generate') {
         if ($specs['objectifs'] === '') $errors[] = 'Les objectifs et le contexte sont obligatoires.';
     }
@@ -186,6 +190,18 @@ function sel(?string $cur, string $val): string {
                     <label>Contraintes</label>
                     <textarea name="cas_usage" class="form-control" rows="3"><?= e($s['cas_usage']) ?></textarea>
                 </div>
+                <fieldset style="border:1px solid #dbe3ef;padding:16px;margin:16px 0;border-radius:8px">
+                  <legend style="font-weight:600">Cibles de décision (optionnelles)</legend>
+                  <p class="text-muted text-sm">Ces valeurs servent aux comparaisons de l’Étape 3. Précisez le périmètre ; laissez vide ce qui reste inconnu. Les contraintes textuelles restent la référence.</p>
+                  <?php $cibles=$s['decision_cibles']??[]; ?>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+                  <?php foreach(['budget'=>'Budget cible (€)','quantite'=>'Quantité d’équipements','tva'=>'TVA de rapprochement (%)','delai'=>'Délai cible (jours calendaires)','charge'=>'Plafond de charge (jours-personnes)'] as $key=>$label): ?>
+                  <div class="form-group"><label for="cible-<?=$key?>"><?=e($label)?></label><input id="cible-<?=$key?>" name="cible_<?=$key?>" type="number" min="<?=$key==='quantite'?'0.01':'0'?>" <?= $key==='tva'?'max="100"':'' ?> step="any" class="form-control" value="<?=e((string)($cibles[$key]??''))?>"></div>
+                  <?php endforeach; ?>
+                  <div class="form-group"><label for="cible-taxe">Base fiscale du budget</label><select id="cible-taxe" name="cible_taxe" class="form-control"><option value="HT" <?=($cibles['taxe']??'HT')==='HT'?'selected':''?>>HT</option><option value="TTC" <?=($cibles['taxe']??'HT')==='TTC'?'selected':''?>>TTC</option></select></div>
+                  </div>
+                  <div class="form-group"><label for="cible-perimetre">Périmètre du budget et source des cibles</label><input id="cible-perimetre" name="cible_perimetre" maxlength="1000" class="form-control" value="<?=e($cibles['perimetre']??'')?>" placeholder="Ex. deux prototypes, achats et assemblage ; besoin validé du…"></div>
+                </fieldset>
                 <div class="form-group">
                     <label>Profils des utilisateurs finaux</label>
                     <textarea name="profils_utilisateurs" class="form-control" rows="2"><?= e($s['profils_utilisateurs']) ?></textarea>

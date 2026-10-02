@@ -1,49 +1,93 @@
 name: Déployer gestion-projet
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       branch:
         description: "Branche Git à déployer"
         required: true
-        default: "iso"
+        default: "main"
         type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gestion-projet-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Déploiement sur serveur
     runs-on: self-hosted
-
+    timeout-minutes: 10
+    env:
+      DEPLOY_BRANCH: ${{ inputs.branch || github.ref_name }}
     steps:
-      - name: Informations
+      - name: Vérifications avant déploiement
+        shell: bash
         run: |
-          echo "======================================"
-          echo " Déploiement gestion-projet"
-          echo "======================================"
-          echo
-          echo "Serveur : $(hostname)"
-          echo "Branche : ${{ inputs.branch }}"
-          echo "Date    : $(date)"
-
+          set -Eeuo pipefail
+          git check-ref-format --branch "$DEPLOY_BRANCH"
+          cd /var/www/html/gestion-projet
+          git fetch origin "+refs/heads/$DEPLOY_BRANCH:refs/remotes/origin/$DEPLOY_BRANCH"
+          candidate=$(git rev-parse "refs/remotes/origin/$DEPLOY_BRANCH")
+          if [[ "$GITHUB_EVENT_NAME" == push && "$candidate" != "$GITHUB_SHA" ]]; then
+            echo "La branche a changé depuis cette exécution."
+            exit 1
+          fi
+          test_dir=$(mktemp -d)
+          trap 'rm -rf "$test_dir"' EXIT
+          git archive "$candidate" | tar -x -C "$test_dir"
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null
+          done < <(find "$test_dir" -type f -name '*.php' -print0)
+          if [[ -f "$test_dir/tests/couts_delais.php" ]]; then
+            php "$test_dir/tests/couts_delais.php"
+          fi
+          if [[ -f "$test_dir/tests/nextcloud_sans_curl.php" ]]; then
+            php -n "$test_dir/tests/nextcloud_sans_curl.php"
+          fi
+          php -n "$test_dir/tests/document_upload_stream.php"
+          php -r 'echo "cURL CLI : ", function_exists("curl_init") ? "disponible" : "absent", PHP_EOL;'
+          if [[ -f "$test_dir/tests/r1b_decisions.php" ]]; then
+            php "$test_dir/tests/r1b_decisions.php"
+          fi
+          if [[ -f "$test_dir/tests/task_workflow.php" ]]; then
+            php "$test_dir/tests/task_workflow.php"
+          fi
+          if [[ -f "$test_dir/tests/quality.php" ]]; then
+            php "$test_dir/tests/quality.php"
+          fi
+          if [[ -f "$test_dir/tests/stock_lots.php" ]]; then
+            php "$test_dir/tests/stock_lots.php"
+          fi
+          if [[ -f "$test_dir/tests/stock_production.php" ]]; then
+            php "$test_dir/tests/stock_production.php"
+          fi
+          if [[ -f "$test_dir/tests/stock_inventory.php" ]]; then
+            php "$test_dir/tests/stock_inventory.php"
+          fi
+          if [[ -f "$test_dir/tests/stock_reservations.php" ]]; then
+            php "$test_dir/tests/stock_reservations.php"
+          fi
+          php "$test_dir/tests/management_workflow.php"
+          php "$test_dir/tests/project_members.php"
+          php "$test_dir/tests/decision_history.php"
+          php "$test_dir/tests/project_notes.php"
+          php "$test_dir/tests/cdc_test.php"
+          php "$test_dir/tests/decision_dashboard.php"
+          echo "PHP et tests : OK"
       - name: Déployer
+        shell: bash
         run: |
-          sudo -n /usr/local/sbin/gestion-projet-deploy \
-            deploy "${{ inputs.branch }}"
-
+          sudo -n /usr/local/sbin/gestion-projet-deploy deploy "$DEPLOY_BRANCH"
       - name: État final
         if: always()
+        shell: bash
         run: |
-          echo
-          echo "======================================"
-          echo " État du serveur"
-          echo "======================================"
           cd /var/www/html/gestion-projet
-          echo
-          echo "Branche :"
           git branch --show-current
-          echo
-          echo "Commit :"
           git log -1 --oneline
-          echo
-          echo "État Git :"
           git status --short

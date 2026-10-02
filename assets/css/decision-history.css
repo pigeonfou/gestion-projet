@@ -1,0 +1,75 @@
+/* Decision history has its own view; long motifs wrap instead of widening the page. */
+.decision-history-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; align-items:end; }
+.decision-history-filters label { display:flex; flex-direction:column; gap:.4rem; font-weight:600; min-width:0; }
+.decision-history-filters .form-control { width:100%; min-width:0; box-sizing:border-box; }
+.history-search { grid-column:1 / -1; }
+.history-filter-actions, .history-pagination { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
+.history-count { margin:1.25rem 0; }
+.decision-history-table { width:100%; table-layout:fixed; }
+.decision-history-table th:nth-child(1) { width:15%; }
+.decision-history-table th:nth-child(2) { width:18%; }
+.decision-history-table th:nth-child(3) { width:13%; }
+.decision-history-table th:nth-child(4) { width:12%; }
+.decision-history-table td { vertical-align:top; overflow-wrap:anywhere; }
+.decision-history-table .history-motif { white-space:pre-wrap; line-height:1.5; }
+.history-table-caption { text-align:left; padding:.75rem 0; color:#475569; font-size:.875rem; }
+.history-decision { display:inline-block; padding:.2rem .45rem; border-radius:.3rem; background:#e2e8f0; font-weight:600; }
+.history-refuse, .history-no_go, .history-non_conforme { background:#fee2e2; color:#991b1b; }
+.history-done, .history-go, .history-conforme { background:#dcfce7; color:#166534; }
+.history-pagination { margin-top:1rem; justify-content:space-between; }
+@media(max-width:700px) { .decision-history-table { min-width:680px; } .decision-history-filters { grid-template-columns:1fr; } }
+
+.history-step-frame { display:block; width:100%; height:680px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+.history-embedded { margin:0; background:#fff; }
+.history-embedded main { margin:0; padding:.5rem; max-width:none; }
+.history-embedded .decision-history { box-shadow:none; border:0; margin:0; padding:.75rem; }
+.history-step-panel { margin-top:1.5rem; }
+
+/* Keep all controls visible while the decisions scroll underneath. */
+.history-toolbar { position:sticky; top:0; z-index:5; background:#fff; padding:.6rem; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 3px 8px #0f172a0d; }
+.decision-history-filters { grid-template-columns:repeat(6,minmax(0,1fr)); gap:.5rem .65rem; }
+.decision-history-filters label { gap:.2rem; font-size:.78rem; }
+.decision-history-filters .form-control { height:34px; padding:.3rem .45rem; font-size:.85rem; }
+.history-search { grid-column:span 3; }
+.history-filter-actions { grid-column:span 2; gap:.4rem; }
+.history-filter-actions .btn { padding:.4rem .65rem; font-size:.8rem; min-height:34px; }
+.history-count { margin:.5rem 0 0; font-size:.78rem; }
+.history-embedded main, .history-embedded .decision-history { padding:.35rem; }
+@media(max-width:900px) { .decision-history-filters { grid-template-columns:repeat(4,minmax(0,1fr)); } .history-search { grid-column:span 2; } }
+@media(max-width:600px) { .decision-history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem; } .history-search, .history-filter-actions { grid-column:1 / -1; } .history-toolbar { padding:.4rem; } }
+
+/* Step navigation and review tools; the history remains outside this grid. */
+.r1b-process-main { overflow:visible; }
+.r1b-process-main .r1b-stepper-wrap { position:sticky; top:60px; z-index:20; padding:.75rem; box-shadow:0 4px 10px #0f172a12; }
+.r1b-step-workspace { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:1rem; align-items:start; }
+.r1b-step-content, .r1b-step-tools { min-width:0; }
+.r1b-step-tools .r1b-actions { flex-direction:column; align-items:stretch; }
+.r1b-step-tools .r1b-actions form { display:block !important; width:100%; }
+.r1b-step-tools label { display:block; font-size:.85rem; }
+.r1b-step-tools .btn { width:100%; justify-content:center; box-sizing:border-box; white-space:normal; text-align:center; margin-bottom:.4rem; }
+.r1b-step-tools textarea { box-sizing:border-box; min-height:110px; resize:vertical; }
+.r1b-step-tools .mt-3 { margin-top:.75rem; }
+@media(max-width:1100px) { .r1b-step-workspace { grid-template-columns:minmax(0,1fr) 260px; gap:.75rem; } }
+@media(max-width:800px) { .r1b-step-workspace { grid-template-columns:minmax(0,1fr); } .r1b-process-main .r1b-stepper-wrap { top:60px; } }
+
+/* One opaque sticky header masks the scrolling content across the entire panel. */
+.r1b-process-header { position:sticky; top:52px; z-index:30; background:#e2e8f0; margin:-1.5rem -1.5rem 1rem; padding:.75rem 1.5rem .5rem; box-shadow:0 4px 8px #0f172a12; }
+.r1b-process-header .r1b-page-head { margin-bottom:.75rem; }
+.r1b-process-main .r1b-process-header .r1b-stepper-wrap { position:static; margin-bottom:0; box-shadow:none; }
+
+/* The header never enters the scrolling region, including at the history boundary. */
+body:has(.r1b-process-main) { overflow:hidden; }
+.r1b-layout:has(.r1b-process-main) { height:calc(100dvh - 52px); min-height:0; }
+.r1b-process-main { display:flex; flex-direction:column; height:100%; min-height:0; box-sizing:border-box; overflow:hidden; }
+.r1b-process-header { position:relative; top:auto; flex:none; margin:-1.5rem -1.5rem 0; padding:.75rem 1.5rem .75rem; }
+.r1b-process-scroll { flex:1; min-height:0; overflow:auto; margin:0 -1.5rem -1.5rem; padding:1rem 1.5rem; }
+.r1b-layout:has(.r1b-process-main) > .r1b-sidebar { min-height:0; max-height:100%; overflow:auto; box-sizing:border-box; }
+@media(max-width:900px) { .r1b-layout:has(.r1b-process-main) { grid-template-rows:auto minmax(0,1fr); } .r1b-layout:has(.r1b-process-main) > .r1b-sidebar { max-height:120px; } }
+
+#notes-dialog { width:min(620px,calc(100vw - 2rem)); max-height:85dvh; overflow:auto; border:1px solid #94a3b8; border-radius:12px; padding:1.25rem; margin:auto; }
+#notes-dialog::backdrop { background:#0f172a80; }
+#notes-dialog label { display:block; margin:.75rem 0 .3rem; }
+#notes-dialog .form-control { box-sizing:border-box; }
+#notes-dialog .note-dialog-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
+#notes-dialog .btn { width:auto; margin:0; }
+#notes-dialog [hidden] { display:none !important; }

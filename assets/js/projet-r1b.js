@@ -11,10 +11,32 @@
     });
   }
 
-  document.querySelectorAll('.st-sf-block').forEach(block => {
+  document.querySelectorAll('.st-sf-block:not(.cp-st-block)').forEach(block => {
     const body = block.querySelector('.st-body');
+    if (!body) return;
     const sfNum = block.getAttribute('data-sf-num');
     const sfId = block.getAttribute('data-sf');
+
+    function parseStCost(value) {
+      return parseFloat(String(value || '').replace(',', '.')) || 0;
+    }
+
+    function recalcSfCost() {
+      let ht = 0, ttc = 0;
+      body.querySelectorAll('.st-row').forEach(row => {
+        const hasCost = ['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(row.querySelector('[name="st_type[]"]').value);
+        row.querySelector('.cp-cost-cell').style.display = hasCost ? '' : 'none';
+        row.querySelector('.st-cost').readOnly = !hasCost;
+        const cost = hasCost ? parseStCost((row.querySelector('.st-cost') || {}).value) : 0;
+        const tax = (row.querySelector('.st-tax') || {}).value || 'HT';
+        if (tax === 'TTC') ttc += cost; else ht += cost;
+      });
+      const out = block.querySelector('.sf-cost-value');
+      if (out) {
+        out.textContent = ht.toFixed(2).replace('.', ',') + ' € HT' +
+          (ttc > 0 ? ' + ' + ttc.toFixed(2).replace('.', ',') + ' € TTC' : '');
+      }
+    }
 
     function bindDel(btn) {
       btn.addEventListener('click', () => {
@@ -23,11 +45,19 @@
           const row = rows[0];
           row.querySelector('input[type="text"]').value = '';
           row.querySelector('select').value = 'Matériel';
+          const cost = row.querySelector('.st-cost');
+          if (cost) cost.value = '0';
+          const delay = row.querySelector('.st-delay');
+          if (delay) delay.value = '';
+          const tax = row.querySelector('.st-tax');
+          if (tax) tax.value = 'HT';
           renumberBlock(block);
+          recalcSfCost();
           return;
         }
         btn.closest('.st-row').remove();
         renumberBlock(block);
+        recalcSfCost();
       });
     }
     body.querySelectorAll('.btn-st-del').forEach(bindDel);
@@ -44,16 +74,31 @@
           '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
           '<td><select name="st_type[]" class="form-control">' +
             '<option value="Matériel" selected>Matériel</option>' +
+            '<option value="Composant">Composant</option>' +
+            '<option value="Prestataire">Prestataire</option>' +
             '<option value="Logiciel">Logiciel</option>' +
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
           '</select></td>' +
+          '<td><div class="cp-cost-cell"><input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
+          '<select name="st_cout_taxe[]" class="form-control st-tax"><option value="HT">HT</option><option value="TTC">TTC</option></select></div></td>' +
+          '<td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" aria-label="Délai estimé en jours"></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
         bindDel(tr.querySelector('.btn-st-del'));
         renumberBlock(block);
+        recalcSfCost();
       });
     }
+
+    body.addEventListener('input', e => {
+      if (e.target.matches('.st-cost')) recalcSfCost();
+    });
+    body.addEventListener('change', e => {
+      if (e.target.matches('.st-tax, [name="st_type[]"]')) recalcSfCost();
+    });
+    recalcSfCost();
+
   });
 })();
 
@@ -67,11 +112,34 @@
     });
   }
 
+  function parseDecimal(value) {
+    return parseFloat(String(value || '').replace(',', '.')) || 0;
+  }
+
+  function recalcBlock(block) {
+    let ht = 0, ttc = 0;
+    block.querySelectorAll('.cp-row').forEach(row => {
+      const total = parseDecimal((row.querySelector('.cp-total') || {}).value);
+      const tax = (row.querySelector('select[name="cp_cout_unitaire_taxe[]"]') || {}).value || 'HT';
+      if (tax === 'TTC') ttc += total; else ht += total;
+    });
+    const out = block.querySelector('.cp-st-cost-value');
+    if (out) out.textContent = ht.toFixed(2).replace('.', ',') + ' € HT' + (ttc > 0 ? ' + ' + ttc.toFixed(2).replace('.', ',') + ' € TTC' : '');
+  }
+
   function recalc(row) {
-    const qty = parseFloat((row.querySelector('.cp-qty') || {}).value) || 0;
-    const unit = parseFloat((row.querySelector('.cp-unit') || {}).value) || 0;
+    const qty = parseDecimal((row.querySelector('.cp-qty') || {}).value);
+    const unit = parseDecimal((row.querySelector('.cp-unit') || {}).value);
     const tot = row.querySelector('.cp-total');
-    if (tot) tot.value = (qty * unit).toFixed(2);
+    if (tot) tot.value = (qty * unit).toFixed(2).replace('.', ',') + ' €';
+    const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
+    const totalTax = row.querySelector('.cp-total-taxe');
+    const totalTaxInput = row.querySelector('.cp-total-taxe-input');
+    const tax = unitTax ? unitTax.value : 'HT';
+    if (totalTax) totalTax.textContent = tax;
+    if (totalTaxInput) totalTaxInput.value = tax;
+    const block = row.closest('.cp-st-block');
+    if (block) recalcBlock(block);
   }
 
   document.querySelectorAll('.cp-st-block').forEach(block => {
@@ -96,19 +164,37 @@
             const tot = row.querySelector('.cp-total');
             if (tot) tot.value = '';
             renumber(block);
+            recalcBlock(block);
             return;
           }
           row.remove();
           renumber(block);
+          recalcBlock(block);
         });
       }
       const qty = row.querySelector('.cp-qty');
       const unit = row.querySelector('.cp-unit');
       if (qty) qty.addEventListener('input', () => recalc(row));
       if (unit) unit.addEventListener('input', () => recalc(row));
+      const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
+      if (unitTax) unitTax.addEventListener('change', () => recalc(row));
     }
 
-    body.querySelectorAll('.cp-row').forEach(bindRow);
+    body.querySelectorAll('.cp-row').forEach(row => {
+      bindRow(row);
+      if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) recalc(row);
+    });
+    if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
+      body.addEventListener('input', e => {
+        const row = e.target.closest('.cp-row');
+        if (row && (e.target.matches('.cp-qty') || e.target.matches('.cp-unit'))) recalc(row);
+      });
+      body.addEventListener('change', e => {
+        const row = e.target.closest('.cp-row');
+        if (row && e.target.matches('select[name="cp_cout_unitaire_taxe[]"]')) recalc(row);
+      });
+      recalcBlock(block);
+    }
 
     const addBtn = block.querySelector('.btn-cp-add');
     if (addBtn) {
@@ -116,20 +202,21 @@
         const i = body.querySelectorAll('.cp-row').length;
         const tr = document.createElement('tr');
         tr.className = 'cp-row';
-        if (type === 'Matériel') {
+        if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="Matériel"></td>' +
+            '<input type="hidden" name="cp_type[]" value="' + type + '"></td>' +
             '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
             '<td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value=""></td>' +
-            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
+            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" inputmode="decimal" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
             '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
             '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
-            '<select name="cp_cout_total_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div>' +
-            '<input type="hidden" name="cp_affectation[]" value=""><input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            '<span class="form-control cp-total-taxe">HT</span><input type="hidden" name="cp_cout_total_taxe[]" value="HT" class="cp-total-taxe-input"></div>' +
+            (type === 'PCB' ? '<label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option>' + (window.PROJECTFLOW_USERS || []).map(u => '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>').join('') + '</select>' : '<input type="hidden" name="cp_affectation[]" value="">') + '<input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         } else {
           const userOpts = window.PROJECTFLOW_USERS || [];
@@ -143,14 +230,15 @@
             '<input type="hidden" name="cp_fournisseur[]" value=""><input type="hidden" name="cp_quantite[]" value="">' +
             '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
             '<input type="hidden" name="cp_cout_total_taxe[]" value="HT"></td>' +
-            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select></td>' +
-            '<td><input type="text" name="cp_duree[]" class="form-control" value="" placeholder="ex. 3 j"></td>' +
+            '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select><input type="hidden" name="cp_duree[]" value=""></td>' +
             '<td><select name="cp_variation[]" class="form-control"><option value="Forte">Forte</option><option value="Moyenne" selected>Moyenne</option><option value="Faible">Faible</option></select></td>' +
+            '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         }
         body.appendChild(tr);
         bindRow(tr);
         renumber(block);
+        recalcBlock(block);
       });
     }
   });

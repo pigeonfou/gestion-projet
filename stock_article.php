@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
     $qty = (float)str_replace(',', '.', (string)($_POST['quantite'] ?? '1'));
     $note = trim($_POST['note'] ?? '');
     if ($id > 0 && $projetId > 0 && $qty > 0) {
-        requerirAccesProjet($projetId);
+        requerirGestionProjet($projetId);
         try {
             $db->beginTransaction();
             $currentStock = stockQuantity($id);
@@ -135,6 +135,12 @@ $usages = [];
 $locationsStock = [];
 $mouvements = [];
 $projets = $db->query('SELECT id, nom FROM projets ORDER BY nom')->fetchAll();
+$projetsMouvements = [];
+if ($article) {
+    $stmt = $db->prepare('SELECT DISTINCT p.id, p.nom FROM projets p JOIN stock_mouvements m ON m.projet_id=p.id WHERE m.article_id=? ORDER BY p.nom');
+    $stmt->execute([$id]);
+    $projetsMouvements = $stmt->fetchAll();
+}
 
 if ($article) {
     $stmt = $db->prepare('SELECT af.*, f.nom AS fournisseur_nom FROM stock_article_fournisseur af JOIN stock_fournisseurs f ON f.id = af.fournisseur_id WHERE af.article_id = ?');
@@ -292,7 +298,14 @@ $a = $article ?: [
 </div>
 
 <div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
-  <h3 style="margin:0 0 1rem;font-size:1rem;">Projets ayant utilisé cette référence</h3>
+  <h3 style="margin:0 0 1rem;font-size:1rem;">Projets associés à cette référence</h3>
+  <?php if ($projetsMouvements): ?>
+    <p class="text-sm">Projets présents dans le journal des mouvements :</p>
+    <ul><?php foreach ($projetsMouvements as $pr): ?>
+      <li><a href="<?= url('projet.php?id=' . (int)$pr['id']) ?>"><?= e($pr['nom']) ?></a></li>
+    <?php endforeach; ?></ul>
+  <?php endif; ?>
+  <h4 style="font-size:.9rem;">Besoins et usages déclarés</h4>
   <?php if (empty($usages)): ?>
     <p class="text-muted text-sm">Aucun usage enregistré.</p>
   <?php else: ?>

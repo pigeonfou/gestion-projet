@@ -1,0 +1,25 @@
+.cdc-test-page { max-width:1240px; margin:0 auto; color:#1e293b; }
+.cdc-test-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+.cdc-test-heading h1 { margin:.4rem 0; font-size:1.8rem; }
+.cdc-test-heading p { margin:0; color:#475569; }
+.cdc-test-badge { background:#ede9fe; color:#5b21b6; padding:.3rem .6rem; border-radius:6px; font-size:.75rem; font-weight:700; letter-spacing:.04em; }
+.cdc-test-notice { background:#eff6ff; border:1px solid #bfdbfe; padding:.85rem 1rem; border-radius:10px; font-size:.88rem; }
+.cdc-test-toolbar { position:sticky; top:52px; z-index:10; display:flex; align-items:center; flex-wrap:wrap; gap:1rem; padding:.75rem 1rem; background:#fff; border:1px solid #cbd5e1; border-radius:10px; margin:1rem 0; box-shadow:0 3px 8px #0f172a0d; }
+#cdc-save-state { font-size:.85rem; color:#475569; }
+.cdc-test-layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:1.25rem; align-items:start; }
+.cdc-test-nav { position:sticky; top:130px; padding:.5rem; background:#fff; border:1px solid #e2e8f0; border-radius:10px; }
+.cdc-test-nav a { display:block; padding:.65rem; color:#475569; text-decoration:none; border-radius:6px; font-size:.85rem; line-height:1.4; }
+.cdc-test-nav a:hover,.cdc-test-nav a:focus-visible { background:#ede9fe; color:#5b21b6; }
+.cdc-test-section { background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:1.25rem; margin-bottom:1rem; scroll-margin-top:130px; }
+.cdc-test-section header { display:flex; align-items:flex-start; gap:.75rem; margin-bottom:1.1rem; }
+.cdc-section-number { display:grid; place-items:center; width:32px; height:32px; border-radius:8px; background:#ede9fe; color:#5b21b6; font-weight:700; flex:none; }
+.cdc-test-section h2 { font-size:1.1rem; margin:0 0 .3rem; }
+.cdc-test-section header p { margin:0; font-size:.85rem; color:#64748b; }
+.cdc-test-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.cdc-test-field { min-width:0; }
+.cdc-test-field label { display:block; margin-bottom:.4rem; font-size:.85rem; font-weight:600; }
+.cdc-test-field .form-control { width:100%; box-sizing:border-box; }
+.cdc-test-field textarea { resize:vertical; line-height:1.5; }
+.cdc-wide { grid-column:1 / -1; }
+@media(max-width:800px) { .cdc-test-layout { grid-template-columns:1fr; } .cdc-test-nav { position:static; display:flex; flex-wrap:wrap; } .cdc-test-nav a { flex:1 1 180px; } .cdc-test-toolbar { top:52px; } }
+@media(max-width:500px) { .cdc-test-fields { grid-template-columns:1fr; } .cdc-test-section { padding:1rem; } }

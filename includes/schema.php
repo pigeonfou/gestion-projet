@@ -13,6 +13,26 @@ function runSchemaMigrations(): void
     $db = getDB();
     $db->exec('PRAGMA foreign_keys = ON');
 
+    // Profil professionnel : aucune modification du rôle ni de l'authentification.
+    $ucols = $db->query('PRAGMA table_info(utilisateurs)')->fetchAll(PDO::FETCH_COLUMN, 1);
+    foreach (['nom_affiche', 'fonction', 'competences'] as $col) {
+        if (!in_array($col, $ucols, true)) {
+            $db->exec("ALTER TABLE utilisateurs ADD COLUMN $col TEXT NOT NULL DEFAULT ''");
+        }
+    }
+
+    $db->exec("CREATE TABLE IF NOT EXISTS projet_decisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projet_id INTEGER NOT NULL,
+        etape INTEGER NOT NULL CHECK(etape BETWEEN 1 AND 9),
+        decision TEXT NOT NULL,
+        motif TEXT NOT NULL,
+        utilisateur_id INTEGER NOT NULL,
+        date_decision DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(projet_id) REFERENCES projets(id) ON DELETE CASCADE,
+        FOREIGN KEY(utilisateur_id) REFERENCES utilisateurs(id)
+    )");
+
     // Cahiers
     $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array('specs_json', $cols, true)) {
@@ -32,6 +52,8 @@ function runSchemaMigrations(): void
         'cadrage_commerciale' => 'INTEGER DEFAULT 0',
         'cadrage_technique' => 'INTEGER DEFAULT 0',
         'cadrage_destination' => 'TEXT',
+        'validated_steps' => "TEXT DEFAULT '[]'",
+        'r1b_purchase_step_migrated' => 'INTEGER DEFAULT 0',
     ];
     foreach ($projetCols as $col => $def) {
         if (!in_array($col, $pcols, true)) {
@@ -71,6 +93,21 @@ function runSchemaMigrations(): void
         FOREIGN KEY (projet_id) REFERENCES projets(id) ON DELETE CASCADE
     )");
 
+    // Migration R1B : insertion de l'étape 5 "Achat composants & matériels".
+    // Les projets existants positionnés à partir de l'ancienne étape 5 sont décalés d'un rang.
+    $pm = $db->query("SELECT id, current_step, validated_steps FROM projets WHERE COALESCE(r1b_purchase_step_migrated,0)=0")->fetchAll(PDO::FETCH_ASSOC);
+    $updPm = $db->prepare('UPDATE projets SET current_step=?, validated_steps=?, r1b_purchase_step_migrated=1 WHERE id=?');
+    foreach ($pm as $pr) {
+        $cs = (int)($pr['current_step'] ?? 1);
+        if ($cs >= 5) $cs++;
+        $vs = json_decode((string)($pr['validated_steps'] ?? '[]'), true);
+        if (!is_array($vs)) $vs = [];
+        $vs = array_map(static fn($n) => ((int)$n >= 5 ? (int)$n + 1 : (int)$n), $vs);
+        $vs = array_values(array_unique($vs));
+        sort($vs);
+        $updPm->execute([$cs, json_encode($vs), (int)$pr['id']]);
+    }
+
     // Tâches étendues
     $tcols = $db->query('PRAGMA table_info(taches)')->fetchAll(PDO::FETCH_COLUMN, 1);
     foreach (['assigne_a' => 'TEXT', 'source_key' => 'TEXT', 'kanban_status' => "TEXT DEFAULT 'a_faire'"] as $col => $def) {
@@ -78,6 +115,19 @@ function runSchemaMigrations(): void
             $db->exec("ALTER TABLE taches ADD COLUMN $col $def");
         }
     }
+
+    // Stocks & Matériel R&D
+    foreach (['resultats' => "TEXT NOT NULL DEFAULT ''", 'date_metier' => 'TEXT', 'dependance_id' => 'INTEGER REFERENCES taches(id)'] as $col => $def) {
+        if (!in_array($col, $tcols, true)) $db->exec("ALTER TABLE taches ADD COLUMN $col $def");
+    }
+    $db->exec("CREATE TABLE IF NOT EXISTS tache_historique (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tache_id INTEGER NOT NULL REFERENCES taches(id) ON DELETE CASCADE,
+        utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs(id),
+        action TEXT NOT NULL,
+        details TEXT NOT NULL,
+        date_action DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )");
 
     // Stocks & Matériel R&D
     $db->exec("CREATE TABLE IF NOT EXISTS stock_fournisseurs (

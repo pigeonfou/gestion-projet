@@ -4,6 +4,8 @@ $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 requerirConnexion();
 
+require_once __DIR__ . '/includes/r1b_steps.php';
+ensureProjectProcessColumns();
 $db = getDB();
 $user = utilisateurCourant();
 $action = $_GET['action'] ?? 'liste';
@@ -37,6 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nom = trim($_POST['nom'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $editId = (int)($_POST['id'] ?? 0);
+    $commerciale = !empty($_POST['cadrage_commerciale']) ? 1 : 0;
+    $technique = !empty($_POST['cadrage_technique']) ? 1 : 0;
+    $destination = $_POST['cadrage_destination'] ?? null;
+    if (!in_array($destination, ['interne','externe'], true)) $destination = null;
 
     if ($nom === '') {
         setFlash('error', 'Le nom du projet est obligatoire.');
@@ -52,15 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setFlash('error', 'Vous n\'êtes pas autorisé à modifier ce projet.');
                 redirect('projets.php');
             }
-            $stmt = $db->prepare('UPDATE projets SET nom = ?, description = ? WHERE id = ?');
-            $stmt->execute([$nom, $description, $editId]);
+            $stmt = $db->prepare('UPDATE projets SET nom = ?, description = ?, cadrage_commerciale = ?, cadrage_technique = ?, cadrage_destination = ? WHERE id = ?');
+            $stmt->execute([$nom, $description, $commerciale, $technique, $destination, $editId]);
             setFlash('success', 'Projet mis à jour avec succès.');
             redirect('projet.php?id=' . $editId);
         } else {
             require_once __DIR__ . '/includes/r1b_steps.php';
             ensureProjectProcessColumns();
-            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id, current_step, status) VALUES (?, ?, ?, 1, ?)');
-            $stmt->execute([$nom, $description, $user['id'], 'actif']);
+            $stmt = $db->prepare('INSERT INTO projets (nom, description, createur_id, current_step, status, cadrage_commerciale, cadrage_technique, cadrage_destination) VALUES (?, ?, ?, 1, ?, ?, ?, ?)');
+            $stmt->execute([$nom, $description, $user['id'], 'actif', $commerciale, $technique, $destination]);
             $newId = $db->lastInsertId();
             setFlash('success', 'Projet créé avec succès.');
             redirect('projet.php?id=' . $newId);
@@ -106,6 +112,15 @@ if ($action === 'creer' || $action === 'modifier') {
                     <label for="description">Description</label>
                     <textarea id="description" name="description" class="form-control" rows="4"><?= e($projet['description'] ?? '') ?></textarea>
                 </div>
+                <fieldset class="form-group" style="border:1px solid #cbd5e1;border-radius:8px;padding:1rem;">
+                    <legend>Origine de l’entrée et destination de sortie du projet</legend>
+                    <p><strong>Direction générale via :</strong></p>
+                    <label style="display:inline-flex;gap:.4rem;margin-right:1rem;"><input type="checkbox" name="cadrage_commerciale" value="1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>> Service Commercial</label>
+                    <label style="display:inline-flex;gap:.4rem;"><input type="checkbox" name="cadrage_technique" value="1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>> Service Technique</label>
+                    <p style="margin-top:.75rem;"><strong>Destination du besoin :</strong></p>
+                    <label style="display:inline-flex;gap:.4rem;margin-right:1rem;"><input type="radio" name="cadrage_destination" value="interne" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>> Interne</label>
+                    <label style="display:inline-flex;gap:.4rem;"><input type="radio" name="cadrage_destination" value="externe" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>> Externe (client)</label>
+                </fieldset>
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
                     <a href="<?= url('projets.php') ?>" class="btn btn-secondary">Annuler</a>
@@ -445,3 +460,4 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
+

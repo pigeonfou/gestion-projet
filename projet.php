@@ -2,9 +2,14 @@
 $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/task_workflow.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
+require_once __DIR__ . '/includes/r1b_decisions.php';
+require_once __DIR__ . '/includes/decision_history.php';
+require_once __DIR__ . '/includes/project_notes.php';
+require_once __DIR__ . '/includes/decision_dashboard.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -12,7 +17,7 @@ runSchemaMigrations();
 $db = getDB();
 $user = utilisateurCourant();
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? $_POST['projet_id'] ?? 0);
-$view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | taches | documents
+$view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | historique | taches | documents
 $stepGet = array_key_exists('step', $_GET) ? (int)$_GET['step'] : null;
 
 if ($id <= 0) {
@@ -27,7 +32,17 @@ if (!$projet) {
     redirect('projets.php');
 }
 
-$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+initProjectNotes($db,$id);
+
+$progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
+$validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
+if (!is_array($validatedSteps)) $validatedSteps = [];
+$validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
+// Compatibilité des projets existants : les étapes déjà franchies restent validées.
+if (empty($validatedSteps) && $progressStep > 1) {
+    $validatedSteps = range(1, $progressStep - 1);
+}
+$currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
@@ -45,19 +60,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
     $action = $_POST['action'] ?? '';
     if ($action !== 'update_task_status') {
-        requerirAccesProjet($id);
+        requerirGestionProjet($id);
     }
-    if ($action === 'save_notes') {
-        $notes = trim($_POST['step_notes'] ?? '');
-        $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
-        setFlash('success', 'Notes enregistrées.');
-        $redirView = $_POST['redir_view'] ?? 'processus';
-        redirect('projet.php?id=' . $id . '&view=' . $redirView . ($redirView === 'processus' ? '&step=' . $currentStep : ''));
+    if ($action === 'manage_note' || $action === 'save_notes') {
+        try {
+            if ($action === 'manage_note') {
+                changeProjectNote($db,$id,$currentStep,(string)($_POST['note_action']??''),(string)($_POST['note_content']??''),(int)($_POST['note_id']??0),(int)($_POST['note_revision']??0));
+            } elseif (trim((string)($_POST['step_notes']??''))!=='') {
+                changeProjectNote($db,$id,$currentStep,'add',(string)$_POST['step_notes']);
+            }
+            if ($currentStep === 1 && !empty($_POST['save_cadrage_with_notes'])) {
+                $dest=$_POST['cadrage_destination']??null;
+                if(!in_array($dest,['interne','externe'],true))$dest=null;
+                $db->prepare('UPDATE projets SET cadrage_commerciale=?,cadrage_technique=?,cadrage_destination=? WHERE id=?')->execute([!empty($_POST['cadrage_commerciale'])?1:0,!empty($_POST['cadrage_technique'])?1:0,$dest,$id]);
+            }
+            setFlash('success','Notes et informations enregistrées.');
+        } catch(Throwable $e) { setFlash('error',$e->getMessage()); }
+        redirect('projet.php?id='.$id.'&view=processus&step='.$currentStep);
     }
     if ($action === 'set_step') {
-        $n = r1bClampStep((int)($_POST['step'] ?? 0));
-        $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$n, $id]);
-        setFlash('success', 'Étape mise à jour.');
+        // La navigation ne valide ni ne modifie l'avancement du projet.
+        $n = r1bClampStep((int)($_POST['step'] ?? $progressStep));
         redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
     }
     if ($action === 'save_cadrage') {
@@ -76,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $techniques = parseSpecsTechniquesFromPost($_POST);
             saveSpecsTechniques($cid, $techniques);
 
-            // À l'étape 2, toutes les S.T. (Matériel, Logiciel, 3D, PCB)
+            // À l'étape 2, toutes les S.T. (Matériel, Composant, Prestataire, Logiciel, 3D, PCB)
             // sont synchronisées comme tâches.
             $fonctions = loadSpecs($cid)['fonctions'] ?? [];
             syncTasksFromStructuredSpecs(
@@ -112,76 +135,168 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=4');
     }
-    if ($action === 'update_task_status') {
-        ensureTachesExtendedColumns();
-        $tid = (int)($_POST['task_id'] ?? 0);
-        $st = $_POST['status'] ?? 'a_faire';
-        $allowed = ['a_faire', 'en_cours', 'validation', 'terminee', 'done', 'todo', 'in_progress'];
-        $map = [
-            'todo' => 'a_faire',
-            'in_progress' => 'en_cours',
-            'done' => 'terminee',
-            'validation' => 'validation',
-            'a_faire' => 'a_faire',
-            'en_cours' => 'en_cours',
-            'terminee' => 'terminee',
-        ];
-        $kanban = $map[$st] ?? 'a_faire';
-        $statutDb = $kanban === 'validation' ? 'en_cours' : ($kanban === 'terminee' ? 'terminee' : ($kanban === 'en_cours' ? 'en_cours' : 'a_faire'));
-        if ($tid > 0) {
-            $chk = $db->prepare('SELECT assigne_a FROM taches WHERE id = ? AND projet_id = ?');
-            $chk->execute([$tid, $id]);
-            $row = $chk->fetch();
-            if (!$row) {
-                setFlash('error', 'Tâche introuvable.');
-            } elseif (!estAdmin() && (string)($row['assigne_a'] ?? '') !== (string)($user['identifiant'] ?? '')) {
-                setFlash('error', 'Vous ne pouvez modifier que les tâches qui vous sont affectées.');
-            } else {
-                $db->prepare('UPDATE taches SET kanban_status = ?, statut = ? WHERE id = ? AND projet_id = ?')
-                   ->execute([$kanban, $statutDb, $tid, $id]);
-                setFlash('success', 'Statut de la tâche mis à jour.');
+    if ($action === 'create_purchase_tasks') {
+        try {
+            ensureTachesExtendedColumns();
+            $selected = $_POST['purchase_create'] ?? [];
+            $assignees = $_POST['purchase_assignee'] ?? [];
+            $payloads = $_POST['purchase_payload'] ?? [];
+            if (!is_array($selected)) $selected = [];
+            if (!is_array($assignees)) $assignees = [];
+            if (!is_array($payloads)) $payloads = [];
+
+            $validUsers = $db->query('SELECT identifiant FROM utilisateurs')->fetchAll(PDO::FETCH_COLUMN);
+            $validUsers = array_flip(array_map('strval', $validUsers));
+            $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
+            $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE projet_id=? AND source_key=?');
+            $find = $db->prepare('SELECT id FROM taches WHERE projet_id=? AND source_key=? LIMIT 1');
+            $created = 0; $updated = 0;
+
+            foreach ($selected as $key) {
+                $key = (string)$key;
+                if (!isset($payloads[$key])) continue;
+                $p = json_decode(base64_decode((string)$payloads[$key], true) ?: '', true);
+                if (!is_array($p)) continue;
+                $stId = trim((string)($p['st_id'] ?? ''));
+                $itemId = trim((string)($p['item_id'] ?? ''));
+                if ($stId === '' || $itemId === '') continue;
+                $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
+                $assignee = trim((string)($assignees[$key] ?? ''));
+                if ($assignee !== '' && !isset($validUsers[$assignee])) $assignee = '';
+
+                $designation = trim((string)($p['designation'] ?? ''));
+                $reference = trim((string)($p['reference'] ?? ''));
+                $fournisseur = trim((string)($p['fournisseur'] ?? ''));
+                $qty = (float)($p['quantite'] ?? 0);
+                $cu = (float)($p['cout_unitaire'] ?? 0);
+                $tax = (($p['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
+                $total = round($qty * $cu, 2);
+                $titre = '[ACHAT ' . $stId . '/' . $itemId . '] ' . ($designation !== '' ? $designation : ($reference !== '' ? $reference : 'Composant / matériel'));
+                $description = implode("\n", array_filter([
+                    'S.T. : ' . $stId,
+                    'Ligne : ' . $itemId,
+                    $reference !== '' ? 'Référence : ' . $reference : '',
+                    $fournisseur !== '' ? 'Fournisseur : ' . $fournisseur : '',
+                    'Quantité : ' . rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.'),
+                    'Coût unitaire : ' . number_format($cu, 2, ',', ' ') . ' € ' . $tax,
+                    'Coût total estimé : ' . number_format($total, 2, ',', ' ') . ' € ' . $tax,
+                    isset($p['delai_jours']) ? 'Délai : ' . $p['delai_jours'] . ' j' : '',
+                ]));
+
+                $find->execute([$id, $sourceKey]);
+                if ($find->fetchColumn()) {
+                    $upd->execute([$titre, $description, $assignee !== '' ? $assignee : null, $id, $sourceKey]);
+                    $updated++;
+                } else {
+                    $ins->execute([$id, $titre, $description, 'moyenne', 'a_faire', $assignee !== '' ? $assignee : null, $sourceKey, 'a_faire']);
+                    $created++;
+                }
             }
+            setFlash('success', "Tâches d'achat : $created créée(s), $updated mise(s) à jour.");
+        } catch (Throwable $e) {
+            setFlash('error', "Erreur lors de la génération des tâches d'achat : " . $e->getMessage());
+        }
+        redirect('projet.php?id=' . $id . '&view=processus&step=5');
+    }
+    if (($_POST['action'] ?? '') === 'update_task_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        csrfRequire();
+        $aliases = ['todo'=>'a_faire','in_progress'=>'en_cours','done'=>'terminee'];
+        $status = (string)($_POST['status'] ?? 'a_faire');
+        $status = $aliases[$status] ?? $status;
+        try {
+            taskSetStatus($db, (int)($_POST['task_id'] ?? 0), $status, $user, $id);
+            setFlash('success', 'Statut de la tâche mis à jour.');
+        } catch (InvalidArgumentException $e) {
+            setFlash('error', $e->getMessage());
+        } catch (Throwable $e) {
+            setFlash('error', 'Statut non enregistré.');
         }
         redirect('projet.php?id=' . $id . '&view=taches');
     }
     if ($action === 'decide') {
         $decision = $_POST['decision'] ?? '';
-        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE'], true)) {
+        $motif = trim((string)($_POST['motif'] ?? $projet['step_notes'] ?? ''));
+        if (!in_array($decision, r1bAllowedDecisions($currentStep), true) || $currentStep > $progressStep) {
+            setFlash('error', 'Décision invalide pour cette étape ou étape non encore atteinte.');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $progressStep);
+        }
+        if (strlen($motif) > 10000 || (in_array($decision, ['NO_GO', 'NON_CONFORME', 'REFUSE'], true) && $motif === '')) {
+            setFlash('error', 'Un motif de refus est obligatoire (10 000 octets maximum).');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
+        }
+        try {
+        $db->beginTransaction();
+        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE', 'REFUSE'], true)) {
             if ($decision === 'NO_GO') {
                 // Archivage étape 3 (abandon) — reste à l'étape 3, ne passe PAS à l'étape 8
                 $db->prepare('UPDATE projets SET go_decision = ?, current_step = 3, status = ? WHERE id = ?')
                    ->execute(['NO_GO', 'archive', $id]);
                 setFlash('success', 'NO GO enregistré — projet archivé comme abandonné (étape 3).');
             } elseif ($decision === 'GO') {
-                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ? WHERE id = ?')
-                   ->execute(['GO', r1bClampStep($currentStep + 1), 'actif', $id]);
+                $validated = $validatedSteps; $validated[] = 3;
+                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
+                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
+                   ->execute(['GO', max($progressStep, 4), 'actif', json_encode($validated), $id]);
                 setFlash('success', 'Décision enregistrée : GO');
             } elseif ($decision === 'CONFORME') {
-                // Étape 6 (tests) → 7 (livraison) ; étape 7 (livraison) → 8 (archivage validé/vente)
-                $next = r1bClampStep($currentStep + 1);
-                if ($currentStep >= 7 || $next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
-                       ->execute(['termine', $id]);
-                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 8).');
+                // Le bouton Conforme est l'acte explicite de validation des étapes 7/8.
+                $validated = $validatedSteps; $validated[] = $currentStep;
+                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
+                $validatedJson = json_encode($validated);
+                $next = max($progressStep, r1bClampStep($currentStep + 1));
+                if ($currentStep >= 8 || $next === 9) {
+                    $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute(['termine', $validatedJson, $id]);
+                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 9).');
                 } else {
-                    $db->prepare('UPDATE projets SET current_step = ?, status = ? WHERE id = ?')
-                       ->execute([$next, 'actif', $id]);
+                    $db->prepare('UPDATE projets SET current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute([$next, 'actif', $validatedJson, $id]);
                     setFlash('success', 'Décision enregistrée : CONFORME');
                 }
             } elseif ($decision === 'DONE') {
-                $next = r1bClampStep($currentStep + 1);
-                if ($next === 8) {
-                    $db->prepare('UPDATE projets SET current_step = 8, status = ? WHERE id = ?')
-                       ->execute(['termine', $id]);
-                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 8).');
+                $validated = $validatedSteps;
+                $validated[] = $currentStep;
+                $validated = array_values(array_unique(array_map('intval', $validated)));
+                sort($validated);
+                $validatedJson = json_encode($validated);
+                // L'étape 5 (Achats) a été insérée après l'étape 4.
+                // Elle doit être réellement parcourue, y compris pour un projet ancien
+                // dont current_step avait déjà été décalé vers 6+ par la migration.
+                $next = ($currentStep === 4)
+                    ? 5
+                    : max($progressStep, r1bClampStep($currentStep + 1));
+                if ($next === 9) {
+                    $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
+                       ->execute(['termine', $validatedJson, $id]);
+                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 9).');
                 } else {
-                    $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([$next, $id]);
-                    setFlash('success', 'Décision enregistrée : DONE');
+                    $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
+                    setFlash('success', 'Étape validée.');
                 }
-            } elseif ($decision === 'NON_CONFORME') {
-                $db->prepare('UPDATE projets SET current_step = ? WHERE id = ?')->execute([r1bClampStep($currentStep - 1), $id]);
-                setFlash('success', 'Décision enregistrée : NON_CONFORME');
+            } elseif ($decision === 'NON_CONFORME' || $decision === 'REFUSE') {
+                $refus = r1bRefusalState($currentStep, $validatedSteps);
+                $db->prepare("UPDATE projets SET current_step = ?, validated_steps = ?, status = 'actif' WHERE id = ?")
+                    ->execute([$refus['step'], json_encode($refus['validated']), $id]);
+                setFlash('success', 'Refus enregistré. Retour à l’étape ' . $refus['step'] . ' ; les validations à partir de cette étape sont à revoir.');
             }
+        }
+        $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id) VALUES(?,?,?,?,?)')
+            ->execute([$id,$currentStep,$decision,$motif,$user['id']]);
+        $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('ProjectFlow décision R1b : ' . get_class($e));
+            setFlash('error', 'Décision non enregistrée. Réessayez après vérification du journal serveur.');
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
+        }
+        // Après une décision/validation, afficher l'étape réellement atteinte.
+        // Sans cela, le paramètre GET "step" du formulaire (ex. step=4)
+        // reste actif pendant cette requête et réaffiche l'ancienne étape.
+        if (in_array($decision, ['GO', 'CONFORME', 'DONE', 'NON_CONFORME', 'REFUSE'], true)) {
+            $stmtNext = $db->prepare('SELECT current_step FROM projets WHERE id = ?');
+            $stmtNext->execute([$id]);
+            $redirectStep = r1bClampStep((int)$stmtNext->fetchColumn());
+            redirect('projet.php?id=' . $id . '&view=processus&step=' . $redirectStep);
         }
         redirect('projet.php?id=' . $id . '&view=processus');
     }
@@ -190,7 +305,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Reload after possible updates
 $stmt->execute([$id]);
 $projet = $stmt->fetch();
-$currentStep = r1bClampStep((int)($projet['current_step'] ?? 0));
+$progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
+$validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
+if (!is_array($validatedSteps)) $validatedSteps = [];
+$validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
+if (empty($validatedSteps) && $progressStep > 1) $validatedSteps = range(1, $progressStep - 1);
+$currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
 }
@@ -217,7 +337,7 @@ $ncEnabled = false;
 $needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true);
 $needDocs = in_array($view, ['dashboard', 'documents'], true);
 $needJalons = $view === 'dashboard';
-$needUsers = $view === 'processus' && $currentStep === 4;
+$needUsers = $view === 'processus' && in_array($currentStep, [3, 4, 5], true);
 
 if ($needTasks) {
     ensureTachesExtendedColumns();
@@ -252,31 +372,47 @@ if ($needJalons) {
     $nbJalons = count($jalonsProjet);
 }
 if ($needUsers) {
-    $utilisateursListe = $db->query('SELECT id, identifiant FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
+    $utilisateursListe = $db->query('SELECT id, identifiant, nom_affiche, fonction, competences FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
 }
 
+$decisionUsers = $utilisateursListe;
+$lastDecision = null;
+if ($view === 'processus' && $currentStep === 3) {
+    $dq=$db->prepare('SELECT d.*, u.identifiant FROM projet_decisions d JOIN utilisateurs u ON u.id=d.utilisateur_id WHERE d.projet_id=? AND d.etape=3 ORDER BY d.id DESC LIMIT 1');
+    $dq->execute([$id]); $lastDecision=$dq->fetch() ?: null;
+}
 
-$pct = (int)round(($currentStep / r1bMaxStep()) * 100);
+$pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
-$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [6, 7], true) ? 1 : 0;
+$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [7, 8], true) ? 1 : 0;
 
+// Embedded history stays inside its own browsing context so filtering never
+// reloads or discards an unfinished step form. Authentication above still applies.
+$historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
+if ($historyEmbedded) {
+    ?>
+    <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>"></head><body class="history-embedded"><main>
+    <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
+    </main></body></html>
+    <?php
+    exit;
+}
 $pageTitle = $projet['nom'];
 $useAppShell = true;
 require __DIR__ . '/includes/header.php';
 
-function stepClass(int $n, int $current): string
+function stepClass(int $n, int $displayed, array $validated): string
 {
-    if ($n < $current) {
-        return 'r1b-step done';
-    }
-    if ($n === $current) {
-        return 'r1b-step active';
-    }
+    if (in_array($n, $validated, true)) return 'r1b-step done';
+    if ($n === $displayed) return 'r1b-step active';
     return 'r1b-step';
 }
 
 ?>
 
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=1') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -287,22 +423,26 @@ function stepClass(int $n, int $current): string
       <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
         <i class="fas fa-route"></i> Processus R1b
       </a>
+      <a href="<?= url('projet.php?id=' . $id . '&view=historique&step=' . $currentStep) ?>" class="<?= $view === 'historique' ? 'active' : '' ?>"><i class="fas fa-history"></i> Historique des décisions</a>
       <a href="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="<?= $view === 'taches' ? 'active' : '' ?>">
         <i class="fas fa-tasks"></i> Tâches
       </a>
-      <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
+      <a href="<?= url('documents_externes.php?projet_id=' . $id) ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
         <i class="fas fa-folder-open"></i> Documents
       </a>
+      <a href="<?= url('qualite_projet.php?projet_id=' . $id) ?>"><i class="fas fa-check-circle"></i> Qualité fournisseurs</a>
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
+      <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
+      <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
     </nav>
     <div class="r1b-sidebar-foot">
       <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>
     </div>
   </aside>
 
-  <div class="r1b-main">
+  <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
     <?php if ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
@@ -344,8 +484,8 @@ function stepClass(int $n, int $current): string
             <div class="dash-steps">
               <?php foreach ($steps as $n => $s): ?>
                 <?php
-                $done = $n < $currentStep;
-                $active = $n === $currentStep;
+                $done = in_array((int)$n, $validatedSteps, true);
+                $active = !$done && $n === $progressStep;
                 $cls = $done ? 'done' : ($active ? 'active' : '');
                 ?>
                 <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="dash-step <?= $cls ?>">
@@ -366,7 +506,7 @@ function stepClass(int $n, int $current): string
               <div class="dash-progress-fill" style="width:<?= $pct ?>%"></div>
             </div>
             <p class="text-muted text-sm mt-2">
-              Étape actuelle : <strong><?= e($steps[$currentStep]['title'] ?? '') ?></strong>
+              Étape actuelle : <strong><?= e($steps[$progressStep]['title'] ?? '') ?></strong>
               <?php if (!empty($projet['go_decision'])): ?>
                 · Décision GO/NO GO : <strong><?= e($projet['go_decision']) ?></strong>
               <?php endif; ?>
@@ -442,7 +582,7 @@ function stepClass(int $n, int $current): string
           <div class="r1b-card">
             <div class="flex-between mb-3">
               <h3>Documents récents</h3>
-              <a href="<?= url('projet.php?id=' . $id . '&view=documents') ?>" class="btn btn-secondary btn-sm">Voir tout</a>
+              <a href="<?= url('documents_externes.php?projet_id=' . $id) ?>" class="btn btn-secondary btn-sm">Voir tout</a>
             </div>
             <?php if (empty($documents)): ?>
               <p class="text-muted text-sm">Aucun document.</p>
@@ -452,7 +592,7 @@ function stepClass(int $n, int $current): string
                   <div class="dash-doc-row">
                     <i class="fas fa-file"></i>
                     <div>
-                      <p class="dash-doc-name"><?= e($d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
+                      <p class="dash-doc-name"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
                       <p class="text-muted text-xs"><?= e($d['date_upload'] ?? '') ?></p>
                     </div>
                   </div>
@@ -474,63 +614,34 @@ function stepClass(int $n, int $current): string
 
     <?php elseif ($view === 'processus'): ?>
       <!-- ========== PROCESSUS R1b ========== -->
+      <header class="r1b-process-header">
       <div class="r1b-page-head">
         <div>
           <h2>Processus R1b – Conception</h2>
           <p class="text-muted text-sm">Projet : <strong><?= e($projet['nom']) ?></strong></p>
-        </div>
+      </div>
       </div>
 
       <div class="r1b-stepper-wrap">
         <div class="r1b-stepper">
           <?php $firstStep = true; foreach ($steps as $n => $s): ?>
-            <?php if (!$firstStep): ?><div class="r1b-step-line <?= $n <= $currentStep ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
-            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep) ?>">
-              <div class="r1b-step-circle"><?= $n < $currentStep ? '✓' : $n ?></div>
+            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $validatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>">
+              <div class="r1b-step-circle"><?= in_array((int)$n, $validatedSteps, true) ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
             </a>
           <?php endforeach; ?>
         </div>
       </div>
 
-      <div class="r1b-card">
+      </header>
+      <div class="r1b-process-scroll">
+      <?php $stepEditorActions = ''; ?>
+      <div class="r1b-step-workspace">
+      <div class="r1b-card r1b-step-content">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
         <?php if ($currentStep === 1): ?>
-          <div class="r1b-info-box mb-3">
-            <p class="font-medium mb-2">Origine de l’entrée et destination de sortie du projet</p>
-            <div style="display:flex;flex-wrap:wrap;gap:1.5rem;">
-              <div>
-                <span class="text-sm font-medium">Direction générale via :</span>
-                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="checkbox" name="cadrage_commerciale" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_commerciale']) ? 'checked' : '' ?>>
-                  <span>Service <strong>Commercial</strong></span>
-                </label>
-                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="checkbox" name="cadrage_technique" value="1" form="form-cadrage-step1" <?= !empty($projet['cadrage_technique']) ? 'checked' : '' ?>>
-                  <span>Service <strong>Technique</strong></span>
-                </label>
-              </div>
-              <div>
-                <span class="text-sm font-medium">Destination du besoin :</span>
-                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="radio" name="cadrage_destination" value="interne" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'interne' ? 'checked' : '' ?>>
-                  <span><strong>Interne</strong></span>
-                </label>
-                <label style="display:inline-flex;align-items:center;gap:.5rem;margin-left:1rem;cursor:pointer;">
-                  <input type="radio" name="cadrage_destination" value="externe" form="form-cadrage-step1" <?= ($projet['cadrage_destination'] ?? '') === 'externe' ? 'checked' : '' ?>>
-                  <span><strong>Externe</strong> (client)</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <form id="form-cadrage-step1" method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=1') ?>">
-            <input type="hidden" name="id" value="<?= (int)$id ?>">
-            <input type="hidden" name="action" value="save_cadrage">
-            <?= csrfField() ?>
-          </form>
-
           <hr class="my-4">
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
           <?php
@@ -547,7 +658,9 @@ function stepClass(int $n, int $current): string
           <?php else: ?>
             <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
           <?php endif; ?>
+          <?php ob_start(); ?>
           <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
+          <?php $stepEditorActions = ob_get_clean(); ?>
 
         <?php elseif ($currentStep === 2): ?>
           <?php
@@ -579,6 +692,11 @@ function stepClass(int $n, int $current): string
                   if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
                   $sfNum = (int)$mSf[1];
                   $rows = $techBySf[$sfId] ?? [];
+                  $sfCostHT = 0.0; $sfCostTTC = 0.0;
+                  foreach ($rows as $costRow) {
+                      $v = stTypeHasCost($costRow['type'] ?? 'Matériel') ? (float)($costRow['cout_estime'] ?? 0) : 0;
+                      if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
+                  }
                   if (empty($rows)) {
                       $rows = [['id' => 'S.T.' . $sfNum . '.1', 'description' => '', 'type' => 'Matériel']];
                   }
@@ -590,6 +708,9 @@ function stepClass(int $n, int $current): string
                     <?php if (!empty($sf['indicateur'])): ?>
                       <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
                     <?php endif; ?>
+                    <span class="st-sf-badge sf-cost-badge">Estimation coût <?= e($sfId) ?> :
+                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?></span>
+                    </span>
                   </div>
                   <div class="sf-table-wrap">
                     <table class="sf-table st-table">
@@ -598,6 +719,8 @@ function stepClass(int $n, int $current): string
                           <th style="width:5.5rem">ID</th>
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
+                          <th style="width:13rem;min-width:13rem">Coût unitaire</th>
+                          <th>Délai estimé (jours)</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
@@ -612,11 +735,23 @@ function stepClass(int $n, int $current): string
                             <?php $ty = $tr['type'] ?? 'Matériel'; ?>
                             <select name="st_type[]" class="form-control">
                               <option value="Matériel" <?= $ty === 'Matériel' ? 'selected' : '' ?>>Matériel</option>
+                              <option value="Composant" <?= $ty === 'Composant' ? 'selected' : '' ?>>Composant</option>
+                              <option value="Prestataire" <?= $ty === 'Prestataire' ? 'selected' : '' ?>>Prestataire</option>
                               <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
                               <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
                             </select>
                           </td>
+                          <td>
+                            <div class="cp-cost-cell" style="<?= stTypeHasCost($ty) ? '' : 'display:none' ?>">
+                              <input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
+                              <select name="st_cout_taxe[]" class="form-control st-tax">
+                                <option value="HT" <?= (($tr['cout_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
+                                <option value="TTC" <?= (($tr['cout_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
+                              </select>
+                            </div>
+                          </td>
+                          <td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" value="<?= e((string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
                         <?php endforeach; ?>
@@ -626,25 +761,17 @@ function stepClass(int $n, int $current): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
                 </div>
               <?php endforeach; ?>
+              <?php ob_start(); ?>
               <div class="mt-3">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
+                <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
                 <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
+              <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
           <?php endif; ?>
 
         <?php elseif ($currentStep === 3): ?>
-          <?php if (($projet['go_decision'] ?? '') === 'NO_GO'): ?>
-            <p class="text-sm text-muted mb-2">NO GO — Projet archivé comme abandonné</p>
-            <div class="r1b-info-box" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;">
-              NO GO — Projet archivé comme abandonné
-            </div>
-          <?php else: ?>
-            <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
-            <?php if (!empty($projet['go_decision'])): ?>
-              <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
-            <?php endif; ?>
-          <?php endif; ?>
+          <?php require __DIR__ . '/includes/views/decision_dashboard.php'; ?>
 
         <?php elseif ($currentStep === 4): ?>
           <?php
@@ -654,7 +781,7 @@ function stepClass(int $n, int $current): string
             $users = $utilisateursListe ?? [];
           ?>
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Composants & affectations</h4>
-          <p class="text-sm text-muted mb-3">Pour chaque spécification technique (S.T.), ajoutez les lignes selon son type (Matériel, Logiciel, 3D, PCB).</p>
+          <p class="text-sm text-muted mb-3">Matériel, Composant, Prestataire et PCB : coûts et délais. Logiciel et 3D : délais de réalisation uniquement.</p>
           <?php if (empty($techniquesAll)): ?>
             <div class="r1b-info-box">
               <p>Aucune spécification technique définie.</p>
@@ -673,11 +800,19 @@ function stepClass(int $n, int $current): string
                   $stDesc = $stRow['description'] ?? '';
                   if ($stId === '') continue;
                   $items = $composantsSt[$stId] ?? [];
+                  $stCostHT = 0.0; $stCostTTC = 0.0;
+                  foreach ($items as $costItem) {
+                      $costValue = (float)($costItem['cout_total'] ?? 0);
+                      if (($costItem['cout_unitaire_taxe'] ?? $costItem['cout_total_taxe'] ?? 'HT') === 'TTC') $stCostTTC += $costValue;
+                      else $stCostHT += $costValue;
+                  }
                   if (empty($items)) {
                       $items = [[]]; // ligne vide
                   }
                   $prefix = match ($stType) {
                       'Matériel' => 'M',
+                      'Composant' => 'C',
+                      'Prestataire' => 'P',
                       'Logiciel' => 'L',
                       '3D' => '3D',
                       'PCB' => 'PCB',
@@ -689,9 +824,14 @@ function stepClass(int $n, int $current): string
                     <span class="st-id"><?= e($stId) ?></span>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
+                    <?php if (stTypeHasCost($stType)): ?>
+                      <span class="st-sf-badge cp-st-cost">Coût <?= e($stId) ?> :
+                        <span class="cp-st-cost-value"><?= number_format($stCostHT, 2, ',', ' ') ?> € HT<?= $stCostTTC > 0 ? ' + ' . number_format($stCostTTC, 2, ',', ' ') . ' € TTC' : '' ?></span>
+                      </span>
+                    <?php endif; ?>
                   </div>
                   <div class="sf-table-wrap">
-                    <?php if ($stType === 'Matériel'): ?>
+                    <?php if (stTypeHasCost($stType)): ?>
                       <table class="sf-table cp-table">
                         <thead>
                           <tr>
@@ -700,8 +840,9 @@ function stepClass(int $n, int $current): string
                             <th>Référence</th>
                             <th>Fournisseur</th>
                             <th style="width:5rem">Qté</th>
-                            <th style="width:9rem">Coût unitaire</th>
-                            <th style="width:9rem">Coût total</th>
+                            <th style="width:12rem;min-width:12rem">Coût unitaire</th>
+                            <th style="width:10.5rem;min-width:10.5rem">Coût total</th>
+                            <th>Délai (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -711,7 +852,7 @@ function stepClass(int $n, int $current): string
                             <td>
                               <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
                               <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
-                              <input type="hidden" name="cp_type[]" value="Matériel">
+                              <input type="hidden" name="cp_type[]" value="<?= e($stType) ?>">
                             </td>
                             <td><input type="text" name="cp_designation[]" class="form-control" value="<?= e($it['designation'] ?? '') ?>"></td>
                             <td><input type="text" name="cp_reference[]" class="form-control" value="<?= e($it['reference'] ?? '') ?>"></td>
@@ -719,7 +860,7 @@ function stepClass(int $n, int $current): string
                             <td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value="<?= e((string)($it['quantite'] ?? '')) ?>"></td>
                             <td>
                               <div class="cp-cost-cell">
-                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
+                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" inputmode="decimal" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
                                 <select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe">
                                   <option value="HT" <?= (($it['cout_unitaire_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
                                   <option value="TTC" <?= (($it['cout_unitaire_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
@@ -729,16 +870,17 @@ function stepClass(int $n, int $current): string
                             <td>
                               <div class="cp-cost-cell">
                                 <input type="text" class="form-control cp-total" value="<?= e((string)($it['cout_total'] ?? '')) ?>" readonly tabindex="-1">
-                                <select name="cp_cout_total_taxe[]" class="form-control cp-taxe">
-                                  <option value="HT" <?= (($it['cout_total_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
-                                  <option value="TTC" <?= (($it['cout_total_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
-                                </select>
+                                <span class="form-control cp-total-taxe" aria-label="Taxe du coût total"><?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?></span>
+                                <input type="hidden" name="cp_cout_total_taxe[]" value="<?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?>" class="cp-total-taxe-input">
                               </div>
                               <!-- champs fantômes pour aligner les index des tableaux non-matériel -->
-                              <input type="hidden" name="cp_affectation[]" value="">
-                              <input type="hidden" name="cp_duree[]" value="">
-                              <input type="hidden" name="cp_variation[]" value="">
+                              <?php if ($stType === 'PCB'): ?>
+                              <label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option><?php foreach ($users as $u): ?><option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option><?php endforeach; ?></select>
+                              <?php else: ?><input type="hidden" name="cp_affectation[]" value="<?= e($it['affectation'] ?? '') ?>"><?php endif; ?>
+                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
+                              <input type="hidden" name="cp_variation[]" value="<?= e($it['variation'] ?? '') ?>">
                             </td>
+                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
                           </tr>
                           <?php endforeach; ?>
@@ -750,8 +892,9 @@ function stepClass(int $n, int $current): string
                           <tr>
                             <th style="width:4rem">ID</th>
                             <th>Affectation</th>
-                            <th style="width:9rem">Durée de réalisation</th>
+
                             <th style="width:9rem">Variation possible</th>
+                            <th>Délai (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -778,8 +921,8 @@ function stepClass(int $n, int $current): string
                                 <?php endforeach; ?>
                               </select>
                             </td>
-                            <td><input type="text" name="cp_duree[]" class="form-control" value="<?= e($it['duree'] ?? '') ?>" placeholder="ex. 3 j"></td>
                             <td>
+                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
                               <?php $vv = $it['variation'] ?? 'Moyenne'; ?>
                               <select name="cp_variation[]" class="form-control">
                                 <option value="Forte" <?= $vv === 'Forte' ? 'selected' : '' ?>>Forte</option>
@@ -787,6 +930,7 @@ function stepClass(int $n, int $current): string
                                 <option value="Faible" <?= $vv === 'Faible' ? 'selected' : '' ?>>Faible</option>
                               </select>
                             </td>
+                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
                           </tr>
                           <?php endforeach; ?>
@@ -797,14 +941,96 @@ function stepClass(int $n, int $current): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-cp-add"><i class="fas fa-plus"></i> Ajouter une ligne</button>
                 </div>
               <?php endforeach; ?>
+              <?php ob_start(); ?>
               <div class="mt-3">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
+                <button type="submit" form="formComposantsSt" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
                 <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.T. (étape 2)</a>
               </div>
+              <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
           <?php endif; ?>
 
         <?php elseif ($currentStep === 5): ?>
+          <?php
+            $purchaseRows = [];
+            $composantsAchat = $specs['composants_st'] ?? [];
+            $techAchat = $specs['specs_techniques'] ?? [];
+            $techAchatById = [];
+            foreach ($techAchat as $ta) if (!empty($ta['id'])) $techAchatById[$ta['id']] = $ta;
+            foreach ($composantsAchat as $stId => $items) {
+                if (!stTypeHasCost($techAchatById[$stId]['type'] ?? '') || !is_array($items)) continue;
+                foreach ($items as $it) {
+                    if (!is_array($it)) continue;
+                    $itemId = trim((string)($it['id'] ?? ''));
+                    if ($itemId === '') continue;
+                    $purchaseRows[] = ['st_id' => $stId, 'st_description' => $techAchatById[$stId]['description'] ?? '', 'item' => $it];
+                }
+            }
+            $purchaseTasks = [];
+            foreach ($tachesAll as $pt) {
+                $sk = (string)($pt['source_key'] ?? '');
+                if (str_starts_with($sk, 'achat:' . $id . ':')) $purchaseTasks[$sk] = $pt;
+            }
+          ?>
+          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Liste des achats issus de l'étape 4</h4>
+          <p class="text-sm text-muted mb-3">Sélectionnez les composants ou matériels à commander, affectez un utilisateur puis générez les tâches d'achat. Une tâche existante est mise à jour plutôt que dupliquée.</p>
+          <?php if (empty($purchaseRows)): ?>
+            <div class="r1b-info-box">Aucune ligne Matériel, Composant, Prestataire ou PCB renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
+          <?php else: ?>
+            <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=5') ?>">
+              <?= csrfField() ?>
+              <input type="hidden" name="action" value="create_purchase_tasks">
+              <div class="sf-table-wrap">
+                <table class="sf-table">
+                  <thead><tr>
+                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Délai (jours)</th><th>Affecter à</th><th>État tâche</th>
+                  </tr></thead>
+                  <tbody>
+                  <?php foreach ($purchaseRows as $pr): ?>
+                    <?php
+                      $it = $pr['item']; $stId = $pr['st_id']; $itemId = (string)$it['id'];
+                      $rowKey = preg_replace('/[^A-Za-z0-9_.-]/', '_', $stId . '__' . $itemId);
+                      $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
+                      $existingTask = $purchaseTasks[$sourceKey] ?? null;
+                      $tax = (($it['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
+                      $total = (float)($it['quantite'] ?? 0) * (float)($it['cout_unitaire'] ?? 0);
+                      $payload = base64_encode(json_encode([
+                        'st_id'=>$stId,'item_id'=>$itemId,'designation'=>$it['designation'] ?? '',
+                        'reference'=>$it['reference'] ?? '','fournisseur'=>$it['fournisseur'] ?? '',
+                        'quantite'=>$it['quantite'] ?? 0,'cout_unitaire'=>$it['cout_unitaire'] ?? 0,
+                        'cout_unitaire_taxe'=>$tax,'delai_jours'=>$it['delai_jours'] ?? null
+                      ], JSON_UNESCAPED_UNICODE));
+                    ?>
+                    <tr>
+                      <td><input type="checkbox" name="purchase_create[]" value="<?= e($rowKey) ?>" <?= $existingTask ? 'checked' : '' ?>></td>
+                      <td><strong><?= e($stId) ?></strong><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
+                      <td><?= e($itemId) ?></td>
+                      <td><?= e($it['designation'] ?? '—') ?></td>
+                      <td><?= e($it['reference'] ?? '—') ?></td>
+                      <td><?= e($it['fournisseur'] ?? '—') ?></td>
+                      <td><?= e((string)($it['quantite'] ?? '0')) ?></td>
+                      <td><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
+                      <td><?= e(isset($it['delai_jours']) ? (string)$it['delai_jours'] : '—') ?></td>
+                      <td>
+                        <select name="purchase_assignee[<?= e($rowKey) ?>]" class="form-control">
+                          <option value="">— Non affectée —</option>
+                          <?php foreach ($utilisateursListe as $u): ?>
+                            <option value="<?= e($u['identifiant']) ?>" <?= (($existingTask['assigne_a'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                        <input type="hidden" name="purchase_payload[<?= e($rowKey) ?>]" value="<?= e($payload) ?>">
+                      </td>
+                      <td><?= $existingTask ? e(statutLabel($existingTask['statut'] ?? 'a_faire')) : '<span class="text-muted">Non créée</span>' ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                  </tbody>
+                </table>
+              </div>
+              <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-shopping-cart"></i> Générer / mettre à jour les tâches d'achat</button>
+            </form>
+          <?php endif; ?>
+
+        <?php elseif ($currentStep === 6): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
@@ -814,34 +1040,31 @@ function stepClass(int $n, int $current): string
             </div>
           <?php endforeach; ?>
 
-        <?php elseif ($currentStep === 6): ?>
+        <?php elseif ($currentStep === 7): ?>
           <p class="text-sm text-muted mb-2">Tests de conformité.</p>
           <div class="r1b-info-box">Validez la conformité ou signalez une non-conformité pour reboucler.</div>
 
-        <?php elseif ($currentStep === 7): ?>
+        <?php elseif ($currentStep === 8): ?>
           <p class="text-sm text-muted mb-2">Livraison à la direction générale.</p>
           <ul class="r1b-list">
             <li>Dossier technique complet</li>
             <li>Rapport de tests</li>
             <li>CDC validé</li>
           </ul>
-          <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 8).</div>
+          <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 9).</div>
 
         <?php else: ?>
           <div class="r1b-info-box" style="border-color:#a7f3d0;background:#ecfdf5;color:#065f46;">
-            <strong>Archivage validé / vente</strong> (étape 8) — suite à une conformité / livraison DG.
+            <strong>Archivage validé / vente</strong> (étape 9) — suite à une conformité / livraison DG.
             <br><span class="text-sm">Distinct de l’abandon NO GO resté à l’étape 3.</span>
           </div>
         <?php endif; ?>
 
-        <form method="POST" class="mt-3">
-          <input type="hidden" name="action" value="save_notes">
-          <?= csrfField() ?>
-          <input type="hidden" name="redir_view" value="processus">
-          <label class="text-sm font-medium">Notes / résultats</label>
-          <textarea name="step_notes" class="form-control" rows="3" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
-          <button type="submit" class="btn btn-secondary btn-sm mt-1"><i class="fas fa-save"></i> Enregistrer les notes</button>
-        </form>
+      </div>
+      <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
+        <h3>Actions et revue</h3>
+        <?= $stepEditorActions ?>
+        <?php require __DIR__ . '/includes/views/project_notes.php'; ?>
 
         <div class="r1b-actions">
           <?php
@@ -854,6 +1077,7 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="GO">
+              <label>Justification / réserves du GO <textarea name="motif" class="form-control" maxlength="5000" placeholder="Justification de la décision et réserves éventuelles"></textarea></label>
               <button type="submit" class="btn btn-success">GO</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
@@ -861,9 +1085,10 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NO_GO">
+              <label>Motif du NO GO <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">NO GO → Abandon</button>
             </form>
-          <?php elseif ($currentStep === 6): ?>
+          <?php elseif ($currentStep === 7): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
@@ -876,9 +1101,10 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
+              <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
-          <?php elseif ($currentStep === 7): ?>
+          <?php elseif ($currentStep === 8): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
@@ -891,9 +1117,10 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="NON_CONFORME">
+              <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
             </form>
-          <?php elseif ($currentStep > 0 && $currentStep < 8 && $goDecision !== 'NO_GO'): ?>
+          <?php elseif ($currentStep > 0 && $currentStep < 9 && $goDecision !== 'NO_GO'): ?>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
@@ -901,12 +1128,31 @@ function stepClass(int $n, int $current): string
               <input type="hidden" name="decision" value="DONE">
               <button type="submit" class="btn btn-primary">Valider l'étape</button>
             </form>
+            <form method="POST" action="<?= $decideAction ?>" class="mt-2">
+              <?= csrfField() ?>
+              <input type="hidden" name="id" value="<?= (int)$id ?>">
+              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="decision" value="REFUSE">
+              <label for="motif-refus">Motif du refus / corrections attendues</label>
+              <textarea id="motif-refus" name="motif" class="form-control" required maxlength="5000"></textarea>
+              <button type="submit" class="btn btn-danger">Refuser l'étape et revenir en correction</button>
+            </form>
           <?php endif; ?>
           <?php if ($currentStep > r1bMinStep()): ?>
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
           <?php endif; ?>
         </div>
+      </aside>
       </div>
+
+      <section class="r1b-card history-step-panel" aria-label="Historique séparé de l’étape">
+        <div class="r1b-page-head"><div><h3>Historique des décisions</h3><p class="text-sm text-muted">Consultez, filtrez et triez sans perdre la saisie en cours dans cette étape.</p></div><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Ouvrir l’historique complet</a></div>
+        <iframe class="history-step-frame" title="Historique des décisions de l’étape <?= $currentStep ?>" src="<?= url('projet.php?id='.$id.'&view=historique&embedded=1&step='.$currentStep) ?>" loading="lazy"></iframe>
+      </section>
+
+      </div><!-- Défilement du contenu et de l’historique sous l’en-tête -->
+    <?php elseif ($view === 'historique'): ?>
+      <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
 
     <?php elseif ($view === 'taches'): ?>
       <!-- ========== TÂCHES (Kanban style Processus-R1b) ========== -->
@@ -951,7 +1197,7 @@ function stepClass(int $n, int $current): string
             <?php endif; ?>
             <?php foreach ($col['items'] as $t): ?>
               <div class="r1b-kanban-card">
-                <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
+                <p class="font-medium"><a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>"><?= e($t['titre'] ?? '') ?></a></p>
                 <?php if (!empty($t['description'])): ?>
                   <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
                 <?php endif; ?>
@@ -1001,7 +1247,7 @@ function stepClass(int $n, int $current): string
         <?php else: ?>
           <?php foreach ($documents as $d): ?>
             <div class="r1b-card">
-              <h4><?= e($d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></h4>
+              <h4><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></h4>
               <p class="text-xs text-muted mt-1"><?= e($d['date_upload'] ?? '') ?> · <?= e($d['phase'] ?? '') ?></p>
               <?php if (!empty($d['chemin_nextcloud'])): ?>
                 <p class="text-xs text-muted">Nextcloud : <?= e($d['chemin_nextcloud']) ?></p>
@@ -1024,3 +1270,5 @@ function stepClass(int $n, int $current): string
 </footer>
 </body>
 </html>
+
+
