@@ -81,7 +81,7 @@ if (isset($_GET['document'])) {
     if (!$doc) {http_response_code(404);exit('Document introuvable.');}
     session_write_close();
     set_time_limit(0);
-    $nc->download($doc['chemin_nextcloud'],$doc['nom_fichier']);exit;
+    $nc->download($doc['chemin_nextcloud'],$doc['nom_fichier'], ($doc['mime'] ?? '') === 'text/markdown');exit;
 }
 $q=$db->prepare('SELECT * FROM documents WHERE projet_id=? ORDER BY phase,nom_fichier');$q->execute([$pid]);$docs=$q->fetchAll();
 require __DIR__.'/includes/header.php';

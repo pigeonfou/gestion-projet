@@ -128,11 +128,13 @@ class NextcloudClient {
     }
 
     /** Téléchargement en flux : le contenu distant ne s'exécute jamais sur ProjectFlow. */
-    public function download(string $remotePath, string $filename): void {
+    public function download(string $remotePath, string $filename, bool $previewMarkdown = false): void {
         if (!function_exists('curl_init')) { http_response_code(502); exit('Extension PHP cURL absente.'); }
         $url = $this->baseUrl . '/' . ltrim(implode('/', array_map('rawurlencode', explode('/', $remotePath))), '/');
         $ch = curl_init($url);
         $status = 0;
+        $contentType = $previewMarkdown ? 'text/plain; charset=utf-8' : 'application/octet-stream';
+        $disposition = $previewMarkdown ? 'inline' : 'attachment';
         curl_setopt_array($ch, [
             CURLOPT_USERPWD=>$this->user.':'.$this->password,
             CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
@@ -141,12 +143,12 @@ class NextcloudClient {
                 if (preg_match('#^HTTP/\\S+ (\\d{3})#', $line, $m)) $status = (int)$m[1];
                 return strlen($line);
             },
-            CURLOPT_WRITEFUNCTION=>static function ($curl, $data) use (&$status, $filename) {
+            CURLOPT_WRITEFUNCTION=>static function ($curl, $data) use (&$status, $filename, $contentType, $disposition) {
                 if ($status === 200) {
                     if (!headers_sent()) {
-                        header('Content-Type: application/octet-stream');
+                        header('Content-Type: '.$contentType);
                         header('X-Content-Type-Options: nosniff');
-                        header("Content-Disposition: attachment; filename=\"document\"; filename*=UTF-8''".rawurlencode($filename));
+                        header("Content-Disposition: ".$disposition."; filename=\"document\"; filename*=UTF-8''".rawurlencode($filename));
                     }
                     echo $data;
                 }
@@ -158,8 +160,8 @@ class NextcloudClient {
         if (!headers_sent()) {
             if ($ok === false || $status !== 200) { http_response_code(502); echo 'Téléchargement Nextcloud impossible.'; }
             else {
-                header('Content-Type: application/octet-stream');
-                header("Content-Disposition: attachment; filename=\"document\"; filename*=UTF-8''".rawurlencode($filename));
+                header('Content-Type: '.$contentType);
+                header("Content-Disposition: ".$disposition."; filename=\"document\"; filename*=UTF-8''".rawurlencode($filename));
             }
         }
     }
