@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/r1b_steps.php';
 require_once __DIR__ . '/includes/r1b_decisions.php';
 require_once __DIR__ . '/includes/decision_history.php';
 require_once __DIR__ . '/includes/project_notes.php';
+require_once __DIR__ . '/includes/decision_dashboard.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -336,7 +337,7 @@ $ncEnabled = false;
 $needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true);
 $needDocs = in_array($view, ['dashboard', 'documents'], true);
 $needJalons = $view === 'dashboard';
-$needUsers = $view === 'processus' && in_array($currentStep, [4, 5], true);
+$needUsers = $view === 'processus' && in_array($currentStep, [3, 4, 5], true);
 
 if ($needTasks) {
     ensureTachesExtendedColumns();
@@ -371,9 +372,15 @@ if ($needJalons) {
     $nbJalons = count($jalonsProjet);
 }
 if ($needUsers) {
-    $utilisateursListe = $db->query('SELECT id, identifiant FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
+    $utilisateursListe = $db->query('SELECT id, identifiant, nom_affiche, fonction, competences FROM utilisateurs ORDER BY identifiant')->fetchAll(PDO::FETCH_ASSOC);
 }
 
+$decisionUsers = $utilisateursListe;
+$lastDecision = null;
+if ($view === 'processus' && $currentStep === 3) {
+    $dq=$db->prepare('SELECT d.*, u.identifiant FROM projet_decisions d JOIN utilisateurs u ON u.id=d.utilisateur_id WHERE d.projet_id=? AND d.etape=3 ORDER BY d.id DESC LIMIT 1');
+    $dq->execute([$id]); $lastDecision=$dq->fetch() ?: null;
+}
 
 $pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
@@ -405,6 +412,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 ?>
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=1') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -424,9 +432,9 @@ function stepClass(int $n, int $displayed, array $validated): string
       </a>
       <a href="<?= url('qualite_projet.php?projet_id=' . $id) ?>"><i class="fas fa-check-circle"></i> Qualité fournisseurs</a>
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
-      <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
+      <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
       <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
     </nav>
     <div class="r1b-sidebar-foot">
@@ -763,17 +771,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php endif; ?>
 
         <?php elseif ($currentStep === 3): ?>
-          <?php if (($projet['go_decision'] ?? '') === 'NO_GO'): ?>
-            <p class="text-sm text-muted mb-2">NO GO — Projet archivé comme abandonné</p>
-            <div class="r1b-info-box" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;">
-              NO GO — Projet archivé comme abandonné
-            </div>
-          <?php else: ?>
-            <p class="text-sm text-muted mb-2">Décision d'engagement du projet.</p>
-            <?php if (!empty($projet['go_decision'])): ?>
-              <div class="r1b-info-box">Décision actuelle : <strong><?= e($projet['go_decision']) ?></strong></div>
-            <?php endif; ?>
-          <?php endif; ?>
+          <?php require __DIR__ . '/includes/views/decision_dashboard.php'; ?>
 
         <?php elseif ($currentStep === 4): ?>
           <?php
@@ -1079,6 +1077,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="action" value="decide">
               <input type="hidden" name="decision" value="GO">
+              <label>Justification / réserves du GO <textarea name="motif" class="form-control" maxlength="5000" placeholder="Justification de la décision et réserves éventuelles"></textarea></label>
               <button type="submit" class="btn btn-success">GO</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
