@@ -24,3 +24,16 @@
 .history-embedded main { margin:0; padding:.5rem; max-width:none; }
 .history-embedded .decision-history { box-shadow:none; border:0; margin:0; padding:.75rem; }
 .history-step-panel { margin-top:1.5rem; }
+
+/* Keep all controls visible while the decisions scroll underneath. */
+.history-toolbar { position:sticky; top:0; z-index:5; background:#fff; padding:.6rem; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 3px 8px #0f172a0d; }
+.decision-history-filters { grid-template-columns:repeat(6,minmax(0,1fr)); gap:.5rem .65rem; }
+.decision-history-filters label { gap:.2rem; font-size:.78rem; }
+.decision-history-filters .form-control { height:34px; padding:.3rem .45rem; font-size:.85rem; }
+.history-search { grid-column:span 3; }
+.history-filter-actions { grid-column:span 2; gap:.4rem; }
+.history-filter-actions .btn { padding:.4rem .65rem; font-size:.8rem; min-height:34px; }
+.history-count { margin:.5rem 0 0; font-size:.78rem; }
+.history-embedded main, .history-embedded .decision-history { padding:.35rem; }
+@media(max-width:900px) { .decision-history-filters { grid-template-columns:repeat(4,minmax(0,1fr)); } .history-search { grid-column:span 2; } }
+@media(max-width:600px) { .decision-history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.4rem; } .history-search, .history-filter-actions { grid-column:1 / -1; } .history-toolbar { padding:.4rem; } }

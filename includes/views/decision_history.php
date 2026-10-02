@@ -11,6 +11,7 @@ $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO'
 </div>
 <?php endif; ?>
 <section class="r1b-card decision-history" aria-label="Historique des décisions du projet">
+  <div class="history-toolbar">
   <form method="get" action="<?= url('projet.php') ?>" class="decision-history-filters">
     <?php if(!empty($historyEmbedded)): ?><input type="hidden" name="embedded" value="1"><?php endif; ?>
     <input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="view" value="historique"><input type="hidden" name="step" value="<?= $currentStep ?>">
@@ -26,6 +27,7 @@ $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO'
     <div class="history-filter-actions"><button class="btn btn-primary" type="submit">Appliquer</button><a class="btn btn-secondary" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep.(!empty($historyEmbedded)?'&embedded=1':'')) ?>">Réinitialiser</a></div>
   </form>
   <p class="text-sm history-count" role="status"><?= $history['count'] ?> décision<?= $history['count']>1?'s':'' ?> trouvée<?= $history['count']>1?'s':'' ?> sur <?= $history['total'] ?> · Page <?= $filters['h_page'] ?> / <?= $history['pages'] ?></p>
+  </div>
   <?php if(!$history['rows']): ?><p class="text-muted"><?= $history['total'] ? 'Aucune décision ne correspond aux critères. Modifiez les filtres ou réinitialisez la recherche.' : 'Aucune décision enregistrée pour ce projet.' ?></p><?php else: ?>
   <div class="table-wrapper"><table class="decision-history-table"><caption class="history-table-caption">Décisions et motifs enregistrés (horodatages serveur)</caption><thead><tr><th scope="col">Date serveur</th><th scope="col">Étape</th><th scope="col">Décision</th><th scope="col">Acteur</th><th scope="col">Motif / résultats</th></tr></thead><tbody>
     <?php foreach($history['rows'] as $d): ?><tr><td><?= e($d['date_decision']) ?></td><td><a <?= !empty($historyEmbedded)?'target="_blank" rel="noopener"':'' ?> href="<?= url('projet.php?id='.$id.'&view=processus&step='.(int)$d['etape']) ?>"><?= (int)$d['etape'] ?> · <?= e($steps[(int)$d['etape']]['title'] ?? '') ?></a></td><td><span class="history-decision history-<?= e(strtolower($d['decision'])) ?>"><?= e($labels[$d['decision']] ?? $d['decision']) ?></span></td><td><?= e($d['identifiant'] ?? ('Utilisateur #'.$d['utilisateur_id'])) ?></td><td class="history-motif"><?= e($d['motif']) ?></td></tr><?php endforeach; ?>
