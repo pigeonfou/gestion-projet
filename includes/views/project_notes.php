@@ -4,9 +4,6 @@
   <textarea id="notes-summary" class="form-control" rows="3" readonly placeholder="Aucune note enregistrée."><?= e(projectNotesText($activeNotes)) ?></textarea>
   <button type="button" class="btn btn-secondary btn-sm mt-1" id="notes-open">Ajouter / gérer les notes</button>
 </div>
-<?php if($currentStep===1): ?>
-<form method="POST" id="form-notes-step1"><input type="hidden" name="action" value="save_notes"><input type="hidden" name="save_cadrage_with_notes" value="1"><?= csrfField() ?><button type="submit" class="btn btn-secondary btn-sm">Enregistrer l’origine et la destination</button></form>
-<?php endif; ?>
 <dialog id="notes-dialog" aria-labelledby="notes-dialog-title">
   <form method="POST" action="<?= url('projet.php?id='.$id.'&view=processus&step='.$currentStep) ?>" id="note-editor">
     <h3 id="notes-dialog-title">Notes / résultats</h3>
