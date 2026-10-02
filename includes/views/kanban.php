@@ -3,6 +3,7 @@
 $taches = $taches ?? [];
 $statusFormAction = $statusFormAction ?? url('taches.php');
 $showProjectLink = $showProjectLink ?? false;
+require __DIR__.'/task_filters.php';
 $colsK = [
     'a_faire' => ['title' => 'À faire', 'bg' => 'kanban-col-todo', 'items' => []],
     'en_cours' => ['title' => 'En cours', 'bg' => 'kanban-col-progress', 'items' => []],
@@ -33,6 +34,7 @@ foreach ($taches as $t) {
           <?php if (!empty($t['description'])): ?>
             <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 140, '…')) ?></p>
           <?php endif; ?>
+          <p class="task-card-meta">#<?= (int)$t['id'] ?> · <?= e(['basse'=>'Priorité basse','moyenne'=>'Priorité moyenne','haute'=>'Priorité haute','urgente'=>'Priorité urgente'][$t['priorite']??'moyenne']??'Priorité moyenne') ?> · <?= !empty($t['date_echeance'])?'Échéance : '.e(date('d/m/Y',strtotime($t['date_echeance']))):'Sans échéance' ?></p>
           <div class="kanban-card-foot">
             <div>
               <div class="kanban-assignee"><?= e($t['assigne_a'] ?? 'Non assigné') ?></div>

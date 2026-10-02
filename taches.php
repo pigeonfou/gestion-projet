@@ -3,6 +3,7 @@ $pageTitle = 'Tâches';
 $activePage = 'taches';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/task_filters.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 requerirConnexion();
 runSchemaMigrations();
@@ -23,7 +24,7 @@ $user = utilisateurCourant();
         } catch (Throwable $e) {
             setFlash('error', 'Statut non enregistré.');
         }
-        redirect('taches.php');
+        redirect('taches.php?'.taskFilterQuery(taskFilterInput($_GET)));
     }
 
 $sql = 'SELECT t.*, p.nom AS projet_nom FROM taches t JOIN projets p ON p.id = t.projet_id';

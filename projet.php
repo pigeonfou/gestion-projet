@@ -3,6 +3,7 @@ $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/task_filters.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
@@ -211,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             setFlash('error', 'Statut non enregistré.');
         }
-        redirect('projet.php?id=' . $id . '&view=taches');
+        redirect('projet.php?id=' . $id . '&view=taches&'.taskFilterQuery(taskFilterInput($_GET)));
     }
     if ($action === 'decide') {
         $decision = $_POST['decision'] ?? '';
@@ -1156,20 +1157,6 @@ function stepClass(int $n, int $displayed, array $validated): string
 
     <?php elseif ($view === 'taches'): ?>
       <!-- ========== TÂCHES (Kanban style Processus-R1b) ========== -->
-      <?php
-        ensureTachesExtendedColumns();
-        $colsK = [
-          'a_faire' => ['title' => 'À faire', 'bg' => 'kanban-col-todo', 'items' => []],
-          'en_cours' => ['title' => 'En cours', 'bg' => 'kanban-col-progress', 'items' => []],
-          'validation' => ['title' => 'En validation', 'bg' => 'kanban-col-validation', 'items' => []],
-          'terminee' => ['title' => 'Terminé', 'bg' => 'kanban-col-done', 'items' => []],
-        ];
-        foreach ($taches as $t) {
-            $ks = taskKanbanStatus($t);
-            if (!isset($colsK[$ks])) $ks = 'a_faire';
-            $colsK[$ks]['items'][] = $t;
-        }
-      ?>
       <div class="r1b-page-head">
         <div>
           <h2>Gestion des tâches</h2>
@@ -1185,42 +1172,11 @@ function stepClass(int $n, int $displayed, array $validated): string
           <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
         <?php endif; ?>
       </div>
-      <div class="r1b-kanban r1b-kanban-4">
-        <?php foreach ($colsK as $key => $col): ?>
-          <div class="r1b-kanban-col <?= e($col['bg']) ?>">
-            <div class="r1b-kanban-head">
-              <span class="kanban-col-title"><?= e($col['title']) ?></span>
-              <span class="kanban-col-count"><?= count($col['items']) ?></span>
-            </div>
-            <?php if (empty($col['items'])): ?>
-              <p class="text-muted text-sm" style="padding:.35rem 0;margin:0;">Aucune tâche</p>
-            <?php endif; ?>
-            <?php foreach ($col['items'] as $t): ?>
-              <div class="r1b-kanban-card">
-                <p class="font-medium"><a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>"><?= e($t['titre'] ?? '') ?></a></p>
-                <?php if (!empty($t['description'])): ?>
-                  <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
-                <?php endif; ?>
-                <div class="kanban-card-foot">
-                  <span class="kanban-assignee"><?= e($t['assigne_a'] ?? 'Non assigné') ?></span>
-                  <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="kanban-status-form">
-                    <?= csrfField() ?>
-                    <input type="hidden" name="action" value="update_task_status">
-                    <input type="hidden" name="id" value="<?= (int)$id ?>">
-                    <input type="hidden" name="task_id" value="<?= (int)$t['id'] ?>">
-                    <select name="status" class="kanban-status-select" onchange="this.form.submit()">
-                      <option value="a_faire" <?= taskKanbanStatus($t) === 'a_faire' ? 'selected' : '' ?>>À faire</option>
-                      <option value="en_cours" <?= taskKanbanStatus($t) === 'en_cours' ? 'selected' : '' ?>>En cours</option>
-                      <option value="validation" <?= taskKanbanStatus($t) === 'validation' ? 'selected' : '' ?>>En validation</option>
-                      <option value="terminee" <?= taskKanbanStatus($t) === 'terminee' ? 'selected' : '' ?>>Terminé</option>
-                    </select>
-                  </form>
-                </div>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        <?php endforeach; ?>
-      </div>
+      <?php
+        $statusFormAction=url('projet.php?id='.$id.'&view=taches');
+        $showProjectLink=false;
+        require __DIR__.'/includes/views/kanban.php';
+      ?>
 
     <?php elseif ($view === 'documents'): ?>
 
