@@ -4,6 +4,7 @@ require_once __DIR__.'/../includes/NextcloudClient.php';
 foreach (['CURLOPT_UPLOAD','CURLOPT_INFILESIZE_LARGE','CURLOPT_USERPWD','CURLOPT_SSL_VERIFYPEER',
     'CURLOPT_SSL_VERIFYHOST','CURLOPT_CONNECTTIMEOUT','CURLOPT_TIMEOUT','CURLOPT_HTTPHEADER',
     'CURLOPT_READFUNCTION','CURLOPT_WRITEFUNCTION','CURLINFO_HTTP_CODE','CURL_READFUNC_ABORT'] as $i=>$key) define($key,$i+1);
+if (!function_exists('curl_init')) {
 function curl_init($url) { return (object)['url'=>$url,'options'=>[],'code'=>201]; }
 function curl_setopt_array($ch,$options) { $ch->options=$options; return true; }
 function curl_exec($ch) {
@@ -23,6 +24,7 @@ function curl_exec($ch) {
 }
 function curl_getinfo($ch,$key) { return $ch->code; }
 function curl_close($ch) {}
+}
 class StreamTestClient extends NextcloudClient {
     public function __construct() {
         foreach (['baseUrl'=>'https://example.invalid/dav','user'=>'test','password'=>'test'] as $name=>$value) {
