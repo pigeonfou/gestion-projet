@@ -402,6 +402,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('documents_externes.php?projet_id=' . $id) ?>" class="<?= $view === 'documents' ? 'active' : '' ?>">
         <i class="fas fa-folder-open"></i> Documents
       </a>
+      <a href="<?= url('qualite_projet.php?projet_id=' . $id) ?>"><i class="fas fa-check-circle"></i> Qualité fournisseurs</a>
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
@@ -561,7 +562,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <div class="dash-doc-row">
                     <i class="fas fa-file"></i>
                     <div>
-                      <p class="dash-doc-name"><?= e($d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
+                      <p class="dash-doc-name"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
                       <p class="text-muted text-xs"><?= e($d['date_upload'] ?? '') ?></p>
                     </div>
                   </div>
@@ -1247,7 +1248,7 @@ function stepClass(int $n, int $displayed, array $validated): string
         <?php else: ?>
           <?php foreach ($documents as $d): ?>
             <div class="r1b-card">
-              <h4><?= e($d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></h4>
+              <h4><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></h4>
               <p class="text-xs text-muted mt-1"><?= e($d['date_upload'] ?? '') ?> · <?= e($d['phase'] ?? '') ?></p>
               <?php if (!empty($d['chemin_nextcloud'])): ?>
                 <p class="text-xs text-muted">Nextcloud : <?= e($d['chemin_nextcloud']) ?></p>
