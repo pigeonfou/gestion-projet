@@ -1,4 +1,6 @@
 Options -Indexes
+# Le transfert documentaire PUT n’a pas de plafond de taille Apache.
+LimitRequestBody 0
 <FilesMatch "\.(sqlite|sqlite3|db)$">
     Require all denied
 </FilesMatch>

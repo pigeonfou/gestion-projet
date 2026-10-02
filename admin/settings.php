@@ -125,18 +125,7 @@ require __DIR__ . '/../includes/header.php';
                 <input type="text" name="nextcloud_root" class="form-control" value="<?= e($s['nextcloud_root']) ?>" placeholder="ProjectFlow">
                 <p class="text-muted text-sm mt-1">Arborescence : <code>/{racine}/Projet_{id}_{nom}/{phase}/fichier</code></p>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Taille max upload (Mo, 0 = illimité)</label>
-                    <input type="number" name="max_upload_mb" class="form-control" value="<?= e($s['max_upload_mb']) ?>" min="0">
-                </div>
-                <div class="form-group" style="display:flex;align-items:flex-end;">
-                    <label class="form-check">
-                        <input type="checkbox" name="allow_all_mime" value="1" <?= ($s['allow_all_mime'] ?? '1') === '1' ? 'checked' : '' ?>>
-                        Autoriser tous les types de fichiers
-                    </label>
-                </div>
-            </div>
+            <p>Tous les types de fichiers sont acceptés, sans limite de taille imposée par ProjectFlow.</p>
             <button type="submit" name="action" value="test_nextcloud" class="btn btn-secondary" formaction="" onclick="this.form.action.value='test_nextcloud'">
                 <i class="fas fa-plug"></i> Tester la connexion
             </button>

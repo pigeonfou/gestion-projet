@@ -41,12 +41,6 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
     redirect('projet.php?id=' . $projet_id . '&phase=' . $phase);
 }
 
-$maxMb = (int) getSetting('max_upload_mb', '0');
-if ($maxMb > 0 && $file['size'] > $maxMb * 1024 * 1024) {
-    setFlash('error', 'Fichier trop volumineux (max ' . $maxMb . ' Mo).');
-    redirect('projet.php?id=' . $projet_id . '&phase=' . $phase);
-}
-
 $safeName = preg_replace('/[^\p{L}\p{N}\_\-\.\s]/u', '_', $file['name']) ?? 'fichier';
 $safeName = preg_replace('/\s+/', '_', $safeName);
 
