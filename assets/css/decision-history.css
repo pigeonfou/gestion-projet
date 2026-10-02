@@ -1,0 +1,26 @@
+/* Decision history has its own view; long motifs wrap instead of widening the page. */
+.decision-history-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; align-items:end; }
+.decision-history-filters label { display:flex; flex-direction:column; gap:.4rem; font-weight:600; min-width:0; }
+.decision-history-filters .form-control { width:100%; min-width:0; box-sizing:border-box; }
+.history-search { grid-column:1 / -1; }
+.history-filter-actions, .history-pagination { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; }
+.history-count { margin:1.25rem 0; }
+.decision-history-table { width:100%; table-layout:fixed; }
+.decision-history-table th:nth-child(1) { width:15%; }
+.decision-history-table th:nth-child(2) { width:18%; }
+.decision-history-table th:nth-child(3) { width:13%; }
+.decision-history-table th:nth-child(4) { width:12%; }
+.decision-history-table td { vertical-align:top; overflow-wrap:anywhere; }
+.decision-history-table .history-motif { white-space:pre-wrap; line-height:1.5; }
+.history-table-caption { text-align:left; padding:.75rem 0; color:#475569; font-size:.875rem; }
+.history-decision { display:inline-block; padding:.2rem .45rem; border-radius:.3rem; background:#e2e8f0; font-weight:600; }
+.history-refuse, .history-no_go, .history-non_conforme { background:#fee2e2; color:#991b1b; }
+.history-done, .history-go, .history-conforme { background:#dcfce7; color:#166534; }
+.history-pagination { margin-top:1rem; justify-content:space-between; }
+@media(max-width:700px) { .decision-history-table { min-width:680px; } .decision-history-filters { grid-template-columns:1fr; } }
+
+.history-step-frame { display:block; width:100%; height:680px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+.history-embedded { margin:0; background:#fff; }
+.history-embedded main { margin:0; padding:.5rem; max-width:none; }
+.history-embedded .decision-history { box-shadow:none; border:0; margin:0; padding:.75rem; }
+.history-step-panel { margin-top:1.5rem; }

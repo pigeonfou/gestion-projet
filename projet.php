@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
 require_once __DIR__ . '/includes/r1b_decisions.php';
+require_once __DIR__ . '/includes/decision_history.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -14,7 +15,7 @@ runSchemaMigrations();
 $db = getDB();
 $user = utilisateurCourant();
 $id = (int)($_GET['id'] ?? $_POST['id'] ?? $_POST['projet_id'] ?? 0);
-$view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | taches | documents
+$view = $_GET['view'] ?? 'dashboard'; // dashboard | processus | historique | taches | documents
 $stepGet = array_key_exists('step', $_GET) ? (int)$_GET['step'] : null;
 
 if ($id <= 0) {
@@ -373,6 +374,18 @@ $pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
 $validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [7, 8], true) ? 1 : 0;
 
+// Embedded history stays inside its own browsing context so filtering never
+// reloads or discards an unfinished step form. Authentication above still applies.
+$historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
+if ($historyEmbedded) {
+    ?>
+    <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css') ?>"></head><body class="history-embedded"><main>
+    <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
+    </main></body></html>
+    <?php
+    exit;
+}
 $pageTitle = $projet['nom'];
 $useAppShell = true;
 require __DIR__ . '/includes/header.php';
@@ -386,6 +399,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -396,6 +410,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
         <i class="fas fa-route"></i> Processus R1b
       </a>
+      <a href="<?= url('projet.php?id=' . $id . '&view=historique&step=' . $currentStep) ?>" class="<?= $view === 'historique' ? 'active' : '' ?>"><i class="fas fa-history"></i> Historique des décisions</a>
       <a href="<?= url('projet.php?id=' . $id . '&view=taches') ?>" class="<?= $view === 'taches' ? 'active' : '' ?>">
         <i class="fas fa-tasks"></i> Tâches
       </a>
@@ -589,7 +604,8 @@ function stepClass(int $n, int $displayed, array $validated): string
         <div>
           <h2>Processus R1b – Conception</h2>
           <p class="text-muted text-sm">Projet : <strong><?= e($projet['nom']) ?></strong></p>
-        </div>
+          <a class="btn btn-secondary" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Historique des décisions</a>
+      </div>
       </div>
 
       <div class="r1b-stepper-wrap">
@@ -1144,17 +1160,15 @@ function stepClass(int $n, int $displayed, array $validated): string
             <a class="btn btn-secondary" href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . ($currentStep - 1)) ?>">Étape précédente</a>
           <?php endif; ?>
         </div>
-        <h4>Historique des décisions</h4>
-        <?php
-          $dq = $db->prepare('SELECT d.*, u.identifiant FROM projet_decisions d JOIN utilisateurs u ON u.id=d.utilisateur_id WHERE d.projet_id=? ORDER BY d.id DESC');
-          $dq->execute([$id]); $decisionHistory = $dq->fetchAll();
-        ?>
-        <?php if (!$decisionHistory): ?><p class="text-muted">Aucune décision enregistrée.</p><?php else: ?>
-        <div class="table-wrapper"><table><thead><tr><th>Date serveur</th><th>Étape</th><th>Décision</th><th>Acteur</th><th>Motif / résultats</th></tr></thead><tbody>
-          <?php foreach ($decisionHistory as $d): ?><tr><td><?= e($d['date_decision']) ?></td><td><?= (int)$d['etape'] ?></td><td><?= e($d['decision']) ?></td><td><?= e($d['identifiant']) ?></td><td style="white-space:pre-wrap"><?= e($d['motif']) ?></td></tr><?php endforeach; ?>
-        </tbody></table></div>
-        <?php endif; ?>
       </div>
+
+      <section class="r1b-card history-step-panel" aria-label="Historique séparé de l’étape">
+        <div class="r1b-page-head"><div><h3>Historique des décisions</h3><p class="text-sm text-muted">Consultez, filtrez et triez sans perdre la saisie en cours dans cette étape.</p></div><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Ouvrir l’historique complet</a></div>
+        <iframe class="history-step-frame" title="Historique des décisions de l’étape <?= $currentStep ?>" src="<?= url('projet.php?id='.$id.'&view=historique&embedded=1&step='.$currentStep) ?>" loading="lazy"></iframe>
+      </section>
+
+    <?php elseif ($view === 'historique'): ?>
+      <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
 
     <?php elseif ($view === 'taches'): ?>
       <!-- ========== TÂCHES (Kanban style Processus-R1b) ========== -->
@@ -1272,3 +1286,4 @@ function stepClass(int $n, int $displayed, array $validated): string
 </footer>
 </body>
 </html>
+
