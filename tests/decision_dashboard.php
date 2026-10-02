@@ -33,3 +33,16 @@ $empty=ddConsolidate([],[],[]);expectDD($empty['budget']===null && $empty['maxDe
 expectDD(ddTargets([])['budget']===null,'Blank targets allowed');
 foreach(['NaN','-1','<script>'] as $bad){try{ddTargets(['cible_budget'=>$bad]);throw new RuntimeException('Invalid numeric accepted');}catch(InvalidArgumentException $expected){}}
 echo "Decision dashboard: OK\n";
+require_once __DIR__.'/../includes/decision_gantt.php';
+$g=ddGantt([
+ ['id'=>1,'date_debut'=>'2026-12-30','date_echeance'=>'2027-01-02'],
+ ['id'=>2,'date_echeance'=>'2027-01-04'],
+ ['id'=>3,'date_debut'=>'2027-01-05','date_echeance'=>'2027-01-03'],
+ ['id'=>4,'date_echeance'=>'2026-02-30'],
+ ['id'=>5,'date_debut'=>'2027-01-01'],
+]);
+expectDD($g['days']===6 && count($g['rows'])===2 && count($g['undated'])===3,'Gantt dates across years, invalid and missing periods');
+expectDD(!$g['rows'][0]['milestone'] && abs($g['rows'][0]['width']-100*4/6)<0.001,'Inclusive planned duration');
+expectDD($g['rows'][1]['milestone'] && $g['rows'][1]['start']->format('Y-m-d')==='2027-01-04','Deadline is a milestone, no fabricated start');
+expectDD(ddGantt([])['days']===0 && ddGanttDate('2026-02-30')===null,'Empty and impossible calendar dates');
+echo "Gantt: OK\n";

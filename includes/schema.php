@@ -117,7 +117,7 @@ function runSchemaMigrations(): void
     }
 
     // Stocks & Matériel R&D
-    foreach (['resultats' => "TEXT NOT NULL DEFAULT ''", 'date_metier' => 'TEXT', 'dependance_id' => 'INTEGER REFERENCES taches(id)'] as $col => $def) {
+    foreach (['resultats' => "TEXT NOT NULL DEFAULT ''", 'date_metier' => 'TEXT', 'date_debut' => 'TEXT', 'dependance_id' => 'INTEGER REFERENCES taches(id)'] as $col => $def) {
         if (!in_array($col, $tcols, true)) $db->exec("ALTER TABLE taches ADD COLUMN $col $def");
     }
     $db->exec("CREATE TABLE IF NOT EXISTS tache_historique (

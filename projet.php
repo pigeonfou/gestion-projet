@@ -412,7 +412,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 ?>
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>">
-<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=1') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=2') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
