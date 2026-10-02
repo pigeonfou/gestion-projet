@@ -3,6 +3,7 @@ $pageTitle = 'Cahier des charges';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
+require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 
 $db = getDB();
@@ -18,7 +19,7 @@ if (!in_array($returnView, ['dashboard', 'processus', 'taches', 'documents'], tr
     $returnView = 'processus';
 }
 if ($returnView === 'processus') {
-    $returnStep = max(0, min(6, $returnStep));
+    $returnStep = r1bClampStep($returnStep);
 }
 $returnUrl = 'projet.php?id=' . $projet_id . '&view=' . rawurlencode($returnView);
 if ($returnView === 'processus') {
