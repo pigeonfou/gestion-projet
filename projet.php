@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
 require_once __DIR__ . '/includes/r1b_decisions.php';
 require_once __DIR__ . '/includes/decision_history.php';
+require_once __DIR__ . '/includes/project_notes.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -29,6 +30,8 @@ if (!$projet) {
     setFlash('error', 'Projet introuvable.');
     redirect('projets.php');
 }
+
+initProjectNotes($db,$id);
 
 $progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
 $validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
@@ -58,19 +61,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action !== 'update_task_status') {
         requerirGestionProjet($id);
     }
-    if ($action === 'save_notes') {
-        $notes = trim($_POST['step_notes'] ?? '');
-        if ($currentStep === 1 && !empty($_POST['save_cadrage_with_notes'])) {
-            $dest = $_POST['cadrage_destination'] ?? null;
-            if (!in_array($dest, ['interne', 'externe'], true)) $dest = null;
-            $db->prepare('UPDATE projets SET step_notes=?, cadrage_commerciale=?, cadrage_technique=?, cadrage_destination=? WHERE id=?')
-                ->execute([$notes, !empty($_POST['cadrage_commerciale']) ? 1 : 0, !empty($_POST['cadrage_technique']) ? 1 : 0, $dest, $id]);
-        } else {
-            $db->prepare('UPDATE projets SET step_notes = ? WHERE id = ?')->execute([$notes, $id]);
-        }
-        setFlash('success', 'Notes enregistrées.');
-        $redirView = $_POST['redir_view'] ?? 'processus';
-        redirect('projet.php?id=' . $id . '&view=' . $redirView . ($redirView === 'processus' ? '&step=' . $currentStep : ''));
+    if ($action === 'manage_note' || $action === 'save_notes') {
+        try {
+            if ($action === 'manage_note') {
+                changeProjectNote($db,$id,$currentStep,(string)($_POST['note_action']??''),(string)($_POST['note_content']??''),(int)($_POST['note_id']??0),(int)($_POST['note_revision']??0));
+            } elseif (trim((string)($_POST['step_notes']??''))!=='') {
+                changeProjectNote($db,$id,$currentStep,'add',(string)$_POST['step_notes']);
+            }
+            if ($currentStep === 1 && !empty($_POST['save_cadrage_with_notes'])) {
+                $dest=$_POST['cadrage_destination']??null;
+                if(!in_array($dest,['interne','externe'],true))$dest=null;
+                $db->prepare('UPDATE projets SET cadrage_commerciale=?,cadrage_technique=?,cadrage_destination=? WHERE id=?')->execute([!empty($_POST['cadrage_commerciale'])?1:0,!empty($_POST['cadrage_technique'])?1:0,$dest,$id]);
+            }
+            setFlash('success','Notes et informations enregistrées.');
+        } catch(Throwable $e) { setFlash('error',$e->getMessage()); }
+        redirect('projet.php?id='.$id.'&view=processus&step='.$currentStep);
     }
     if ($action === 'set_step') {
         // La navigation ne valide ni ne modifie l'avancement du projet.
@@ -380,7 +385,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-scroll-5') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -399,7 +404,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=process-scroll-5') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=notes-6') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -1089,15 +1094,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
         <h3>Actions et revue</h3>
         <?= $stepEditorActions ?>
-        <form method="POST" class="mt-3" <?= $currentStep === 1 ? 'id="form-notes-step1"' : '' ?>>
-          <?php if ($currentStep === 1): ?><input type="hidden" name="save_cadrage_with_notes" value="1"><?php endif; ?>
-          <input type="hidden" name="action" value="save_notes">
-          <?= csrfField() ?>
-          <input type="hidden" name="redir_view" value="processus">
-          <label class="text-sm font-medium">Notes / résultats</label>
-          <textarea name="step_notes" class="form-control" rows="3" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
-          <button type="submit" class="btn btn-secondary btn-sm mt-1"><i class="fas fa-save"></i> Enregistrer les notes</button>
-        </form>
+        <?php require __DIR__ . '/includes/views/project_notes.php'; ?>
 
         <div class="r1b-actions">
           <?php

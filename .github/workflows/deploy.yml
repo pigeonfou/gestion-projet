@@ -75,6 +75,7 @@ jobs:
           php "$test_dir/tests/management_workflow.php"
           php "$test_dir/tests/project_members.php"
           php "$test_dir/tests/decision_history.php"
+          php "$test_dir/tests/project_notes.php"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash

@@ -1,5 +1,7 @@
 <?php
-$history=loadDecisionHistory($db,$id,$_GET);
+$historyInput=$_GET;
+if(!empty($historyEmbedded) && !array_key_exists('h_step',$historyInput)) $historyInput['h_step']=$currentStep;
+$history=loadDecisionHistory($db,$id,$historyInput);
 $filters=$history['filters'];
 $historyUrl=static fn(array $changes=[]): string => url('projet.php?'.http_build_query(array_merge(['id'=>$id,'view'=>'historique','step'=>$currentStep,'embedded'=>!empty($historyEmbedded)?'1':'0'],$filters,$changes)));
 $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO','CONFORME'=>'Conforme','NON_CONFORME'=>'Non conforme'];
