@@ -600,6 +600,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
     <?php elseif ($view === 'processus'): ?>
       <!-- ========== PROCESSUS R1b ========== -->
+      <div class="r1b-process-editor">
       <header class="r1b-process-header">
       <div class="r1b-page-head">
         <div>
@@ -1176,6 +1177,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       </aside>
       </div>
 
+      </div><!-- Bandeau fixe limité au contenu de l’étape -->
       <section class="r1b-card history-step-panel" aria-label="Historique séparé de l’étape">
         <div class="r1b-page-head"><div><h3>Historique des décisions</h3><p class="text-sm text-muted">Consultez, filtrez et triez sans perdre la saisie en cours dans cette étape.</p></div><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= url('projet.php?id='.$id.'&view=historique&step='.$currentStep) ?>">Ouvrir l’historique complet</a></div>
         <iframe class="history-step-frame" title="Historique des décisions de l’étape <?= $currentStep ?>" src="<?= url('projet.php?id='.$id.'&view=historique&embedded=1&step='.$currentStep) ?>" loading="lazy"></iframe>
