@@ -11,6 +11,14 @@ $user = utilisateurCourant();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
+    if (($_POST['form_action'] ?? '') === 'project_contribution') {
+        $accountId = (int)($_POST['utilisateur_id'] ?? 0);
+        try {
+            projectSetContributor($db, (int)($_POST['projet_id'] ?? 0), $accountId, !empty($_POST['autorise']), $user);
+            setFlash('success', 'Contribution au projet mise à jour.');
+        } catch (InvalidArgumentException $e) { setFlash('error', $e->getMessage()); }
+        redirect('admin/utilisateurs.php?action=modifier&id=' . $accountId);
+    }
     $identifiant = trim($_POST['identifiant'] ?? '');
     $mot_de_passe = $_POST['mot_de_passe'] ?? '';
     $role = $_POST['role'] ?? 'utilisateur';
@@ -68,6 +76,13 @@ if ($action === 'creer' || $action === 'modifier') {
             redirect('admin/utilisateurs.php');
         }
     }
+    $contributionProjects = [];
+    if ($u) {
+        projectMembersSchema($db);
+        $q = $db->prepare('SELECT p.id,p.nom,COALESCE(m.actif,0) AS autorise FROM projets p LEFT JOIN projet_contributeurs m ON m.projet_id=p.id AND m.utilisateur_id=? ORDER BY p.nom');
+        $q->execute([(int)$u['id']]);
+        $contributionProjects = $q->fetchAll();
+    }
     require __DIR__ . '/../includes/header.php';
     ?>
     <div class="page-header">
@@ -113,6 +128,20 @@ if ($action === 'creer' || $action === 'modifier') {
             </form>
         </div>
     </div>
+    <?php if ($u): ?>
+    <div class="card" style="margin-top:1rem"><div class="card-body">
+        <h2>Contributions par projet — <?= e($u['identifiant']) ?></h2>
+        <p>Autorisez ce compte à modifier le cahier des charges, les documents Nextcloud et la qualité fournisseurs du projet choisi. Les décisions R1b et les autorisations restent réservées au créateur et aux administrateurs. Cette modification ne change ni le rôle ni le mot de passe.</p>
+        <?php if ($u['role']==='admin'): ?><p>Ce compte est administrateur : il dispose déjà de ces accès. Retirer une contribution ne retire pas ses droits administrateur.</p><?php endif; ?>
+        <table class="table"><thead><tr><th>Projet</th><th>Contribution</th></tr></thead><tbody>
+        <?php foreach ($contributionProjects as $cp): ?><tr><td><?=e($cp['nom'])?></td><td>
+            <form method="post"><?=csrfField()?><input type="hidden" name="form_action" value="project_contribution"><input type="hidden" name="utilisateur_id" value="<?=(int)$u['id']?>"><input type="hidden" name="projet_id" value="<?=(int)$cp['id']?>">
+            <label for="contribution_<?=(int)$cp['id']?>"><input type="checkbox" id="contribution_<?=(int)$cp['id']?>" name="autorise" value="1" <?=$cp['autorise']?'checked':''?>> Autoriser la contribution</label>
+            <button type="submit" class="btn btn-secondary">Enregistrer la contribution au projet <?=(int)$cp['id']?></button>
+            </form>
+        </td></tr><?php endforeach; ?></tbody></table>
+    </div></div>
+    <?php endif; ?>
     <?php
     require __DIR__ . '/../includes/footer.php';
     exit;
