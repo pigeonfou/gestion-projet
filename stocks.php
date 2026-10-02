@@ -40,7 +40,10 @@ $sql = "SELECT a.*,
         WHEN m.type IN ('consommation','affectation_projet','rebut','demontage') THEN -m.quantite
         ELSE 0 END)
         FROM stock_mouvements m WHERE m.article_id=a.id),0) AS stock_calcule,
-    (SELECT COUNT(*) FROM stock_usages u WHERE u.article_id = a.id) AS nb_usages,
+    (SELECT COUNT(DISTINCT p.id) FROM projets p WHERE
+        EXISTS (SELECT 1 FROM stock_usages u WHERE u.article_id=a.id AND u.projet_id=p.id)
+        OR EXISTS (SELECT 1 FROM stock_mouvements m WHERE m.article_id=a.id AND m.projet_id=p.id)
+    ) AS nb_usages,
     (SELECT GROUP_CONCAT(f.nom, ', ') FROM stock_article_fournisseur af
         JOIN stock_fournisseurs f ON f.id = af.fournisseur_id
         WHERE af.article_id = a.id) AS fournisseurs,
