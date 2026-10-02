@@ -2,6 +2,7 @@
 $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/task_workflow.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
@@ -190,35 +191,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         redirect('projet.php?id=' . $id . '&view=processus&step=5');
     }
-    if ($action === 'update_task_status') {
-        ensureTachesExtendedColumns();
-        $tid = (int)($_POST['task_id'] ?? 0);
-        $st = $_POST['status'] ?? 'a_faire';
-        $allowed = ['a_faire', 'en_cours', 'validation', 'terminee', 'done', 'todo', 'in_progress'];
-        $map = [
-            'todo' => 'a_faire',
-            'in_progress' => 'en_cours',
-            'done' => 'terminee',
-            'validation' => 'validation',
-            'a_faire' => 'a_faire',
-            'en_cours' => 'en_cours',
-            'terminee' => 'terminee',
-        ];
-        $kanban = $map[$st] ?? 'a_faire';
-        $statutDb = $kanban === 'validation' ? 'en_cours' : ($kanban === 'terminee' ? 'terminee' : ($kanban === 'en_cours' ? 'en_cours' : 'a_faire'));
-        if ($tid > 0) {
-            $chk = $db->prepare('SELECT assigne_a FROM taches WHERE id = ? AND projet_id = ?');
-            $chk->execute([$tid, $id]);
-            $row = $chk->fetch();
-            if (!$row) {
-                setFlash('error', 'Tâche introuvable.');
-            } elseif (!estAdmin() && (string)($row['assigne_a'] ?? '') !== (string)($user['identifiant'] ?? '')) {
-                setFlash('error', 'Vous ne pouvez modifier que les tâches qui vous sont affectées.');
-            } else {
-                $db->prepare('UPDATE taches SET kanban_status = ?, statut = ? WHERE id = ? AND projet_id = ?')
-                   ->execute([$kanban, $statutDb, $tid, $id]);
-                setFlash('success', 'Statut de la tâche mis à jour.');
-            }
+    if (($_POST['action'] ?? '') === 'update_task_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        csrfRequire();
+        $aliases = ['todo'=>'a_faire','in_progress'=>'en_cours','done'=>'terminee'];
+        $status = (string)($_POST['status'] ?? 'a_faire');
+        $status = $aliases[$status] ?? $status;
+        try {
+            taskSetStatus($db, (int)($_POST['task_id'] ?? 0), $status, $user, $id);
+            setFlash('success', 'Statut de la tâche mis à jour.');
+        } catch (InvalidArgumentException $e) {
+            setFlash('error', $e->getMessage());
+        } catch (Throwable $e) {
+            setFlash('error', 'Statut non enregistré.');
         }
         redirect('projet.php?id=' . $id . '&view=taches');
     }
@@ -1213,7 +1197,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <?php endif; ?>
             <?php foreach ($col['items'] as $t): ?>
               <div class="r1b-kanban-card">
-                <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
+                <p class="font-medium"><a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>"><?= e($t['titre'] ?? '') ?></a></p>
                 <?php if (!empty($t['description'])): ?>
                   <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 120, '…')) ?></p>
                 <?php endif; ?>

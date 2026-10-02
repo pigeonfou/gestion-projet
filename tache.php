@@ -2,147 +2,97 @@
 $pageTitle = 'Tâche';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/task_workflow.php';
 requerirConnexion();
-
 $db = getDB();
 $user = utilisateurCourant();
-$action = $_GET['action'] ?? '';
-$id = (int)($_GET['id'] ?? $_POST['id'] ?? 0);
-$projet_id = isset($_GET['projet_id']) ? (int)$_GET['projet_id'] : 0;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'supprimer' && $id > 0) {
-    csrfRequire();
-    $stmt = $db->prepare('SELECT projet_id FROM taches WHERE id = ?');
-    $stmt->execute([$id]);
-    $t = $stmt->fetch();
-    if ($t) {
-        requerirAccesProjet((int)$t['projet_id']);
-        $db->prepare('DELETE FROM taches WHERE id = ?')->execute([$id]);
-        setFlash('success', 'Tâche supprimée.');
-        redirect('projet.php?id=' . (int)$t['projet_id']);
-    }
-    setFlash('error', 'Tâche introuvable.');
-    redirect('projets.php');
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'supprimer') {
-    $titre = trim($_POST['titre'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $priorite = $_POST['priorite'] ?? 'moyenne';
-    $statut = $_POST['statut'] ?? 'a_faire';
-    $date_echeance = $_POST['date_echeance'] ?? null;
-    if ($date_echeance === '') $date_echeance = null;
-    $editId = (int)($_POST['id'] ?? 0);
-    $projet_id = (int)($_POST['projet_id'] ?? 0);
-
-    $priorites = ['basse', 'moyenne', 'haute', 'urgente'];
-    $statuts = ['a_faire', 'en_cours', 'terminee'];
-
-    if ($titre === '' || $projet_id <= 0 || !in_array($priorite, $priorites) || !in_array($statut, $statuts)) {
-        setFlash('error', 'Données invalides.');
-        redirect('tache.php?action=' . ($editId ? 'modifier&id=' . $editId : 'creer&projet_id=' . $projet_id));
-    }
-
-    requerirAccesProjet($projet_id);
-
-    try {
-        if ($editId > 0) {
-            $stmt = $db->prepare('UPDATE taches SET titre=?, description=?, priorite=?, statut=?, date_echeance=? WHERE id=?');
-            $stmt->execute([$titre, $description, $priorite, $statut, $date_echeance, $editId]);
-            setFlash('success', 'Tâche mise à jour.');
-            $stmt = $db->prepare('SELECT projet_id FROM taches WHERE id = ?');
-            $stmt->execute([$editId]);
-            $projet_id = (int)$stmt->fetchColumn();
-        } else {
-            $stmt = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, date_echeance) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$projet_id, $titre, $description, $priorite, $statut, $date_echeance]);
-            setFlash('success', 'Tâche créée.');
-        }
-        redirect('projet.php?id=' . $projet_id);
-    } catch (PDOException $e) {
-        setFlash('error', 'Erreur lors de l\'enregistrement.');
-        redirect('projets.php');
-    }
-}
-
+$id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
 $tache = null;
-if ($action === 'modifier' && $id > 0) {
-    $stmt = $db->prepare('SELECT * FROM taches WHERE id = ?');
-    $stmt->execute([$id]);
-    $tache = $stmt->fetch();
-    if (!$tache) {
-        setFlash('error', 'Tâche introuvable.');
-        redirect('projets.php');
+if ($id > 0) {
+    $q = $db->prepare('SELECT * FROM taches WHERE id=?');
+    $q->execute([$id]); $tache = $q->fetch();
+    if (!$tache) { setFlash('error','Tâche introuvable.'); redirect('projets.php'); }
+}
+$projetId = $tache ? (int)$tache['projet_id'] : (int)($_POST['projet_id'] ?? $_GET['projet_id'] ?? 0);
+$q = $db->prepare('SELECT id, nom, createur_id FROM projets WHERE id=?');
+$q->execute([$projetId]); $projet = $q->fetch();
+if (!$projet) { setFlash('error','Projet introuvable.'); redirect('projets.php'); }
+$manager = estAdmin() || (int)$projet['createur_id'] === (int)$user['id'];
+$assignee = $tache && (string)($tache['assigne_a'] ?? '') === (string)$user['identifiant'];
+if (!$manager && !$assignee) { setFlash('error','Accès à cette tâche refusé.'); redirect('taches.php'); }
+$retour = $manager ? 'projet.php?id='.$projetId.'&view=taches' : 'taches.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
+    try {
+        if (($_POST['action'] ?? '') === 'supprimer') {
+            if (!$manager || !$tache) throw new InvalidArgumentException('Suppression non autorisée.');
+            $db->prepare('DELETE FROM taches WHERE id=?')->execute([$id]);
+            setFlash('success','Tâche supprimée.'); redirect($retour);
+        }
+        $titre = $manager ? trim((string)($_POST['titre'] ?? '')) : $tache['titre'];
+        $description = $manager ? trim((string)($_POST['description'] ?? '')) : $tache['description'];
+        $priorite = $manager ? (string)($_POST['priorite'] ?? 'moyenne') : $tache['priorite'];
+        $assign = $manager ? trim((string)($_POST['assigne_a'] ?? '')) : (string)$tache['assigne_a'];
+        $dependency = $manager ? (int)($_POST['dependance_id'] ?? 0) : (int)($tache['dependance_id'] ?? 0);
+        $deadline = $manager ? (string)($_POST['date_echeance'] ?? '') : (string)($tache['date_echeance'] ?? '');
+        $status = (string)($_POST['statut'] ?? 'a_faire');
+        $resultats = trim((string)($_POST['resultats'] ?? ''));
+        $dateMetier = trim((string)($_POST['date_metier'] ?? ''));
+        if ($titre === '' || strlen($titre)>2000 || strlen($description)>20000 || strlen($resultats)>20000 || !in_array($priorite,['basse','moyenne','haute','urgente'],true) || !in_array($status,['a_faire','en_cours','validation','terminee'],true)) throw new InvalidArgumentException('Données invalides ou trop longues.');
+        foreach ([$deadline,$dateMetier] as $date) {
+            if ($date !== '') {
+                $d = DateTimeImmutable::createFromFormat('!Y-m-d',$date);
+                if (!$d || $d->format('Y-m-d') !== $date) throw new InvalidArgumentException('Date invalide.');
+            }
+        }
+        if ($assign !== '') {
+            $q = $db->prepare('SELECT id FROM utilisateurs WHERE identifiant=?'); $q->execute([$assign]);
+            if (!$q->fetchColumn()) throw new InvalidArgumentException('Utilisateur affecté introuvable.');
+        }
+        $db->beginTransaction();
+        taskDependencyCheck($db,$id,$projetId,$dependency,$status);
+        $values = [$titre,$description,$priorite,$status==='validation'?'en_cours':$status,$status,$assign?:null,$deadline?:null,$resultats,$dateMetier?:null,$dependency?:null];
+        if ($tache) {
+            $db->prepare('UPDATE taches SET titre=?,description=?,priorite=?,statut=?,kanban_status=?,assigne_a=?,date_echeance=?,resultats=?,date_metier=?,dependance_id=? WHERE id=?')->execute([...$values,$id]);
+        } else {
+            $db->prepare('INSERT INTO taches(titre,description,priorite,statut,kanban_status,assigne_a,date_echeance,resultats,date_metier,dependance_id,projet_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)')->execute([...$values,$projetId]);
+            $id = (int)$db->lastInsertId();
+        }
+        $details = json_encode(['affectation'=>$assign,'statut'=>$status,'resultats'=>$resultats,'date_metier'=>$dateMetier,'dependance'=>$dependency],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        $db->prepare('INSERT INTO tache_historique(tache_id,utilisateur_id,action,details) VALUES(?,?,?,?)')->execute([$id,$user['id'],$tache?'modification':'création',$details]);
+        $db->commit();
+        setFlash('success','Tâche enregistrée avec affectation, résultats et historique.'); redirect($retour);
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        setFlash('error',$e instanceof InvalidArgumentException?$e->getMessage():'Enregistrement impossible.');
+        redirect('tache.php?action='.($tache?'modifier&id='.$id:'creer&projet_id='.$projetId));
     }
-    $projet_id = (int)$tache['projet_id'];
 }
-
-if ($action !== 'creer' && $action !== 'modifier') redirect('projets.php');
-if ($projet_id <= 0) {
-    setFlash('error', 'Projet non spécifié.');
-    redirect('projets.php');
-}
-
-requerirAccesProjet($projet_id);
-
-$stmt = $db->prepare('SELECT nom FROM projets WHERE id = ?');
-$stmt->execute([$projet_id]);
-$projetNom = $stmt->fetchColumn();
-if (!$projetNom) {
-    setFlash('error', 'Projet introuvable.');
-    redirect('projets.php');
-}
-
+$users = $db->query('SELECT identifiant,nom_affiche,fonction FROM utilisateurs ORDER BY identifiant')->fetchAll();
+$q = $db->prepare('SELECT id,titre FROM taches WHERE projet_id=? AND id<>? ORDER BY id'); $q->execute([$projetId,$id]); $deps=$q->fetchAll();
 $pageTitle = $tache ? 'Modifier la tâche' : 'Nouvelle tâche';
-require __DIR__ . '/includes/header.php';
+require __DIR__.'/includes/header.php';
 ?>
-<div class="page-header">
-    <h1><i class="fas fa-<?= $tache ? 'edit' : 'plus' ?>"></i> <?= $tache ? 'Modifier la tâche' : 'Nouvelle tâche' ?></h1>
-    <a href="<?= url('projet.php?id=' . $projet_id) ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
-</div>
-<div class="card" style="max-width:640px;">
-    <div class="card-body">
-        <p class="text-muted mb-2">Projet : <strong><?= e($projetNom) ?></strong></p>
-        <form method="POST" action="<?= url('tache.php') ?>">
-            <?= csrfField() ?>
-            <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
-            <?php if ($tache): ?><input type="hidden" name="id" value="<?= (int)$tache['id'] ?>"><?php endif; ?>
-            <input type="hidden" name="action" value="save">
-            <div class="form-group">
-                <label for="titre">Titre *</label>
-                <input type="text" id="titre" name="titre" class="form-control" required value="<?= e($tache['titre'] ?? '') ?>" maxlength="200">
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="3"><?= e($tache['description'] ?? '') ?></textarea>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="priorite">Priorité</label>
-                    <select id="priorite" name="priorite" class="form-control">
-                        <?php foreach (['basse','moyenne','haute','urgente'] as $p): ?>
-                        <option value="<?= $p ?>" <?= ($tache['priorite'] ?? 'moyenne') === $p ? 'selected' : '' ?>><?= ucfirst($p) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="statut">Statut</label>
-                    <select id="statut" name="statut" class="form-control">
-                        <option value="a_faire" <?= ($tache['statut'] ?? '') === 'a_faire' ? 'selected' : '' ?>>À faire</option>
-                        <option value="en_cours" <?= ($tache['statut'] ?? '') === 'en_cours' ? 'selected' : '' ?>>En cours</option>
-                        <option value="terminee" <?= ($tache['statut'] ?? '') === 'terminee' ? 'selected' : '' ?>>Terminée</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="date_echeance">Date d'échéance</label>
-                <input type="date" id="date_echeance" name="date_echeance" class="form-control" value="<?= e($tache['date_echeance'] ?? '') ?>">
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-                <a href="<?= url('projet.php?id=' . $projet_id) ?>" class="btn btn-secondary">Annuler</a>
-            </div>
-        </form>
-    </div>
-</div>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<div class="page-header"><h1><?= e($pageTitle) ?></h1><a class="btn btn-secondary" href="<?= url($retour) ?>">Retour aux tâches</a></div>
+<div class="card"><div class="card-body">
+<p>Projet : <strong><?= e($projet['nom']) ?></strong></p>
+<form method="POST" action="<?= url('tache.php') ?>">
+<?= csrfField() ?><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="projet_id" value="<?= $projetId ?>">
+<?php $locked=$manager?'':'disabled'; ?>
+<div class="form-group"><label for="titre">Titre</label><input id="titre" name="titre" class="form-control" value="<?= e($tache['titre']??'') ?>" required maxlength="1000" <?= $locked ?>></div>
+<div class="form-group"><label for="description">Contexte et travail attendu</label><textarea id="description" name="description" class="form-control" rows="4" maxlength="10000" <?= $locked ?>><?= e($tache['description']??'') ?></textarea></div>
+<div class="form-group"><label for="assigne">Affectation</label><select id="assigne" name="assigne_a" class="form-control" <?= $locked ?>><option value="">Non assigné</option><?php foreach($users as $u): ?><option value="<?= e($u['identifiant']) ?>" <?= ($tache['assigne_a']??'')===$u['identifiant']?'selected':'' ?>><?= e($u['identifiant'].' — '.$u['nom_affiche'].' — '.$u['fonction']) ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="priorite">Priorité</label><select id="priorite" name="priorite" class="form-control" <?= $locked ?>><?php foreach(['basse','moyenne','haute','urgente'] as $p): ?><option value="<?= $p ?>" <?= ($tache['priorite']??'moyenne')===$p?'selected':'' ?>><?= ucfirst($p) ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="dep">Tâche précédente requise</label><select id="dep" name="dependance_id" class="form-control" <?= $locked ?>><option value="">Aucune</option><?php foreach($deps as $dep): ?><option value="<?= (int)$dep['id'] ?>" <?= (int)($tache['dependance_id']??0)===(int)$dep['id']?'selected':'' ?>><?= e('#'.$dep['id'].' '.$dep['titre']) ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="statut">Statut</label><select id="statut" name="statut" class="form-control"><?php foreach(['a_faire'=>'À faire','en_cours'=>'En cours','validation'=>'En validation','terminee'=>'Terminée'] as $key=>$label): ?><option value="<?= $key ?>" <?= ($tache['kanban_status']??$tache['statut']??'a_faire')===$key?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></div>
+<div class="form-group"><label for="echeance">Date d’échéance</label><input type="date" id="echeance" name="date_echeance" class="form-control" value="<?= e($tache['date_echeance']??'') ?>" <?= $locked ?>></div>
+<div class="form-group"><label for="date_metier">Date métier du résultat (simulée pour la recette)</label><input type="date" id="date_metier" name="date_metier" class="form-control" value="<?= e($tache['date_metier']??'') ?>"></div>
+<div class="form-group"><label for="resultats">Résultats / preuves / corrections</label><textarea id="resultats" name="resultats" class="form-control" rows="5" maxlength="10000"><?= e($tache['resultats']??'') ?></textarea></div>
+<button type="submit" class="btn btn-primary">Enregistrer la tâche</button>
+</form>
+<?php if($tache): $q=$db->prepare('SELECT h.*,u.identifiant FROM tache_historique h JOIN utilisateurs u ON u.id=h.utilisateur_id WHERE tache_id=? ORDER BY h.id DESC');$q->execute([$id]); ?>
+<h2>Historique de la tâche</h2><p>Les horodatages serveur et l’acteur connecté sont conservés séparément des dates métier simulées.</p>
+<?php foreach($q->fetchAll() as $h): ?><p><strong><?= e($h['date_action'].' — '.$h['identifiant'].' — '.$h['action']) ?></strong><br><?= e($h['details']) ?></p><?php endforeach; ?>
+<?php endif; ?>
+</div></div>
+<?php require __DIR__.'/includes/footer.php'; ?>

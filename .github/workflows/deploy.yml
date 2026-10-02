@@ -53,6 +53,9 @@ jobs:
           if [[ -f "$test_dir/tests/r1b_decisions.php" ]]; then
             php "$test_dir/tests/r1b_decisions.php"
           fi
+          if [[ -f "$test_dir/tests/task_workflow.php" ]]; then
+            php "$test_dir/tests/task_workflow.php"
+          fi
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash

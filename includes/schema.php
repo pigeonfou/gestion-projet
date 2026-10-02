@@ -117,6 +117,19 @@ function runSchemaMigrations(): void
     }
 
     // Stocks & Matériel R&D
+    foreach (['resultats' => "TEXT NOT NULL DEFAULT ''", 'date_metier' => 'TEXT', 'dependance_id' => 'INTEGER REFERENCES taches(id)'] as $col => $def) {
+        if (!in_array($col, $tcols, true)) $db->exec("ALTER TABLE taches ADD COLUMN $col $def");
+    }
+    $db->exec("CREATE TABLE IF NOT EXISTS tache_historique (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tache_id INTEGER NOT NULL REFERENCES taches(id) ON DELETE CASCADE,
+        utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs(id),
+        action TEXT NOT NULL,
+        details TEXT NOT NULL,
+        date_action DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Stocks & Matériel R&D
     $db->exec("CREATE TABLE IF NOT EXISTS stock_fournisseurs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nom TEXT NOT NULL,

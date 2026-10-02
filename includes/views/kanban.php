@@ -29,7 +29,7 @@ foreach ($taches as $t) {
       <?php endif; ?>
       <?php foreach ($col['items'] as $t): ?>
         <div class="r1b-kanban-card">
-          <p class="font-medium"><?= e($t['titre'] ?? '') ?></p>
+          <p class="font-medium"><a href="<?= url('tache.php?action=modifier&id=' . (int)$t['id']) ?>"><?= e($t['titre'] ?? '') ?></a></p>
           <?php if (!empty($t['description'])): ?>
             <p class="text-xs text-muted mt-1" style="white-space:pre-wrap;line-height:1.4;"><?= e(mb_strimwidth($t['description'], 0, 140, '…')) ?></p>
           <?php endif; ?>
