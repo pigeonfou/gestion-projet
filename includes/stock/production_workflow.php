@@ -83,7 +83,7 @@ function productionComplete(PDO $db,int $id,array $p,int $userId): void {
         foreach($snapshot['items'] as $item){
             $article=(int)$item['article_id'];$lot=(int)($p['lot'][$article]??0);$location=(int)($p['source'][$article]??0);$need=(float)$item['quantite']*$qty;
             $q=$db->prepare("SELECT * FROM stock_lots WHERE id=? AND article_id=? AND statut='libere'");$q->execute([$lot,$article]);$l=$q->fetch(PDO::FETCH_ASSOC);
-            if(!$l||$l['date_reception']>$order['date_metier']||!stockLotExists($db,'stock_emplacements',$location)||productionQuantity($db,$article,$location,$lot)+0.000001<$need||productionQuantity($db,$article,$location)+0.000001<$need)throw new InvalidArgumentException('Stock de lot libéré insuffisant à la date prévue pour '.$item['reference'].');
+            if(!$l||$l['date_reception']>$order['date_metier']||!stockLotExists($db,'stock_emplacements',$location)||productionQuantity($db,$article,$location,$lot)+0.000001<$need||productionQuantity($db,$article,$location)+0.000001<$need)throw new InvalidArgumentException('Stock de lot libéré insuffisant à la date prévue pour '.$item['reference']);
             $q=$db->prepare("SELECT COALESCE(SUM(quantite),0) FROM stock_reservations WHERE article_id=? AND statut='active' AND projet_id<>? AND (emplacement_id IS NULL OR emplacement_id=?)");$q->execute([$article,$order['projet_id'],$location]);
             if(productionQuantity($db,$article,$location)-(float)$q->fetchColumn()+0.000001<$need)throw new InvalidArgumentException('Stock réservé à un autre projet : '.$item['reference']);
             $allocations[]=[$article,$lot,$location,(float)$item['quantite'],$need];
