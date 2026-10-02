@@ -76,6 +76,7 @@ jobs:
           php "$test_dir/tests/project_members.php"
           php "$test_dir/tests/decision_history.php"
           php "$test_dir/tests/project_notes.php"
+          php "$test_dir/tests/cdc_test.php"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash
@@ -89,4 +90,5 @@ jobs:
           git branch --show-current
           git log -1 --oneline
           git status --short
+
 

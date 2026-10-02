@@ -424,6 +424,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       </a>
       <a href="<?= url('qualite_projet.php?projet_id=' . $id) ?>"><i class="fas fa-check-circle"></i> Qualité fournisseurs</a>
       <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
+      <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
       <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
@@ -1270,4 +1271,5 @@ function stepClass(int $n, int $displayed, array $validated): string
 </footer>
 </body>
 </html>
+
 
