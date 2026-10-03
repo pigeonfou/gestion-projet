@@ -10,6 +10,8 @@ if($query!==''){
  $tasks=$db->query('SELECT t.*,p.nom projet_nom,p.createur_id FROM taches t JOIN projets p ON p.id=t.projet_id ORDER BY t.id DESC')->fetchAll();foreach($tasks as $t)if((estAdmin()||(int)$t['createur_id']===(int)$actor['id']||($t['assigne_a']??'')===$actor['identifiant'])&&$match($t['titre'].' '.$t['description'].' '.$t['assigne_a']))$add('Tâche','#'.$t['id'].' — '.$t['titre'],$t['projet_nom'],'tache.php?id='.(int)$t['id']);
  foreach($db->query('SELECT id,nom FROM stock_fournisseurs')->fetchAll() as $f)if($match($f['nom']))$add('Fournisseur',$f['nom'],'Catalogue fournisseurs','fournisseur.php?id='.(int)$f['id']);foreach($db->query('SELECT id,reference,designation FROM stock_articles')->fetchAll() as $a)if($match($a['reference'].' '.$a['designation']))$add('Article',$a['reference'].' — '.$a['designation'],'Stock global','stock_article.php?id='.(int)$a['id']);
 }
+// Global results have their own project labels, not the last iterated project's context.
+$pid=0;
 require __DIR__.'/includes/header.php';?>
 <div class="page-header"><div><h1>Retrouver une information</h1><p class="text-muted">Projets, exigences, S.T., tâches, documents, fournisseurs et articles accessibles à votre compte.</p></div></div>
 <form method="get" class="pf-filter"><label for="globalSearch">Rechercher</label><input class="form-control" type="search" id="globalSearch" name="q" maxlength="160" value="<?=e($query)?>" placeholder="ARV-8, S.T.2.3, composant…" autofocus><button class="btn btn-primary">Rechercher</button></form>
