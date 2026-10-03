@@ -394,7 +394,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-3') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-3') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-8') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -413,7 +413,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-8') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=4') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
@@ -1202,5 +1202,4 @@ function stepClass(int $n, int $displayed, array $validated): string
 </footer>
 </body>
 </html>
-
 
