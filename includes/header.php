@@ -1,16 +1,12 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/settings_helper.php';
-require_once __DIR__ . '/ux_context.php';
 $user = utilisateurCourant();
 $flash = getFlash();
 $useAppShell = $useAppShell ?? false;
 seedSettingsIfEmpty();
 $siteNom = getSetting('site_nom', 'ProjectFlow');
-if($user && !$useAppShell && empty($projet['id'])) {
- $contextPid=(int)($projet_id ?? $pid ?? $projetId ?? $bom['projet_id'] ?? $row['projet_id'] ?? 0);
- if($contextPid>0){$contextQuery=getDB()->prepare('SELECT p.*,u.identifiant createur FROM projets p JOIN utilisateurs u ON u.id=p.createur_id WHERE p.id=?');$contextQuery->execute([$contextPid]);$projet=$contextQuery->fetch()?:null;}
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -90,5 +86,3 @@ if($user && !$useAppShell && empty($projet['id'])) {
         <?php endif; ?>
         <main>
     <?php endif; ?>
-
-<?php if ($user && !$useAppShell) pfRenderContext($projet ?? null, $pageTitle ?? ''); ?>

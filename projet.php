@@ -459,7 +459,6 @@ function stepClass(int $n, int $displayed, array $validated): string
 
   <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
-    <?php pfRenderContext($projet, $view==='processus'?'R1b · Étape '.$currentStep:($view==='taches'?'Tâches':($view==='historique'?'Décisions':'Synthèse'))); ?>
     <?php if ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
       <div class="r1b-page-head">
