@@ -255,3 +255,33 @@ function estimationCells(prefix) {
     }
   });
 })();
+
+/* Follow the actual history boundary, including steps with short content. */
+(function () {
+  const scroll = document.querySelector('.r1b-process-scroll');
+  const tools = scroll?.querySelector('.r1b-step-tools');
+  const history = scroll?.querySelector('.history-step-panel');
+  if (!tools || !history) return;
+  let shift = 0;
+  let pending = false;
+  function update() {
+    pending = false;
+    const naturalTop = tools.getBoundingClientRect().top - shift;
+    const pinnedTop = scroll.getBoundingClientRect().top + scroll.clientTop +
+      parseFloat(getComputedStyle(scroll).paddingTop);
+    const boundary = history.getBoundingClientRect().top;
+    shift = Math.max(0, Math.min(pinnedTop - naturalTop,
+      boundary - naturalTop - tools.getBoundingClientRect().height));
+    tools.style.transform = `translateY(${shift}px)`;
+  }
+  function schedule() {
+    if (!pending) { pending = true; requestAnimationFrame(update); }
+  }
+  scroll.addEventListener('scroll', schedule, { passive: true });
+  window.addEventListener('resize', schedule);
+  const observer = new ResizeObserver(schedule);
+  observer.observe(scroll);
+  observer.observe(tools);
+  observer.observe(scroll.querySelector('.r1b-step-workspace'));
+  update();
+})();

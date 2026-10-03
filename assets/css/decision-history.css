@@ -76,11 +76,10 @@ body:has(.r1b-process-main) { overflow:hidden; }
 
 /* Keep the complete history card below the fixed step navigation. */
 .r1b-process-scroll { position:relative; isolation:isolate; container-type:size; }
-/* Stick below the navigation, bounded by the workspace before the history.
+/* Keep review tools below navigation; JavaScript bounds them by the history.
    The scroll container defines the available height, including on small screens. */
 .r1b-process-scroll .r1b-step-tools {
-  position:sticky;
-  top:0;
+  position:relative;
   align-self:start;
   max-height:100cqh;
   box-sizing:border-box;
