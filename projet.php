@@ -1208,7 +1208,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-4') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-5') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">

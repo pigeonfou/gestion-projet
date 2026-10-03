@@ -72,7 +72,7 @@ function estimationCells(prefix) {
           const cost = row.querySelector('.cp-unit');
           if (cost) cost.value = '0';
           row.querySelector('.cp-qty').value = '1';
-          row.querySelector('[name="st_variation[]"]').value = 'Moyen';
+          row.querySelector('[name="st_variation[]"]').value = '';
           const delay = row.querySelector('.st-delay');
           if (delay) delay.value = '';
           const tax = row.querySelector('.cp-taxe');
