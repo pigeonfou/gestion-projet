@@ -15,7 +15,7 @@ if ($id > 0) {
     if (!$tache) { setFlash('error','Tâche introuvable.'); redirect('projets.php'); }
 }
 $projetId = $tache ? (int)$tache['projet_id'] : (int)($_POST['projet_id'] ?? $_GET['projet_id'] ?? 0);
-$q = $db->prepare('SELECT id, nom, createur_id FROM projets WHERE id=?');
+$q = $db->prepare('SELECT p.*,u.identifiant createur FROM projets p JOIN utilisateurs u ON u.id=p.createur_id WHERE p.id=?');
 $q->execute([$projetId]); $projet = $q->fetch();
 if (!$projet) { setFlash('error','Projet introuvable.'); redirect('projets.php'); }
 $manager = estAdmin() || (int)$projet['createur_id'] === (int)$user['id'];
@@ -97,7 +97,15 @@ require __DIR__.'/includes/header.php';
 </form>
 <?php if($tache): $q=$db->prepare('SELECT h.*,u.identifiant FROM tache_historique h JOIN utilisateurs u ON u.id=h.utilisateur_id WHERE tache_id=? ORDER BY h.id DESC');$q->execute([$id]); ?>
 <h2>Historique de la tâche</h2><p>Les horodatages serveur et l’acteur connecté sont conservés séparément des dates métier simulées.</p>
-<?php foreach($q->fetchAll() as $h): ?><p><strong><?= e($h['date_action'].' — '.$h['identifiant'].' — '.$h['action']) ?></strong><br><?= e($h['details']) ?></p><?php endforeach; ?>
+<?php foreach($q->fetchAll() as $h): $historyData=json_decode($h['details'],true); ?>
+<details class="pf-create"><summary><?= e($h['date_action'].' — '.$h['identifiant'].' — '.$h['action']) ?></summary>
+<?php if(is_array($historyData)): ?><dl>
+<?php foreach(['affectation'=>'Responsable','statut'=>'Statut','date_debut'=>'Début prévu','date_echeance'=>'Échéance','date_metier'=>'Date métier','dependance'=>'Tâche précédente','resultats'=>'Résultats / preuves / corrections'] as $key=>$label): if(!array_key_exists($key,$historyData))continue; $value=$historyData[$key]; if(!is_scalar($value)&&$value!==null)continue;
+if($key==='statut')$value=['a_faire'=>'À faire','en_cours'=>'En cours','validation'=>'En validation','terminee'=>'Terminée'][$value]??$value;
+if($key==='dependance')$value=$value?'#'.(int)$value:'Aucune'; ?>
+<dt><strong><?=e($label)?></strong></dt><dd class="pf-technical-summary"><?=e((string)($value??''))?:'Non renseigné'?></dd>
+<?php endforeach; ?></dl><?php else: ?><p class="pf-technical-summary"><?=e($h['details'])?></p><?php endif; ?>
+</details><?php endforeach; ?>
 <?php endif; ?>
 </div></div>
 <?php require __DIR__.'/includes/footer.php'; ?>

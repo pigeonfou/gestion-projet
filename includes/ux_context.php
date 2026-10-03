@@ -9,7 +9,14 @@ function pfRenderContext(?array $project, string $title): void {
  <div class="pf-context">
  <nav class="pf-breadcrumb" aria-label="Fil d’Ariane"><a href="<?=url('projets.php')?>">Projets</a><?php if($pid):?><span>›</span><a href="<?=url('projet.php?id='.$pid)?>"><?=e($project['nom']??'Projet')?></a><?php endif;?><span>›</span><span aria-current="page"><?=e($title)?></span></nav>
  <?php if($pid):?><div class="pf-context-meta"><span class="pf-status"><?=e(['actif'=>'En cours','termine'=>'Validé / vente','abandonne'=>'Abandonné'][$project['status']??'']??'Projet')?></span><?php if(isset($project['current_step'])):?><span>R1b · étape <?=(int)$project['current_step']?> / 9</span><?php endif;?><?php if(!empty($project['createur'])):?><span>Pilotage · <?=e($project['createur'])?></span><?php endif;?></div>
- <nav class="pf-context-links" aria-label="Vues du projet"><?php foreach(pfProjectLinks($pid) as $label=>$path):?><a href="<?=url($path)?>" <?=$file===strtok($path,'?')&&$file!=='projet.php'?'aria-current="page"':''?>><?=e($label)?></a><?php endforeach;?></nav><?php endif;?>
+ <nav class="pf-context-links" aria-label="Vues du projet"><?php foreach(pfProjectLinks($pid) as $label=>$path):
+ $selected=$file===strtok($path,'?');
+ if($file==='projet.php') {
+  $view=(string)($_GET['view']??'dashboard');
+  $selected=match($label){'Synthèse'=>$view==='dashboard','R1b'=>$view==='processus'&&(int)($_GET['step']??0)!==5,'Achats'=>$view==='processus'&&(int)($_GET['step']??0)===5,'Tâches'=>$view==='taches',default=>false};
+ }
+ if($file==='specification.php'&&$label==='S.F. / S.T.')$selected=true;
+ ?><a href="<?=url($path)?>" <?=$selected?'aria-current="page"':''?>><?=e($label)?></a><?php endforeach;?></nav><?php endif;?>
  </div>
  <?php
 }
