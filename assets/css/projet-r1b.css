@@ -256,3 +256,5 @@ input.form-control[name="cible_delai"] {
 .r1b-purchase-table td:is(.estimate-quantity,.estimate-money,.estimate-delay) {
   width:1%; white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums;
 }
+
+input.form-control:is([name="cible_quantite"],[name="cible_delai"]) { padding-inline:.4rem; }
