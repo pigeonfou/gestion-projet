@@ -384,9 +384,9 @@ if ($view === 'processus' && $currentStep === 3) {
     $dq->execute([$id]); $lastDecision=$dq->fetch() ?: null;
 }
 
-$pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
+$pct = ($projet['status'] ?? '') === 'termine' ? 100 : (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
-$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [7, 8], true) ? 1 : 0;
+$validationsPending = (($projet['status']??'')==='termine' || in_array($progressStep,$validatedSteps,true)) ? 0 : ((($progressStep===3 && empty($projet['go_decision'])) || in_array($progressStep,[7,8],true)) ? 1 : 0);
 
 // Embedded history stays inside its own browsing context so filtering never
 // reloads or discards an unfinished step form. Authentication above still applies.
@@ -397,6 +397,7 @@ if ($historyEmbedded) {
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-12') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body></html>
     <?php
     exit;
@@ -420,9 +421,10 @@ function stepClass(int $n, int $displayed, array $validated): string
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
-    <nav class="r1b-nav">
+    <div class="r1b-sidebar-title">ESPACE PROJET</div>
+    <nav class="r1b-nav" aria-label="Navigation du projet">
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
-        <i class="fas fa-th-large"></i> <?= e($projet['nom']) ?>
+        <i class="fas fa-th-large"></i> Synthèse du projet
       </a>
       <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
         <i class="fas fa-route"></i> Processus R1b
@@ -441,6 +443,11 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
       <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
     </nav>
+    <nav class="r1b-nav" aria-label="Objets du projet">
+      <a href="<?=url('specifications.php?projet_id='.$id)?>"><i class="fas fa-diagram-project"></i> S.F. / S.T.</a>
+      <a href="<?=url('planning.php?projet_id='.$id)?>"><i class="fas fa-calendar"></i> Planning & Gantt</a>
+      <a href="<?=url('production.php?projet_id='.$id)?>"><i class="fas fa-industry"></i> Production & stock</a>
+    </nav>
     <div class="r1b-sidebar-foot">
       <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>
     </div>
@@ -448,6 +455,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
   <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
+    <?php pfRenderContext($projet, $view==='processus'?'R1b · Étape '.$currentStep:($view==='taches'?'Tâches':($view==='historique'?'Décisions':'Synthèse'))); ?>
     <?php if ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
       <div class="r1b-page-head">
@@ -462,22 +470,22 @@ function stepClass(int $n, int $displayed, array $validated): string
 
       <!-- KPI cards -->
       <div class="dash-kpi-grid">
-        <div class="dash-kpi">
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=processus')?>">
           <p class="dash-kpi-label">Progression</p>
           <p class="dash-kpi-value"><?= $pct ?>%</p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=taches')?>">
           <p class="dash-kpi-label">Tâches en cours</p>
           <p class="dash-kpi-value"><?= $tachesOuvertes ?></p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=processus&step='.$progressStep)?>">
           <p class="dash-kpi-label">Validations en attente</p>
           <p class="dash-kpi-value"><?= $validationsPending ?></p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('planning.php?projet_id='.$id)?>">
           <p class="dash-kpi-label">Jalons</p>
           <p class="dash-kpi-value"><?= $nbJalons ?></p>
-        </div>
+        </a>
       </div>
 
       <div class="dash-grid">
@@ -541,21 +549,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
         <!-- Colonne droite : notes + docs -->
         <div class="dash-col-side">
-          <div class="r1b-card">
-            <h3>Notes / décisions</h3>
-            <form method="POST">
-              <input type="hidden" name="action" value="save_notes">
-              <?= csrfField() ?>
-              <input type="hidden" name="redir_view" value="dashboard">
-              <textarea name="step_notes" class="form-control" rows="5" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
-              <button type="submit" class="btn btn-secondary btn-sm mt-2"><i class="fas fa-save"></i> Enregistrer</button>
-            </form>
-            <?php if (!empty($projet['go_decision'])): ?>
-              <div class="r1b-info-box mt-3">
-                Décision GO/NO GO : <strong><?= e($projet['go_decision']) ?></strong>
-              </div>
-            <?php endif; ?>
-          </div>
+          <div class="r1b-card"><h3>Décisions & notes de pilotage</h3><p class="text-muted text-sm">Consultez les décisions enregistrées et ajoutez vos notes dans l’étape concernée.</p><div class="pf-links"><a href="<?=url('projet.php?id='.$id.'&view=historique')?>">Historique des décisions</a><a href="<?=url('projet.php?id='.$id.'&view=processus&step='.$progressStep)?>">Revue de l’étape actuelle</a></div></div>
 
 
           <div class="r1b-card">
@@ -596,7 +590,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <div class="dash-doc-row">
                     <i class="fas fa-file"></i>
                     <div>
-                      <p class="dash-doc-name"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
+                      <p class="dash-doc-name"><a href="<?=url('documents_externes.php?projet_id='.$id)?>"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></a></p>
                       <p class="text-muted text-xs"><?= e($d['date_upload'] ?? '') ?></p>
                     </div>
                   </div>
@@ -645,6 +639,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <div class="r1b-card r1b-step-content">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
+        <?php if($currentStep>=6):?><div class="pf-links"><a href="<?=url('planning.php?projet_id='.$id)?>">Planning des tâches</a><a href="<?=url('documents_externes.php?projet_id='.$id)?>">Dossier & preuves</a><a href="<?=url('qualite_projet.php?projet_id='.$id)?>">Conformité fournisseurs</a><a href="<?=url('production.php?projet_id='.$id)?>">Prototype & production</a></div><?php endif;?>
         <?php if ($currentStep === 1): ?>
           <hr class="my-4">
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
@@ -1215,6 +1210,7 @@ function stepClass(int $n, int $displayed, array $validated): string
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
 <script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>
 

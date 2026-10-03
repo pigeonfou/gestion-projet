@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/settings_helper.php';
+require_once __DIR__ . '/ux_context.php';
 $user = utilisateurCourant();
 $flash = getFlash();
 $useAppShell = $useAppShell ?? false;
@@ -16,8 +17,9 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=1') ?>">
 </head>
-<body>
+<body class="pf-app">
     <header class="header">
         <div class="header-container">
             <a href="<?= url('projets.php') ?>" class="logo">
@@ -25,7 +27,7 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
                 <span><?= e($siteNom) ?></span>
             </a>
             <?php if ($user): ?>
-            <nav class="nav">
+            <nav class="nav" aria-label="Navigation principale">
                 <a href="<?= url('projets.php') ?>" class="nav-link <?= in_array(($activePage ?? ''), ['accueil','projets'], true) ? 'active' : '' ?>">
                     <i class="fas fa-folder-open"></i> Projets
                 </a>
@@ -42,6 +44,7 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
                     <i class="fas fa-sitemap"></i> Management
                 </a>
             </nav>
+            <a class="pf-search-launch" href="<?=url('recherche.php')?>" aria-label="Rechercher dans ProjectFlow"><i class="fas fa-search"></i><span>Rechercher</span><kbd>/</kbd></a>
             <div class="user-menu">
                 <div class="user-dropdown">
                     <button type="button" class="user-dropdown-toggle" id="userMenuBtn" aria-expanded="false">
@@ -83,3 +86,5 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
         <?php endif; ?>
         <main>
     <?php endif; ?>
+
+<?php if ($user && !$useAppShell) pfRenderContext($projet ?? null, $pageTitle ?? ''); ?>

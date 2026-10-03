@@ -1,0 +1,7 @@
+/* Local enhancements only; no extra API requests or duplicated business state. */
+document.addEventListener('DOMContentLoaded',()=>{
+ document.addEventListener('keydown',e=>{if(e.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){const a=document.querySelector('.pf-search-launch');if(a){e.preventDefault();a.click();}}});
+ document.querySelectorAll('[data-pf-filter]').forEach(input=>{const table=document.getElementById(input.dataset.pfFilter);if(!table)return;input.addEventListener('input',()=>{const query=input.value.toLocaleLowerCase('fr');let count=0;table.querySelectorAll('tbody tr').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('fr').includes(query);if(!row.hidden)count++;});const counter=document.getElementById(input.dataset.pfFilter+'-count');if(counter)counter.textContent=count+' résultat(s)';});});
+ document.querySelectorAll('table.table').forEach(table=>{if(table.parentElement.classList.contains('pf-table-scroll'))return;const wrapper=document.createElement('div');wrapper.className='pf-table-scroll';wrapper.tabIndex=0;wrapper.setAttribute('role','region');wrapper.setAttribute('aria-label','Tableau, défilement horizontal');table.before(wrapper);wrapper.append(table);});
+ document.querySelectorAll('.form-group').forEach((group,i)=>{const label=group.querySelector('label'),field=group.querySelector('input:not([type=hidden]),select,textarea');if(label&&field&&!label.htmlFor&&!label.contains(field)){if(!field.id)field.id='pf-field-'+i;label.htmlFor=field.id;}});
+});

@@ -1,0 +1,18 @@
+<?php
+$pageTitle='Recherche';$activePage='recherche';require __DIR__.'/includes/bootstrap.php';require __DIR__.'/includes/ux_objects.php';requerirConnexion();$db=getDB();$actor=utilisateurCourant();$query=mb_substr(trim((string)($_GET['q']??'')),0,160);$results=[];
+$match=fn($text)=>$query!==''&&mb_stripos((string)$text,$query)!==false;
+$add=function($type,$title,$context,$path)use(&$results){if(count($results)<100)$results[]=compact('type','title','context','path');};
+if($query!==''){
+ $projects=$db->query('SELECT * FROM projets ORDER BY nom')->fetchAll();foreach($projects as $project){$pid=(int)$project['id'];if(!projectCanContribute($db,$pid,$actor))continue;$name=$project['nom'];if($match($name.' '.$project['description']))$add('Projet',$name,'R1b · étape '.$project['current_step'],'projet.php?id='.$pid);
+ $specs=pfSpecs($pid);foreach($specs['fonctions'] as $sf)if($match($sf['id'].' '.$sf['description']))$add('S.F.',$sf['id'].' — '.$sf['description'],$name,'specifications.php?projet_id='.$pid.'#'.rawurlencode($sf['id']));foreach($specs['specs_techniques'] as $st)if($match($st['id'].' '.$st['description'].' '.$st['type']))$add('S.T.',$st['id'].' — '.$st['description'],$name,'specification.php?projet_id='.$pid.'&uid='.rawurlencode($st['uid']));
+ $q=$db->prepare('SELECT * FROM documents WHERE projet_id=?');$q->execute([$pid]);foreach($q->fetchAll() as $doc)if($match($doc['nom_fichier'].' '.($doc['phase']??'')))$add('Document',$doc['nom_fichier'],$name,'documents_externes.php?projet_id='.$pid.'#document-'.(int)$doc['id']);
+ }
+ $tasks=$db->query('SELECT t.*,p.nom projet_nom,p.createur_id FROM taches t JOIN projets p ON p.id=t.projet_id ORDER BY t.id DESC')->fetchAll();foreach($tasks as $t)if((estAdmin()||(int)$t['createur_id']===(int)$actor['id']||($t['assigne_a']??'')===$actor['identifiant'])&&$match($t['titre'].' '.$t['description'].' '.$t['assigne_a']))$add('Tâche','#'.$t['id'].' — '.$t['titre'],$t['projet_nom'],'tache.php?id='.(int)$t['id']);
+ foreach($db->query('SELECT id,nom FROM stock_fournisseurs')->fetchAll() as $f)if($match($f['nom']))$add('Fournisseur',$f['nom'],'Catalogue fournisseurs','fournisseur.php?id='.(int)$f['id']);foreach($db->query('SELECT id,reference,designation FROM stock_articles')->fetchAll() as $a)if($match($a['reference'].' '.$a['designation']))$add('Article',$a['reference'].' — '.$a['designation'],'Stock global','stock_article.php?id='.(int)$a['id']);
+}
+require __DIR__.'/includes/header.php';?>
+<div class="page-header"><div><h1>Retrouver une information</h1><p class="text-muted">Projets, exigences, S.T., tâches, documents, fournisseurs et articles accessibles à votre compte.</p></div></div>
+<form method="get" class="pf-filter"><label for="globalSearch">Rechercher</label><input class="form-control" type="search" id="globalSearch" name="q" maxlength="160" value="<?=e($query)?>" placeholder="ARV-8, S.T.2.3, composant…" autofocus><button class="btn btn-primary">Rechercher</button></form>
+<?php if($query!==''):?><p class="text-muted" role="status"><?=count($results)?> résultat(s)<?=count($results)===100?' · affichage limité à 100, précisez la recherche':''?></p><?php endif;?>
+<div class="card card-body"><?php foreach($results as $r):?><a class="dash-task-row" href="<?=url($r['path'])?>"><span><span class="pf-tag"><?=e($r['type'])?></span> <strong><?=e($r['title'])?></strong><br><small class="text-muted"><?=e($r['context'])?></small></span><span>→</span></a><?php endforeach;?><?php if(!$results):?><p class="pf-empty"><?=$query!==''?'Aucun résultat. Essayez une référence ou un terme plus court.':'Saisissez une référence ou un nom. Le raccourci / ouvre cette recherche depuis toute l’application.'?></p><?php endif;?></div>
+<?php require __DIR__.'/includes/footer.php';?>

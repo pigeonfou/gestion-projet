@@ -3,6 +3,7 @@ $pageTitle = 'Tâche';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/ux_objects.php';
 requerirConnexion();
 $db = getDB();
 $user = utilisateurCourant();
@@ -75,6 +76,7 @@ $q = $db->prepare('SELECT id,titre FROM taches WHERE projet_id=? AND id<>? ORDER
 $pageTitle = $tache ? 'Modifier la tâche' : 'Nouvelle tâche';
 require __DIR__.'/includes/header.php';
 ?>
+<?php if($tache) pfTaskLinks($tache); ?>
 <div class="page-header"><h1><?= e($pageTitle) ?></h1><a class="btn btn-secondary" href="<?= url($retour) ?>">Retour aux tâches</a></div>
 <div class="card"><div class="card-body">
 <p>Projet : <strong><?= e($projet['nom']) ?></strong></p>
