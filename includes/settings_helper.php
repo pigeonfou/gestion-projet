@@ -37,6 +37,7 @@ function getAllSettings(): array {
 function defaultSettings(): array {
     return [
         'site_nom' => 'ProjectFlow',
+        'search_highlight_color' => '#ffad42',
         'site_tagline' => 'Gestion de projets, processus & documentation',
         'nextcloud_url' => 'https://nextcloud.procomm.rd',
         'nextcloud_user' => getenv('PROJECTFLOW_NEXTCLOUD_USER') ?: '',
@@ -79,4 +80,10 @@ function sanitizePathSegment(string $name): string {
     $name = preg_replace('/[^\p{L}\p{N}\_\-\.\s]/u', '', $name) ?? '';
     $name = preg_replace('/\s+/', '_', trim($name)) ?? '';
     return $name !== '' ? $name : 'Sans_nom';
+}
+
+/** Restrict appearance values to CSS hex colors. */
+function searchHighlightColor(?string $value = null): string {
+    $value = $value ?? getSetting('search_highlight_color', '#ffad42');
+    return preg_match('/^#[0-9a-fA-F]{6}$/D', $value ?? '') ? strtolower($value) : '#ffad42';
 }

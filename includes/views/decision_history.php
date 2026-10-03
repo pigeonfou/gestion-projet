@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../settings_helper.php';
 $historyInput=$_GET;
 if(!empty($historyEmbedded) && !array_key_exists('h_step',$historyInput)) $historyInput['h_step']=$currentStep;
 $history=loadDecisionHistory($db,$id,$historyInput);
@@ -14,7 +15,7 @@ $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO'
 <?php endif; ?>
 <section class="r1b-card decision-history" aria-label="Historique des décisions du projet">
   <div class="history-toolbar">
-  <form method="get" action="<?= url('projet.php') ?>" class="decision-history-filters" data-live-filters>
+  <form method="get" action="<?= url('projet.php') ?>" class="decision-history-filters" data-live-filters data-highlight-color="<?= e(searchHighlightColor()) ?>">
     <?php if(!empty($historyEmbedded)): ?><input type="hidden" name="embedded" value="1"><?php endif; ?>
     <input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="view" value="historique"><input type="hidden" name="step" value="<?= $currentStep ?>">
     <label class="history-search" for="history-search">Rechercher<input id="history-search" type="search" name="h_q" class="form-control" value="<?= e($filters['h_q']) ?>" maxlength="500" placeholder="Motif, résultat, décision ou acteur"></label>
@@ -39,4 +40,4 @@ $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO'
   <?php endif; ?>
   </div>
 </section>
-<script src="<?=url('assets/js/live-filters.js?v=1')?>" defer></script>
+<script src="<?=url('assets/js/live-filters.js?v=2')?>" defer></script>

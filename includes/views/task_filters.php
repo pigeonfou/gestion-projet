@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../settings_helper.php';
 require_once __DIR__.'/../task_filters.php';
 $taskFilters=taskFilterInput($_GET);
 $taskFilterTotal=count($taches);
@@ -11,7 +12,7 @@ $statusFormAction=url($taskFilterBase.'&'.taskFilterQuery($taskFilters));
 if($showProjectLink)$statusFormAction=url('taches.php?'.taskFilterQuery($taskFilters));
 ?>
 <link rel="stylesheet" href="<?=url('assets/css/task-filters.css?v=1')?>">
-<form class="task-filter-toolbar" data-live-filters method="GET" action="<?=url($showProjectLink?'taches.php':'projet.php')?>" aria-label="Recherche, filtres et tri des tâches">
+<form class="task-filter-toolbar" data-live-filters data-highlight-color="<?= e(searchHighlightColor()) ?>" method="GET" action="<?=url($showProjectLink?'taches.php':'projet.php')?>" aria-label="Recherche, filtres et tri des tâches">
 <?php if(!$showProjectLink):?><input type="hidden" name="id" value="<?=(int)$id?>"><input type="hidden" name="view" value="taches"><?php endif;?>
 <div class="task-filter-search"><label for="tf_q">Recherche</label><input id="tf_q" name="tf_q" type="search" maxlength="200" value="<?=e($taskFilters['q'])?>" placeholder="Titre, description, résultats, responsable, n°…"></div>
 <?php $selects=['status'=>['label'=>'Statut','items'=>[''=>'Tous les statuts','a_faire'=>'À faire','en_cours'=>'En cours','validation'=>'En validation','terminee'=>'Terminée']], 'priority'=>['label'=>'Priorité','items'=>[''=>'Toutes les priorités','urgente'=>'Urgente','haute'=>'Haute','moyenne'=>'Moyenne','basse'=>'Basse']], 'assignee'=>['label'=>'Responsable','items'=>[''=>'Tous les responsables','__unassigned'=>'Non assignées']+$filterPeople], 'due'=>['label'=>'Échéance','items'=>[''=>'Toutes les échéances','late'=>'En retard (non terminées)','undated'=>'Sans échéance']]]; if($showProjectLink)$selects['project']=['label'=>'Projet','items'=>[''=>'Tous les projets']+$filterProjects]; foreach($selects as $key=>$field):?>

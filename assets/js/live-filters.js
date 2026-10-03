@@ -6,6 +6,47 @@
     let timer, controller, generation = 0;
     const resultKey = form.classList.contains('decision-history-filters') ? 'history' : 'tasks';
     const selector = `[data-live-results="${resultKey}"]`;
+    const highlight = () => {
+      const target = document.querySelector(selector);
+      if (!target) return;
+      target.querySelectorAll('mark.search-match').forEach(mark => mark.replaceWith(document.createTextNode(mark.textContent)));
+      target.normalize();
+      const query = form.querySelector('input[type="search"]')?.value.trim();
+      if (!query) return;
+      const color = /^#[0-9a-f]{6}$/i.test(form.dataset.highlightColor || '') ? form.dataset.highlightColor : '#ffad42';
+      const rgb = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+      const foreground = .2126 * rgb[0] + .7152 * rgb[1] + .0722 * rgb[2] > .179 ? '#111111' : '#ffffff';
+      const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+      target.querySelectorAll(resultKey === 'tasks' ? '.r1b-kanban-card' : '.decision-history-table tbody').forEach(root => {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while (walker.nextNode()) {
+          if (!walker.currentNode.parentElement.closest('script, style, select, option, textarea, button, mark')) nodes.push(walker.currentNode);
+        }
+        nodes.forEach(node => {
+          const value = node.textContent;
+          pattern.lastIndex = 0;
+          const matches = [...value.matchAll(pattern)];
+          if (!matches.length) return;
+          const fragment = document.createDocumentFragment();
+          let offset = 0;
+          matches.forEach(match => {
+            fragment.append(document.createTextNode(value.slice(offset, match.index)));
+            const mark = document.createElement('mark');
+            mark.className = 'search-match';
+            mark.style.backgroundColor = color;
+            mark.style.color = foreground;
+            mark.style.borderRadius = '2px';
+            mark.textContent = match[0];
+            fragment.append(mark);
+            offset = match.index + match[0].length;
+          });
+          fragment.append(document.createTextNode(value.slice(offset)));
+          node.replaceWith(fragment);
+        });
+      });
+    };
+    highlight();
     const feedback = document.createElement('p');
     feedback.setAttribute('role', 'status');
     feedback.style.cssText = 'font-size:.8rem;color:#617087;margin:6px 0';
@@ -29,6 +70,7 @@
         if (!next || !doc.querySelector('form[data-live-filters]')) throw new Error('session');
         if (current !== generation) return;
         target.replaceChildren(...next.childNodes);
+        highlight();
         history.replaceState(null, '', url);
         feedback.textContent = '';
       } catch (error) {

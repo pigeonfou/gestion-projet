@@ -68,4 +68,4 @@ foreach ($taches as $t) {
 </div>
 
 </div><!-- Résultats des filtres temps réel -->
-<script src="<?=url('assets/js/live-filters.js?v=1')?>" defer></script>
+<script src="<?=url('assets/js/live-filters.js?v=2')?>" defer></script>

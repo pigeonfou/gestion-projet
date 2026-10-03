@@ -21,14 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $testResult = $nc->testConnection();
     } else {
         $fields = [
-            'site_nom', 'site_tagline',
+            'site_nom', 'site_tagline', 'search_highlight_color',
             'nextcloud_url', 'nextcloud_user', 'nextcloud_password', 'nextcloud_webdav', 'nextcloud_root',
             'nextcloud_enabled',
             'items_per_page', 'timezone', 'date_format',
             'allow_all_mime', 'max_upload_mb',
         ];
         foreach ($fields as $f) {
-            if ($f === 'nextcloud_enabled' || $f === 'allow_all_mime') {
+            if ($f === 'search_highlight_color') {
+                setSetting($f, searchHighlightColor(is_string($_POST[$f] ?? null) ? $_POST[$f] : ''));
+            } elseif ($f === 'nextcloud_enabled' || $f === 'allow_all_mime') {
                 setSetting($f, isset($_POST[$f]) ? '1' : '0');
             } elseif (isset($_POST[$f])) {
                 setSetting($f, trim($_POST[$f]));
@@ -89,6 +91,17 @@ require __DIR__ . '/../includes/header.php';
             <div class="form-group">
                 <label>Éléments par page (listes)</label>
                 <input type="number" name="items_per_page" class="form-control" value="<?= e($s['items_per_page']) ?>" min="5" max="200" style="max-width:120px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-2">
+        <div class="card-header"><h2><i class="fas fa-palette"></i> Apparence</h2></div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="search-highlight-color">Couleur du surlignage des recherches</label>
+                <input type="color" id="search-highlight-color" name="search_highlight_color" value="<?= e(searchHighlightColor($s['search_highlight_color'])) ?>">
+                <p class="text-muted text-sm mt-1">Orange par défaut. Appliquée aux occurrences trouvées dans les tâches et l’historique des décisions, pour tout le site.</p>
             </div>
         </div>
     </div>
