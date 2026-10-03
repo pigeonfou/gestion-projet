@@ -396,7 +396,7 @@ if ($historyEmbedded) {
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-11') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
-    </main><script src="<?= url('assets/js/st-references.js?v=1') ?>"></script>
+    </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 </body></html>
     <?php
     exit;
@@ -1214,7 +1214,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
-<script src="<?= url('assets/js/st-references.js?v=1') ?>"></script>
+<script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 </body>
 </html>
 

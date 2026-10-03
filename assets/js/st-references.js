@@ -25,7 +25,8 @@
       const linked = select.value === 'S.T.x.x';
       ['st_delai_jours', 'st_variation'].forEach(name => {
         const field = input(row, name);
-        field.closest('td').hidden = linked;
+        // Keep the table columns in place when reference-only controls are hidden.
+        field.hidden = linked;
         if (name === 'st_delai_jours') field.readOnly = linked;
       });
       select.dataset.previousType = select.value;
