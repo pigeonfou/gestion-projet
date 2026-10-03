@@ -67,6 +67,8 @@ function estimationCells(prefix) {
           const row = rows[0];
           row.querySelector('input[type="text"]').value = '';
           row.querySelector('select').value = 'Matériel';
+          row.querySelector('[name="st_reference_uid[]"]').value = '';
+          row.querySelector('select').dispatchEvent(new Event('change', { bubbles:true }));
           const cost = row.querySelector('.cp-unit');
           if (cost) cost.value = '0';
           row.querySelector('.cp-qty').value = '1';
@@ -94,7 +96,8 @@ function estimationCells(prefix) {
         tr.className = 'st-row';
         tr.innerHTML =
           '<td><span class="st-id">S.T.' + sfNum + '.' + (i + 1) + '</span>' +
-          '<input type="hidden" name="st_sf[]" value="' + sfId + '"></td>' +
+          '<input type="hidden" name="st_sf[]" value="' + sfId + '">' +
+          '<input type="hidden" name="st_uid[]" value="' + crypto.randomUUID().replaceAll('-', '') + '"><input type="hidden" name="st_reference_uid[]" value=""></td>' +
           '<td><input type="text" name="st_description[]" class="form-control" value="" placeholder="Description technique…"></td>' +
           '<td><select name="st_type[]" class="form-control">' +
             '<option value="Matériel" selected>Matériel</option>' +
@@ -102,7 +105,7 @@ function estimationCells(prefix) {
             '<option value="Prestataire">Prestataire</option>' +
             '<option value="Logiciel">Logiciel</option>' +
             '<option value="3D">3D</option>' +
-            '<option value="PCB">PCB</option>' +
+            '<option value="PCB">PCB</option><option value="S.T.x.x">S.T.x.x</option>' +
           '</select></td>' +
           estimationCells('st') +
           '<td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" aria-label="Délai estimé en jours"></td>' +

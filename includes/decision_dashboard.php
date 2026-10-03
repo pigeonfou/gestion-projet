@@ -38,6 +38,7 @@ function ddConsolidate(array $specs, array $tasks, array $users): array {
         if(!empty($task['dependance_id'])) $dependencies[]=$task;
     }
     foreach($specs['specs_techniques']??[] as $st) {
+        if (($st['type'] ?? '') === 'S.T.x.x') continue;
         $type=(string)($st['type']??'Matériel'); $sid=(string)($st['id']??''); $sf=(string)($st['sf']??'');
         $cost=ddHasCost($type)?ddNumber($st['cout_estime']??null):null;
         $tax=($st['cout_taxe']??'HT')==='TTC'?'TTC':'HT'; $delay=ddNumber($st['delai_jours']??null);

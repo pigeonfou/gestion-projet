@@ -36,6 +36,9 @@ function loadSpecs(int $cahierId): array {
     $data = $json ? json_decode($json, true) : null;
     if (!is_array($data)) $data = [];
     [$data] = stripObsoleteSpecs($data);
+    foreach ($data['specs_techniques'] ?? [] as $i => $st) {
+        $data['specs_techniques'][$i]['uid'] = $st['uid'] ?? substr(hash('sha256', $cahierId . ':' . $st['id']), 0, 32);
+    }
     return array_merge(emptySpecs(), $data);
 }
 
@@ -216,7 +219,7 @@ function parseSpecsTechniquesFromPost(array $post): array {
     if (!is_array($sfs) || !is_array($descs)) {
         return [];
     }
-    $allowedTypes = ['Matériel', 'Composant', 'Prestataire', 'Logiciel', '3D', 'PCB'];
+    $allowedTypes = ['Matériel', 'Composant', 'Prestataire', 'Logiciel', '3D', 'PCB', 'S.T.x.x'];
     // Group by SF keeping order
     $bySf = [];
     foreach ($sfs as $i => $sf) {
@@ -243,6 +246,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
             $bySf[$n] = [];
         }
         $bySf[$n][] = [
+            'uid' => preg_match('/^[a-f0-9]{32}$/', (string)($post['st_uid'][$i] ?? '')) ? $post['st_uid'][$i] : bin2hex(random_bytes(16)),
+            'reference_uid' => $type === 'S.T.x.x' ? trim((string)($post['st_reference_uid'][$i] ?? '')) : null,
             'sf' => 'S.F.' . $n,
             'description' => $desc,
             'type' => $type,
@@ -250,7 +255,7 @@ function parseSpecsTechniquesFromPost(array $post): array {
             'cout_unitaire' => stTypeHasCost($type) ? $unit : null,
             'variation' => normalizeEstimationVariation($post['st_variation'][$i] ?? ''),
             'cout_estime' => stTypeHasCost($type) ? $cost : 0,
-            'delai_jours' => parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
+            'delai_jours' => $type === 'S.T.x.x' ? null : parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
             'cout_taxe' => $taxe,
         ];
     }
@@ -261,6 +266,8 @@ function parseSpecsTechniquesFromPost(array $post): array {
         foreach ($rows as $row) {
             $m++;
             $out[] = [
+                'uid' => $row['uid'],
+                'reference_uid' => $row['reference_uid'],
                 'sf' => $row['sf'],
                 'id' => 'S.T.' . $n . '.' . $m,
                 'description' => $row['description'],
@@ -277,6 +284,31 @@ function parseSpecsTechniquesFromPost(array $post): array {
     return $out;
 }
 
+/** Validate project-local links, retained missing targets, and every dependency cycle. */
+function validateStReferences(array $techniques, array $previous): void {
+    $old = array_column($previous, null, 'uid');
+    $byUid = [];
+    foreach ($techniques as $st) {
+        if (isset($byUid[$st['uid']])) throw new InvalidArgumentException('Identifiant S.T. dupliqué.');
+        $byUid[$st['uid']] = $st;
+    }
+    foreach ($techniques as $st) {
+        if (($st['type'] ?? '') !== 'S.T.x.x') continue;
+        $target = $st['reference_uid'] ?? '';
+        if ($target === '' || $target === $st['uid']) throw new InvalidArgumentException('Sélectionnez un autre S.T. existant.');
+        if (!isset($old[$target]) && ($old[$st['uid']]['reference_uid'] ?? null) !== $target)
+            throw new InvalidArgumentException('Le S.T. référencé doit être enregistré dans ce projet.');
+        $seen = [$st['uid'] => true];
+        $cursor = $target;
+        while (isset($byUid[$cursor])) {
+            if (isset($seen[$cursor])) throw new InvalidArgumentException('Référence circulaire interdite.');
+            $seen[$cursor] = true;
+            $cursor = $byUid[$cursor]['reference_uid'] ?? '';
+            if ($cursor === '') break;
+        }
+    }
+}
+
 function saveSpecsTechniques(int $cahierId, array $techniques): void {
     ensureCahierSpecsColumn();
     $db = getDB();
@@ -287,6 +319,7 @@ function saveSpecsTechniques(int $cahierId, array $techniques): void {
     if (!is_array($data)) {
         $data = [];
     }
+    validateStReferences($techniques, loadSpecs($cahierId)['specs_techniques']);
     $data['specs_techniques'] = array_values($techniques);
     saveSpecs($cahierId, $data);
 }

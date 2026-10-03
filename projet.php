@@ -394,9 +394,10 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-11') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
-    </main></body></html>
+    </main><script src="<?= url('assets/js/st-references.js?v=1') ?>"></script>
+</body></html>
     <?php
     exit;
 }
@@ -414,7 +415,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-11') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=4') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
@@ -684,6 +685,14 @@ function stepClass(int $n, int $displayed, array $validated): string
               <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
             </div>
           <?php else: ?>
+            <script type="application/json" id="st-reference-data"><?= json_encode($techniquesAll, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+            <dialog id="st-reference-dialog" aria-labelledby="st-reference-title">
+              <h3 id="st-reference-title">Choisir un S.T. existant</h3>
+              <input type="search" id="st-reference-search" class="form-control" placeholder="Rechercher une référence ou une désignation" aria-label="Rechercher un S.T.">
+              <div id="st-reference-list"></div>
+              <button type="button" id="st-reference-cancel" class="btn btn-secondary">Annuler</button>
+              <label>Revenir à un type classique <select id="st-reference-classic" class="form-control"><option value="">— Choisir —</option><?php foreach (['Matériel','Composant','Prestataire','Logiciel','3D','PCB'] as $classic): ?><option><?= e($classic) ?></option><?php endforeach; ?></select></label>
+            </dialog>
             <form method="POST" id="formSpecsTech" action="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>">
               <input type="hidden" name="action" value="save_specs_techniques">
               <?= csrfField() ?>
@@ -732,6 +741,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                         <tr class="st-row">
                           <td><span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
                             <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
+                            <input type="hidden" name="st_uid[]" value="<?= e($tr['uid'] ?? bin2hex(random_bytes(16))) ?>">
+                            <input type="hidden" name="st_reference_uid[]" value="<?= e($tr['reference_uid'] ?? '') ?>">
                           </td>
                           <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
                           <td>
@@ -743,6 +754,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                               <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
                               <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
+                              <option value="S.T.x.x" <?= $ty === 'S.T.x.x' ? 'selected' : '' ?>>S.T.x.x</option>
                             </select>
                           </td>
                           <?php renderEstimationCostCells('st', $tr, stTypeHasCost($ty)); ?>
@@ -793,6 +805,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                 <?php
                   $stId = $stRow['id'] ?? '';
                   $stType = $stRow['type'] ?? 'Matériel';
+                  if ($stType === 'S.T.x.x') continue;
                   $stDesc = $stRow['description'] ?? '';
                   if ($stId === '') continue;
                   $items = $composantsSt[$stId] ?? [];
@@ -1195,12 +1208,13 @@ function stepClass(int $n, int $displayed, array $validated): string
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-3') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-4') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
 </footer>
+<script src="<?= url('assets/js/st-references.js?v=1') ?>"></script>
 </body>
 </html>
 
