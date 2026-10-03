@@ -394,7 +394,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-3') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-9') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-3') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -413,7 +413,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-9') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=4') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
@@ -1194,7 +1194,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-2') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-3') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">

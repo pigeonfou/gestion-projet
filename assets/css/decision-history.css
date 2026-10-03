@@ -97,3 +97,14 @@ body:has(.r1b-process-main) { overflow:hidden; }
 }
 .history-step-panel > .r1b-page-head { flex:none; }
 .history-step-panel > .history-step-frame { flex:1 1 680px; min-height:0; }
+
+/* Share available height between note and decision fields; retain text scrolling. */
+.r1b-step-tools textarea:not(dialog textarea) {
+  min-height:38px;
+  resize:none;
+  overflow-y:auto;
+}
+.r1b-step-tools.r1b-tools-compact { padding:.75rem; }
+.r1b-step-tools.r1b-tools-compact .r1b-actions { margin-top:.5rem; gap:.25rem; }
+.r1b-step-tools.r1b-tools-compact .btn { padding:.35rem .5rem; margin-bottom:.2rem; }
+.r1b-step-tools.r1b-tools-compact .mt-3 { margin-top:.4rem; }

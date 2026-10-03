@@ -264,8 +264,27 @@ function estimationCells(prefix) {
   if (!tools || !history) return;
   let shift = 0;
   let pending = false;
+  const fields = [...tools.querySelectorAll('textarea')].filter(field => !field.closest('dialog'));
+  let fitKey = '';
+  function fitFields() {
+    const style = getComputedStyle(scroll);
+    const available = scroll.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    const key = [available, tools.clientWidth, ...fields.map(field => field.value)].join('|');
+    if (key === fitKey) return;
+    fitKey = key;
+    tools.classList.remove('r1b-tools-compact');
+    fields.forEach(field => { field.style.height = '38px'; });
+    if (tools.scrollHeight + 2 > available) tools.classList.add('r1b-tools-compact');
+    const extra = Math.max(0, available - tools.scrollHeight - 2);
+    const wants = fields.map(field => Math.max(0, Math.min(220, field.scrollHeight + 2) - 38));
+    const total = wants.reduce((sum, height) => sum + height, 0);
+    fields.forEach((field, index) => {
+      field.style.height = (38 + (total ? Math.min(extra, total) * wants[index] / total : 0)) + 'px';
+    });
+  }
   function update() {
     pending = false;
+    fitFields();
     const naturalTop = tools.getBoundingClientRect().top - shift;
     const pinnedTop = scroll.getBoundingClientRect().top + scroll.clientTop +
       parseFloat(getComputedStyle(scroll).paddingTop);
@@ -278,6 +297,7 @@ function estimationCells(prefix) {
     if (!pending) { pending = true; requestAnimationFrame(update); }
   }
   scroll.addEventListener('scroll', schedule, { passive: true });
+  tools.addEventListener('input', schedule);
   window.addEventListener('resize', schedule);
   const observer = new ResizeObserver(schedule);
   observer.observe(scroll);
