@@ -453,7 +453,17 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?=url('production.php?projet_id='.$id)?>"><i class="fas fa-industry"></i> Production & stock</a>
     </nav>
     <div class="r1b-sidebar-foot">
-      <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>
+      <?php
+      $activeProjectChoices = $db->query("SELECT id, nom FROM projets WHERE status = 'actif' ORDER BY nom COLLATE NOCASE")->fetchAll();
+      $activeProjectChoices = array_filter($activeProjectChoices, static fn(array $choice): bool => projectCanContribute($db, (int)$choice['id'], $user));
+      ?>
+      <label for="active-project-switch">Projets en cours</label>
+      <select id="active-project-switch" class="form-control" onchange="if(this.value) window.location.assign(this.value)">
+        <option value="" <?= ($projet['status'] ?? '') !== 'actif' ? 'selected' : '' ?>>Sélectionner un projet</option>
+        <?php foreach ($activeProjectChoices as $choice): ?>
+        <option value="<?= e(url('projet.php?id=' . (int)$choice['id'])) ?>" <?= (int)$choice['id'] === $id ? 'selected' : '' ?>><?= e($choice['nom']) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
   </aside>
 
