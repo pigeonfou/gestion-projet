@@ -394,7 +394,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=estimation-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-2') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -722,7 +722,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
                           <th class="estimation-qty-head">Qté</th><th class="estimation-unit-head">Coût unitaire</th><th class="estimation-total-head">Coût total</th><th class="estimation-variation-head">Variation</th>
-                          <th>Délai estimé (jours)</th>
+                          <th class="estimation-delay-head">Délai estimé (jours)</th>
                           <th style="width:2.5rem"></th>
                         </tr>
                       </thead>
@@ -834,10 +834,10 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th>Désignation</th>
                             <th>Référence</th>
                             <th>Fournisseur</th>
-                            <th style="width:5rem">Qté</th>
-                            <th style="width:12rem;min-width:12rem">Coût unitaire</th>
-                            <th style="width:10.5rem;min-width:10.5rem">Coût total</th>
-                            <th class="estimation-variation-head">Variation</th><th>Délai estimé (jours)</th>
+                            <th class="estimation-qty-head">Qté</th>
+                            <th class="estimation-unit-head">Coût unitaire</th>
+                            <th class="estimation-total-head">Coût total</th>
+                            <th class="estimation-variation-head">Variation</th><th class="estimation-delay-head">Délai estimé (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -873,7 +873,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th>Affectation</th>
 
                             <th class="estimation-variation-head">Variation</th>
-                            <th>Délai estimé (jours)</th>
+                            <th class="estimation-delay-head">Délai estimé (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -955,9 +955,9 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?= csrfField() ?>
               <input type="hidden" name="action" value="create_purchase_tasks">
               <div class="sf-table-wrap">
-                <table class="sf-table">
+                <table class="sf-table r1b-purchase-table">
                   <thead><tr>
-                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Délai estimé (jours)</th><th>Affecter à</th><th>État tâche</th>
+                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th class="estimation-delay-head">Délai estimé (jours)</th><th>Affecter à</th><th>État tâche</th>
                   </tr></thead>
                   <tbody>
                   <?php foreach ($purchaseRows as $pr): ?>
@@ -982,9 +982,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                       <td><?= e($it['designation'] ?? '—') ?></td>
                       <td><?= e($it['reference'] ?? '—') ?></td>
                       <td><?= e($it['fournisseur'] ?? '—') ?></td>
-                      <td><?= e((string)($it['quantite'] ?? '0')) ?></td>
-                      <td><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
-                      <td><?= e(isset($it['delai_jours']) ? (string)$it['delai_jours'] : '—') ?></td>
+                      <td class="estimate-quantity"><?= e((string)($it['quantite'] ?? '0')) ?></td>
+                      <td class="estimate-money"><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
+                      <td class="estimate-delay"><?= e(isset($it['delai_jours']) ? (string)$it['delai_jours'] : '—') ?></td>
                       <td>
                         <select name="purchase_assignee[<?= e($rowKey) ?>]" class="form-control">
                           <option value="">— Non affectée —</option>

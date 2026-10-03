@@ -191,7 +191,7 @@
 .cp-cost-cell select.cp-taxe { width: 4.2rem; flex-shrink: 0; font-size: .75rem; padding: .25rem; }
 .cp-cost-cell .cp-total { min-width: 5.5rem; text-align: right; }
 .cp-cost-cell .cp-total-taxe { width: 3.4rem; min-width: 3.4rem; flex: 0 0 3.4rem; display: inline-flex; align-items: center; justify-content: center; padding: .25rem; background: #f3f4f6; cursor: default; }
-.cp-table th:nth-last-child(2) { min-width: 10.5rem; }
+
 .cp-id { font-weight: 700; color: #0f766e; font-family: ui-monospace, monospace; font-size: .8rem; }
 .cp-table input.form-control, .cp-table select.form-control { font-size: .8rem; padding: .3rem .4rem; }
 
@@ -203,10 +203,56 @@
 /* Shared cost/delay columns; internal work keeps delay and uncertainty only. */
 .estimation-cost[hidden], .cp-qty[hidden] { display:none !important; }
 .estimation-variation { min-width:5.5rem; max-width:7rem; font-size:.8rem; padding:.3rem .4rem; }
-.estimation-qty-head { min-width:5rem; }
-.estimation-unit-head { min-width:12rem; }
-.estimation-total-head { min-width:10rem; }
-.estimation-variation-head { min-width:6rem; }
+
+
+
+
 .st-table input.form-control, .st-table select.form-control { font-size:.8rem; padding:.3rem .4rem; }
 .st-table .cp-qty { min-width:4rem; }
-.st-table .st-delay { min-width:6rem; }
+
+
+/* R1b estimate dimensions: content reference + padding + native control affordances.
+   These are visual sizes only; input validation and financial precision are unchanged. */
+:root {
+  --estimate-qty-width: calc(4ch + 2.25rem);
+  --estimate-unit-width: calc(10ch + 2.25rem);
+  --estimate-total-width: calc(15ch + 1rem);
+  --estimate-delay-width: calc(3ch + 2.25rem);
+  --estimate-variation-width: calc(6ch + 2rem);
+  --estimate-tax-width: calc(3ch + 1.6rem);
+}
+:is(.st-table,.cp-table) .cp-qty,
+input.form-control[name="cible_quantite"] {
+  width:var(--estimate-qty-width); min-width:var(--estimate-qty-width);
+  max-width:var(--estimate-qty-width); text-align:right; font-variant-numeric:tabular-nums;
+}
+:is(.st-table,.cp-table) .cp-cost-cell .cp-unit {
+  flex:0 0 var(--estimate-unit-width); width:var(--estimate-unit-width);
+  min-width:var(--estimate-unit-width); max-width:var(--estimate-unit-width);
+}
+:is(.st-table,.cp-table) .cp-cost-cell .cp-total {
+  flex:0 0 var(--estimate-total-width); width:var(--estimate-total-width);
+  min-width:var(--estimate-total-width); max-width:var(--estimate-total-width);
+}
+:is(.st-table,.cp-table) .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) {
+  flex:0 0 var(--estimate-tax-width); width:var(--estimate-tax-width);
+  min-width:var(--estimate-tax-width); max-width:var(--estimate-tax-width);
+}
+:is(.st-table,.cp-table) .estimation-variation {
+  width:var(--estimate-variation-width); min-width:var(--estimate-variation-width);
+  max-width:var(--estimate-variation-width);
+}
+:is(.st-table,.cp-table) input[name$="_delai_jours[]"],
+input.form-control[name="cible_delai"] {
+  width:var(--estimate-delay-width); min-width:var(--estimate-delay-width);
+  max-width:var(--estimate-delay-width); text-align:right; font-variant-numeric:tabular-nums;
+}
+:is(.st-table,.cp-table) .cp-cost-cell { width:max-content; }
+:is(.st-table,.cp-table) th:is(.estimation-qty-head,.estimation-unit-head,.estimation-total-head,.estimation-variation-head,.estimation-delay-head),
+:is(.st-table,.cp-table) td:has(>.cp-qty,>.estimation-cost,>.estimation-variation,>input[name$="_delai_jours[]"]) {
+  width:1%; white-space:normal;
+}
+:is(.st-table,.cp-table) .estimation-delay-head { min-width:0; max-width:7rem; }
+.r1b-purchase-table td:is(.estimate-quantity,.estimate-money,.estimate-delay) {
+  width:1%; white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums;
+}
