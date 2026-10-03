@@ -118,10 +118,10 @@ require __DIR__ . '/includes/header.php';
     <p class="dash-kpi-label">Pièces / Équipements</p>
     <p class="dash-kpi-value" style="font-size:1.25rem;"><?= (int)($kpi['pieces'] ?? 0) ?> / <?= (int)($kpi['equipements'] ?? 0) ?></p>
   </div>
-  <div class="dash-kpi">
+  <a class="dash-kpi" href="<?=url('stocks.php?alerte=1')?>">
     <p class="dash-kpi-label">Alertes stock bas</p>
     <p class="dash-kpi-value" style="color:<?= ((int)($kpi['alertes'] ?? 0) > 0) ? '#dc2626' : 'inherit' ?>"><?= (int)($kpi['alertes'] ?? 0) ?></p>
-  </div>
+  </a>
   <div class="dash-kpi">
     <p class="dash-kpi-label">Valeur stock</p>
     <p class="dash-kpi-value" style="font-size:1.25rem;"><?= number_format((float)($kpi['valeur_totale'] ?? 0), 2, ',', ' ') ?> €</p>

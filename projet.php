@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/estimation_fields.php';
 require_once __DIR__ . '/includes/task_workflow.php';
 require_once __DIR__ . '/includes/task_filters.php';
+require_once __DIR__ . '/includes/ux_objects.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
@@ -733,8 +734,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                       </thead>
                       <tbody class="st-body">
                         <?php foreach ($rows as $ri => $tr): ?>
-                        <tr class="st-row">
-                          <td><span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
+                        <tr class="st-row" id="<?=e($tr['id']??'')?>">
+                          <td><a class="st-id" href="<?=pfStUrl($id,$tr)?>"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></a>
                             <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
                             <input type="hidden" name="st_uid[]" value="<?= e($tr['uid'] ?? bin2hex(random_bytes(16))) ?>">
                             <input type="hidden" name="st_reference_uid[]" value="<?= e($tr['reference_uid'] ?? '') ?>">
@@ -823,9 +824,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                       default => 'X',
                   };
                 ?>
-                <div class="st-sf-block cp-st-block" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
+                <div class="st-sf-block cp-st-block" id="<?=e($stId)?>" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
                   <div class="st-sf-head">
-                    <span class="st-id"><?= e($stId) ?></span>
+                    <a class="st-id" href="<?=pfStUrl($id,$stRow)?>"><?= e($stId) ?> ↗</a>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
                     <?php if (stTypeHasCost($stType)): ?>
@@ -986,7 +987,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                     ?>
                     <tr>
                       <td><input type="checkbox" name="purchase_create[]" value="<?= e($rowKey) ?>" <?= $existingTask ? 'checked' : '' ?>></td>
-                      <td><strong><?= e($stId) ?></strong><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
+                      <td><a class="pf-object-id" href="<?=url('specification.php?projet_id='.$id.'&st='.rawurlencode($stId))?>"><?= e($stId) ?></a><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
                       <td><?= e($itemId) ?></td>
                       <td><?= e($it['designation'] ?? '—') ?></td>
                       <td><?= e($it['reference'] ?? '—') ?></td>
@@ -1003,7 +1004,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                         </select>
                         <input type="hidden" name="purchase_payload[<?= e($rowKey) ?>]" value="<?= e($payload) ?>">
                       </td>
-                      <td><?= $existingTask ? e(statutLabel($existingTask['statut'] ?? 'a_faire')) : '<span class="text-muted">Non créée</span>' ?></td>
+                      <td><?php if($existingTask):?><a href="<?=url('tache.php?id='.(int)$existingTask['id'])?>"><?=e(statutLabel($existingTask['statut']??'a_faire'))?> ↗</a><?php else:?><span class="text-muted">Non créée</span><?php endif;?></td>
                     </tr>
                   <?php endforeach; ?>
                   </tbody>
@@ -1018,7 +1019,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
             <div class="r1b-task-line">
-              <span><?= e($t['titre'] ?? '') ?></span>
+              <a href="<?=url('tache.php?id='.(int)$t['id'])?>"><?= e($t['titre'] ?? '') ?></a>
               <span class="text-muted"><?= e(statutLabel($st)) ?></span>
             </div>
           <?php endforeach; ?>
@@ -1203,7 +1204,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-5') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-6') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">

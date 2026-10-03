@@ -50,6 +50,8 @@ $rows = $db->query("SELECT m.*, a.reference, a.designation, es.nom AS source_nom
     LEFT JOIN projets p ON p.id=m.projet_id
     LEFT JOIN stock_fournisseurs f ON f.id=m.fournisseur_id
     ORDER BY m.created_at DESC, m.id DESC LIMIT 200")->fetchAll();
+$articleFilter=(int)($_GET['article_id']??0);$pid=(int)($_GET['projet_id']??0);
+$rows=array_values(array_filter($rows,fn($r)=>(!$articleFilter||(int)$r['article_id']===$articleFilter)&&(!$pid||(int)($r['projet_id']??0)===$pid)));
 $articles = $db->query("SELECT id,reference,designation FROM stock_articles ORDER BY reference")->fetchAll();
 $locations = $db->query("SELECT id,nom,chemin FROM stock_emplacements WHERE actif=1 ORDER BY chemin")->fetchAll();
 $projets = $db->query("SELECT id,nom FROM projets ORDER BY nom")->fetchAll();

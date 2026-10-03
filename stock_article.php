@@ -169,6 +169,7 @@ $a = $article ?: [
     'taxe' => 'HT', 'documentation' => '', 'emplacement' => '', 'notes' => '',
 ];
 ?>
+<?php if($id>0):?><div class="pf-links"><a href="<?=url('fournisseur.php?article_id='.$id)?>">Fournisseurs de cet article</a><a href="<?=url('stock_pilotage.php?tab=lots&article_id='.$id)?>">Lots & réceptions</a><a href="<?=url('stock_mouvements.php?article_id='.$id)?>">Mouvements</a></div><?php endif;?>
 <div class="page-header">
   <div>
     <h1><i class="fas fa-cube"></i> <?= e($pageTitle) ?></h1>
@@ -374,4 +375,5 @@ $a = $article ?: [
   });
 })();
 </script>
+<?php if($id>0):$uq=$db->prepare('SELECT s.*,p.nom projet FROM stock_usages s JOIN projets p ON p.id=s.projet_id WHERE s.article_id=? ORDER BY p.nom');$uq->execute([$id]);?><section class="card card-body" style="margin-top:20px"><h2>Origines dans les projets</h2><?php foreach($uq->fetchAll() as $usage):?><div class="dash-task-row"><a href="<?=url('projet.php?id='.(int)$usage['projet_id'])?>"><?=e($usage['projet'])?></a><?php if(preg_match('/^auto:\d+:(S\.T\.\d+\.\d+):/',$usage['source_key']??'',$m)):?><a class="pf-object-id" href="<?=url('specification.php?projet_id='.(int)$usage['projet_id'].'&st='.rawurlencode($m[1]))?>"><?=e($m[1])?></a><?php endif;?><span><?=e((string)$usage['quantite'])?> u · besoin défini</span></div><?php endforeach;?></section><?php endif;?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

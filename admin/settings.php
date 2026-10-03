@@ -10,7 +10,9 @@ seedSettingsIfEmpty();
 $testResult = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $action = $_POST['action'] ?? 'save';
+    if($action==='save_appearance'){setSetting('ui_accent',in_array($_POST['ui_accent']??'', ['ocean','indigo','slate'],true)?$_POST['ui_accent']:'ocean');setSetting('ui_density',($_POST['ui_density']??'')==='compact'?'compact':'comfortable');setFlash('success','Apparence enregistrée.');redirect('admin/settings.php');}
 
     if ($action === 'test_nextcloud') {
         // Sauver d'abord les champs Nextcloud du formulaire pour tester les valeurs saisies
@@ -62,7 +64,9 @@ require __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
+<form method="post" class="card card-body" style="margin-bottom:20px"><?=csrfField()?><input type="hidden" name="action" value="save_appearance"><h2>Apparence</h2><div class="form-row"><label>Accent de navigation<select class="form-control" name="ui_accent"><?php foreach(['ocean'=>'Océan','indigo'=>'Indigo','slate'=>'Ardoise'] as $value=>$label):?><option value="<?=e($value)?>" <?=getSetting('ui_accent','ocean')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Densité<select class="form-control" name="ui_density"><option value="comfortable" <?=getSetting('ui_density','comfortable')==='comfortable'?'selected':''?>>Confortable</option><option value="compact" <?=getSetting('ui_density','comfortable')==='compact'?'selected':''?>>Compacte</option></select></label></div><p class="text-muted">La sélection, la validation et le refus gardent leurs significations. La densité compacte réduit les espacements des listes.</p><button class="btn btn-primary">Enregistrer l’apparence</button></form>
 <form method="POST">
+    <?=csrfField()?>
     <input type="hidden" name="action" value="save">
 
     <div class="card mb-2">

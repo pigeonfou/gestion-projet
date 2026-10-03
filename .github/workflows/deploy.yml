@@ -80,6 +80,7 @@ jobs:
           php "$test_dir/tests/cdc_test.php"
           php "$test_dir/tests/decision_dashboard.php"
           php "$test_dir/tests/task_filters.php"
+          php "$test_dir/tests/ux_relations.php"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash

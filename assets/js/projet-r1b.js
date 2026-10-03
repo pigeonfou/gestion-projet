@@ -287,6 +287,7 @@ function estimationCells(prefix) {
   }
   function update() {
     pending = false;
+    if(window.matchMedia('(max-width:950px)').matches){shift=0;tools.style.transform='';fields.forEach(f=>{f.style.height='110px';});return;}
     fitFields();
     const naturalTop = tools.getBoundingClientRect().top - shift;
     const pinnedTop = scroll.getBoundingClientRect().top + scroll.clientTop +

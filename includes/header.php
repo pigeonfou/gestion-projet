@@ -7,6 +7,10 @@ $flash = getFlash();
 $useAppShell = $useAppShell ?? false;
 seedSettingsIfEmpty();
 $siteNom = getSetting('site_nom', 'ProjectFlow');
+if($user && !$useAppShell && empty($projet['id'])) {
+ $contextPid=(int)($projet_id ?? $pid ?? $projetId ?? $bom['projet_id'] ?? $row['projet_id'] ?? 0);
+ if($contextPid>0){$contextQuery=getDB()->prepare('SELECT p.*,u.identifiant createur FROM projets p JOIN utilisateurs u ON u.id=p.createur_id WHERE p.id=?');$contextQuery->execute([$contextPid]);$projet=$contextQuery->fetch()?:null;}
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -17,9 +21,9 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=1') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=2') ?>">
 </head>
-<body class="pf-app">
+<body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
         <div class="header-container">
             <a href="<?= url('projets.php') ?>" class="logo">
