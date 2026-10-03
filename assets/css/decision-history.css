@@ -115,3 +115,5 @@ body:has(.r1b-process-main) { overflow:hidden; }
 #st-reference-list button { text-align:left; white-space:normal; }
 #st-reference-list button[aria-pressed="true"] { outline:2px solid #7c3aed; }
 #st-reference-dialog label { display:block; margin-top:1rem; }
+
+.decision-snapshot{white-space:normal}.decision-snapshot .table-wrapper{max-width:100%;overflow-x:auto}.decision-snapshot table{min-width:760px;table-layout:auto}.decision-snapshot table th,.decision-snapshot table td{width:auto!important;overflow-wrap:normal;word-break:normal;white-space:normal}.decision-snapshot p{white-space:pre-wrap;margin:.7rem 0}

@@ -71,3 +71,5 @@ expectDD(ddConsolidate($decoded['sources'])===$baseline,'Historical estimates re
 $specs['specs_techniques'][0]['variation']='';
 expectDD(ddConsolidate($specs)['riskCounts']['Non renseigné']>0,'Missing risk is unknown, never favorable');
 echo "Temporal isolation and historical snapshots: OK\n";
+
+expectDD($decoded['analysis'] === $baseline, 'Computed decision indicators are frozen alongside sources');

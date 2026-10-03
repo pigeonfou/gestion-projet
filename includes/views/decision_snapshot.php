@@ -3,8 +3,8 @@ require_once __DIR__.'/../decision_dashboard.php';
 $snapshot=json_decode($d['snapshot_json']??'',true);
 ?>
 <?php if(is_array($snapshot) && ($snapshot['version']??0)===1 && is_array($snapshot['sources']??null)):
-$historicalSources=$snapshot['sources']; $historical=ddConsolidate($historicalSources); ?>
-<details class="dd-details"><summary>État des connaissances conservé lors de cette décision</summary>
+$historicalSources=$snapshot['sources']; $historical=is_array($snapshot['analysis']??null)?$snapshot['analysis']:ddConsolidate($historicalSources); ?>
+<details class="dd-details decision-snapshot"><summary>État des connaissances conservé lors de cette décision</summary>
 <p>Sources : Étapes 1 et 2 · enregistré le <?=e($d['date_decision'])?> UTC. Ces valeurs restent indépendantes des corrections suivantes.</p>
 <p><strong><?=e($snapshot['project']['nom']??'')?></strong></p>
 <p>Origine : <?=!empty($snapshot['project']['cadrage_commerciale'])?'commerciale ':''?><?=!empty($snapshot['project']['cadrage_technique'])?'technique':''?> · Destination : <?=e($snapshot['project']['cadrage_destination']??'Non renseignée')?></p>
