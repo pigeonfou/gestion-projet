@@ -33,6 +33,9 @@ function runSchemaMigrations(): void
         FOREIGN KEY(utilisateur_id) REFERENCES utilisateurs(id)
     )");
 
+    $dcols = $db->query('PRAGMA table_info(projet_decisions)')->fetchAll(PDO::FETCH_COLUMN, 1);
+    if (!in_array('snapshot_json', $dcols, true)) $db->exec('ALTER TABLE projet_decisions ADD COLUMN snapshot_json TEXT');
+
     // Cahiers
     $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (!in_array('specs_json', $cols, true)) {

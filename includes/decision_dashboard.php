@@ -23,68 +23,72 @@ function ddTargets(array $post): array {
 function ddHasCost(string $type): bool { return in_array($type,['Matériel','Composant','PCB','Prestataire'],true); }
 function ddMoney(float $v, string $tax='HT'): string { return number_format($v,2,',',' ').' € '.$tax; }
 function ddDays($v): string { return $v===null?'Non renseigné':number_format((float)$v,2,',',' ').' j'; }
-function ddConsolidate(array $specs, array $tasks, array $users): array {
+/** Explicit allow-list: future fields never enter calculations or historical snapshots. */
+function ddUpstream(array $specs): array {
+    return array_intersect_key($specs, array_flip(['objectifs','resultats_attendus','cas_usage','profils_utilisateurs','fonctions','specs_techniques','delais','livrables_attendus','decision_cibles']));
+}
+function ddSnapshot(array $specs, array $project): string {
+    return json_encode(['version'=>1,'sources'=>ddUpstream($specs),'project'=>array_intersect_key($project,array_flip(['nom','description','cadrage_commerciale','cadrage_technique','cadrage_destination']))], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+}
+function ddConsolidate(array $specs, array $unusedTasks = [], array $unusedUsers = []): array {
+    $specs=ddUpstream($specs);
     $targets=$specs['decision_cibles']??[];
     $qty=ddNumber($targets['quantite']??null); $vat=ddNumber($targets['tva']??null);
     $sfs=[]; foreach($specs['fonctions']??[] as $sf) $sfs[$sf['id']??'']=$sf;
-    $groups=[]; $bySf=[]; $lines=[]; $missing=[]; $risks=[]; $totals=['HT'=>0.0,'TTC'=>0.0];
-    $byUser=[]; foreach($users as $u) $byUser[$u['identifiant']]=$u;
-    $assigned=[]; $unassigned=[]; $taskBySource=[]; $taskById=[]; $dependencies=[];
-    foreach($tasks as $task) {
-        $taskById[(int)$task['id']]=$task;
-        if(!empty($task['source_key'])) $taskBySource[$task['source_key']]=$task;
-        $who=trim((string)($task['assigne_a']??''));
-        if($who==='') $unassigned[]=$task; else $assigned[$who][]=$task;
-        if(!empty($task['dependance_id'])) $dependencies[]=$task;
-    }
+    $groups=[]; $bySf=[]; $lines=[]; $missing=[]; $risks=[]; $references=[];
+    $riskCounts=['Faible'=>0,'Moyen'=>0,'Fort'=>0,'Non renseigné'=>0];
+    $totals=['HT'=>0.0,'TTC'=>0.0]; $covered=[];
+    $byUid=[]; foreach($specs['specs_techniques']??[] as $st) if(!empty($st['uid'])) $byUid[$st['uid']]=$st;
     foreach($specs['specs_techniques']??[] as $st) {
-        if (($st['type'] ?? '') === 'S.T.x.x') continue;
-        $type=(string)($st['type']??'Matériel'); $sid=(string)($st['id']??''); $sf=(string)($st['sf']??'');
+        $sid=(string)($st['id']??''); $sf=(string)($st['sf']??''); $type=(string)($st['type']??'');
+        if($type==='S.T.x.x') {
+            $seen=[]; $target=$st;
+            while(($target['type']??'')==='S.T.x.x') {
+                $ref=$target['reference_uid']??'';
+                if(!$ref || isset($seen[$ref]) || !isset($byUid[$ref])) {$target=null;break;}
+                $seen[$ref]=true; $target=$byUid[$ref];
+            }
+            $references[]=['id'=>$sid,'target'=>$target['id']??null,'sf'=>$sf];
+            if($target) $covered[$sf]=true;
+            else $missing[]=['subject'=>$sid.' : référence absente ou cyclique','source'=>2,'action'=>'Corriger la référence S.T.'];
+            continue;
+        }
+        $covered[$sf]=true;
         $cost=ddHasCost($type)?ddNumber($st['cout_estime']??null):null;
         $tax=($st['cout_taxe']??'HT')==='TTC'?'TTC':'HT'; $delay=ddNumber($st['delai_jours']??null);
-        $task=null; foreach($taskBySource as $key=>$t) if(preg_match('/^st:\d+:'.preg_quote($sid,'/').'$/',$key)) {$task=$t; break;}
-        $who=trim((string)($task['assigne_a']??''));
-        $groups[$type]??=['HT'=>0.0,'TTC'=>0.0,'count'=>0,'assigned'=>0,'people'=>[]];
+        $risk=$st['variation']??''; if($risk==='Forte')$risk='Fort';
+        if(!in_array($risk,['Faible','Moyen','Fort'],true))$risk='Non renseigné';
+        $riskCounts[$risk]++;
+        $groups[$type]??=['HT'=>0.0,'TTC'=>0.0,'count'=>0]; $groups[$type]['count']++;
         $bySf[$sf]??=['HT'=>0.0,'TTC'=>0.0];
-        $groups[$type]['count']++;
-        if($who!=='') {$groups[$type]['assigned']++; $groups[$type]['people'][$who]=$byUser[$who]??['identifiant'=>$who];}
         if(ddHasCost($type)) {
-            if($cost===null || $cost==0) $missing[]=['subject'=>$sid.' : coût non confirmé (vide ou nul)','source'=>2,'action'=>'Confirmer le coût unitaire ou justifier la gratuité.'];
+            if($cost===null || $cost==0) $missing[]=['subject'=>$sid.' : coût estimé absent ou nul','source'=>2,'action'=>'Renseigner l’estimation ou confirmer la gratuité.'];
+            if(ddNumber($st['quantite']??null)===null || ddNumber($st['quantite'])<=0) $missing[]=['subject'=>$sid.' : quantité absente ou nulle','source'=>2,'action'=>'Préciser la quantité prévue dans l’estimation.'];
             if($cost!==null) {$totals[$tax]+=$cost; $groups[$type][$tax]+=$cost; $bySf[$sf][$tax]+=$cost;}
         }
-        if($delay===null) $missing[]=['subject'=>$sid.' : délai non renseigné','source'=>2,'action'=>'Obtenir un délai de réalisation ou fournisseur.'];
+        if($delay===null) $missing[]=['subject'=>$sid.' : délai estimé non renseigné','source'=>2,'action'=>'Estimer le délai de cet élément.'];
+        if($risk==='Non renseigné') $missing[]=['subject'=>$sid.' : risque / incertitude non renseigné','source'=>2,'action'=>'Qualifier l’incertitude initiale.'];
         if(trim((string)($st['description']??''))==='') $missing[]=['subject'=>$sid.' : description technique absente','source'=>2,'action'=>'Compléter la spécification.'];
         if(!isset($sfs[$sf])) $missing[]=['subject'=>$sid.' : S.F. source absente','source'=>2,'action'=>'Revoir le rattachement fonctionnel.'];
-        $lines[]=array_merge($st,['cost'=>$cost,'tax'=>$tax,'delay'=>$delay,'task'=>$task,'who'=>$who]);
+        $lines[]=array_merge($st,['cost'=>$cost,'tax'=>$tax,'delay'=>$delay,'risk'=>$risk]);
+        if($risk==='Fort') $risks[]=['subject'=>$sid.' · '.($st['description']??''),'impact'=>'Risque / Incertitude','detail'=>'Fort — qualification initiale de l’Étape 2.','source'=>2,'action'=>'Clarifier ce point avant de décider.','level'=>'Fort'];
     }
-    if(!$lines) $missing[]=['subject'=>'Aucune S.T. enregistrée','source'=>2,'action'=>'Définir les études avant décision.'];
-    foreach($sfs as $sid=>$sf) if(!isset($bySf[$sid])) $missing[]=['subject'=>$sid.' : aucune S.T. associée','source'=>2,'action'=>'Définir une solution technique.'];
-    if($unassigned) $missing[]=['subject'=>count($unassigned).' tâche(s) sans responsable','source'=>'tasks','action'=>'Affecter les tâches identifiées.'];
-    if($qty===null) $missing[]=['subject'=>'Quantité du périmètre budgétaire non renseignée','source'=>1,'action'=>'Préciser le nombre d’équipements visé.'];
+    if(!$lines) $missing[]=['subject'=>'Aucune S.T. économique ou technique enregistrée','source'=>2,'action'=>'Définir les études avant décision.'];
+    foreach($sfs as $sid=>$sf) if(!isset($covered[$sid])) $missing[]=['subject'=>$sid.' : aucune S.T. associée','source'=>2,'action'=>'Définir la solution pour cette exigence.'];
+    $missing[]=['subject'=>'Capacités et compétences : non déterminées','source'=>2,'action'=>'Les domaines techniques ne démontrent pas une capacité disponible. Documenter les réserves dans les études.'];
     $budget=ddNumber($targets['budget']??null);
+    if($qty===null || $qty<=0) {$qty=null;$missing[]=['subject'=>'Quantité du périmètre budgétaire non renseignée','source'=>1,'action'=>'Préciser le nombre d’équipements visé.'];}
     if($budget===null) $missing[]=['subject'=>'Budget cible non renseigné — comparaison impossible','source'=>1,'action'=>'Confirmer l’enveloppe financière.'];
-    if($totals['TTC']>0 && $vat===null) $missing[]=['subject'=>'TVA de rapprochement HT/TTC non renseignée','source'=>1,'action'=>'Confirmer le taux avant consolidation.'];
+    if($totals['TTC']>0 && $vat===null) $missing[]=['subject'=>'TVA de rapprochement HT/TTC non renseignée','source'=>1,'action'=>'Confirmer le taux avant comparaison.'];
     $unitHT=$totals['TTC']==0?$totals['HT']:($vat===null?null:$totals['HT']+$totals['TTC']/(1+$vat/100));
     $lotHT=$qty!==null && $unitHT!==null?round($unitHT*$qty,2):null;
     $budgetHT=$budget===null?null:(($targets['taxe']??'HT')==='HT'?$budget:($vat===null?null:$budget/(1+$vat/100)));
     $margin=$budgetHT!==null && $lotHT!==null?round($budgetHT-$lotHT,2):null;
     $maxDelay=null; foreach($lines as $line) if($line['delay']!==null) $maxDelay=max($maxDelay??0,$line['delay']);
     $targetDays=ddNumber($targets['delai']??null);
-    if($targetDays===null) $missing[]=['subject'=>'Objectif de délai non renseigné','source'=>1,'action'=>'Confirmer le délai maximum en jours calendaires.'];
-    $missing[]=['subject'=>'Délai global et chemin critique non établis','source'=>'tasks','action'=>'Préciser durées, dates de départ et dépendances ; le plus long délai n’est pas le délai du prototype.'];
-    $missing[]=['subject'=>'Disponibilités et charge par ressource non renseignées','source'=>'tasks','action'=>'Valider la disponibilité avec les responsables ; les nombres de tâches ne sont pas des heures.'];
-    $risks[]=['subject'=>'Couverture financière partielle','impact'=>'Coût','detail'=>'Les coûts unitaires de l’Étape 2 couvrent les S.T. chiffrées. Banc, assemblage, essais, reprises et réserve ne sont pas automatiquement inclus.','action'=>'Rapprocher cette base avec l’enveloppe complète avant GO.','source'=>2,'level'=>'Vigilance'];
-    if($margin!==null && $margin<0) $risks[]=['subject'=>'Dépassement du budget dès les S.T.','impact'=>'Coût','detail'=>ddMoney(-$margin).' au-dessus de la cible, avant les postes complémentaires.','action'=>'Réviser la solution ou le budget.','source'=>1,'level'=>'Critique'];
-    if($targetDays!==null && $maxDelay!==null && $maxDelay>$targetDays) $risks[]=['subject'=>'Un délai élémentaire dépasse l’objectif global','impact'=>'Délai','detail'=>ddDays($maxDelay).' contre '.ddDays($targetDays).'.','action'=>'Revoir ce poste et confirmer la base calendaire.','source'=>2,'level'=>'Critique'];
-    foreach($groups as $type=>$g) if(count($g['people'])===1) $risks[]=['subject'=>$type.' : une seule ressource affectée','impact'=>'Capacité','detail'=>implode(', ',array_keys($g['people'])).' pour '.$g['count'].' S.T. ; disponibilité non vérifiée.','action'=>'Confirmer disponibilité et solution de relais.','source'=>'tasks','level'=>'À confirmer'];
-    $risks[]=['subject'=>'Plus long délai S.T. connu','impact'=>'Délai','detail'=>$maxDelay===null?'Aucun délai connu.':ddDays($maxDelay).' ; pas de seuil arbitraire de retard.','action'=>'Vérifier réception, parallélisation, intégration et essais.','source'=>2,'level'=>'À confirmer'];
-    // The current sourcing is a separate scope, never added to the initial estimate.
-    $current=['HT'=>0.0,'TTC'=>0.0,'count'=>0,'suppliers'=>[]];
-    foreach($lines as $line) if(ddHasCost($line['type']??'')) foreach($specs['composants_st'][$line['id']]??[] as $item) {
-        $q=ddNumber($item['quantite']??null);$c=ddNumber($item['cout_unitaire']??null);
-        if($q!==null && $c!==null){$tax=($item['cout_unitaire_taxe']??'HT')==='TTC'?'TTC':'HT';$current[$tax]+=round($q*$c,2);$current['count']++;}
-        if(!empty($item['fournisseur']))$current['suppliers'][$item['fournisseur']]=true;
-    }
-    $current['ht']=$current['TTC']==0?$current['HT']:($vat===null?null:round($current['HT']+$current['TTC']/(1+$vat/100),2));
-    return compact('targets','qty','vat','sfs','groups','bySf','lines','missing','risks','totals','unitHT','lotHT','budget','budgetHT','margin','maxDelay','targetDays','assigned','unassigned','byUser','taskById','dependencies','current');
+    if($targetDays===null) $missing[]=['subject'=>'Objectif de délai non renseigné','source'=>1,'action'=>'Confirmer le délai maximum.'];
+    $missing[]=['subject'=>'Délai global non déterminé','source'=>2,'action'=>'Le plus long délai élémentaire ne constitue pas le délai global : parallélisation et intégration à préciser.'];
+    if($margin!==null && $margin<0) $risks[]=['subject'=>'Dépassement estimé du budget','impact'=>'Coût','detail'=>ddMoney(-$margin).' au-dessus de la cible.','action'=>'Revoir le besoin, le périmètre ou l’estimation.','source'=>1,'level'=>'Critique'];
+    if($targetDays!==null && $maxDelay!==null && $maxDelay>$targetDays) $risks[]=['subject'=>'Un délai estimé dépasse l’objectif','impact'=>'Délai','detail'=>ddDays($maxDelay).' contre '.ddDays($targetDays).'.','action'=>'Revoir les estimations des S.T. concernées.','source'=>2,'level'=>'Critique'];
+    return compact('targets','qty','vat','sfs','groups','bySf','lines','missing','risks','riskCounts','references','totals','unitHT','lotHT','budget','budgetHT','margin','maxDelay','targetDays');
 }

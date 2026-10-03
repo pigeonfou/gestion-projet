@@ -282,8 +282,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setFlash('success', 'Refus enregistré. Retour à l’étape ' . $refus['step'] . ' ; les validations à partir de cette étape sont à revoir.');
             }
         }
-        $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id) VALUES(?,?,?,?,?)')
-            ->execute([$id,$currentStep,$decision,$motif,$user['id']]);
+        $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id,snapshot_json) VALUES(?,?,?,?,?,?)')
+            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet) : null]);
         $db->commit();
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
@@ -336,10 +336,10 @@ $tachesOuvertes = 0;
 $tachesTerminees = 0;
 $ncEnabled = false;
 
-$needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true);
+$needTasks = in_array($view, ['dashboard', 'taches', 'processus'], true) && !($view === 'processus' && $currentStep === 3);
 $needDocs = in_array($view, ['dashboard', 'documents'], true);
 $needJalons = $view === 'dashboard';
-$needUsers = $view === 'processus' && in_array($currentStep, [3, 4, 5], true);
+$needUsers = $view === 'processus' && in_array($currentStep, [4, 5], true);
 
 if ($needTasks) {
     ensureTachesExtendedColumns();
@@ -416,7 +416,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 ?>
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-11') ?>">
-<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=4') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=5') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
