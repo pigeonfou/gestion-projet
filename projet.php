@@ -313,6 +313,9 @@ $validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true
 if (!is_array($validatedSteps)) $validatedSteps = [];
 $validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
 if (empty($validatedSteps) && $progressStep > 1) $validatedSteps = range(1, $progressStep - 1);
+// Display archival completion without changing the business validation state.
+$displayValidatedSteps = $validatedSteps;
+if (($projet['status'] ?? '') === 'termine') $displayValidatedSteps = range(r1bMinStep(), r1bMaxStep());
 $currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
@@ -497,7 +500,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <div class="dash-steps">
               <?php foreach ($steps as $n => $s): ?>
                 <?php
-                $done = in_array((int)$n, $validatedSteps, true);
+                $done = in_array((int)$n, $displayValidatedSteps, true);
                 $active = !$done && $n === $progressStep;
                 $cls = $done ? 'done' : ($active ? 'active' : '');
                 ?>
@@ -624,9 +627,9 @@ function stepClass(int $n, int $displayed, array $validated): string
       <div class="r1b-stepper-wrap">
         <div class="r1b-stepper">
           <?php $firstStep = true; foreach ($steps as $n => $s): ?>
-            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $validatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
-            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>" <?= $n === $currentStep ? 'aria-current="step"' : '' ?>>
-              <div class="r1b-step-circle"><?= in_array((int)$n, $validatedSteps, true) ? '✓' : $n ?></div>
+            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $displayValidatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $displayValidatedSteps) ?>" <?= $n === $currentStep ? 'aria-current="step"' : '' ?>>
+              <div class="r1b-step-circle"><?= in_array((int)$n, $displayValidatedSteps, true) ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
             </a>
           <?php endforeach; ?>

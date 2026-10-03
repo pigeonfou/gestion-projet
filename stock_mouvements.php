@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'movem
     redirect('stock_mouvements.php');
 }
 
-$rows = $db->query("SELECT m.*, a.reference, a.designation, es.nom AS source_nom, ed.nom AS destination_nom,
+$articleFilter=(int)($_GET['article_id']??0);$pid=(int)($_GET['projet_id']??0);
+$movementQuery = $db->prepare("SELECT m.*, a.reference, a.designation, es.nom AS source_nom, ed.nom AS destination_nom,
     p.nom AS projet_nom, f.nom AS fournisseur_nom
     FROM stock_mouvements m
     JOIN stock_articles a ON a.id=m.article_id
@@ -49,9 +50,10 @@ $rows = $db->query("SELECT m.*, a.reference, a.designation, es.nom AS source_nom
     LEFT JOIN stock_emplacements ed ON ed.id=m.emplacement_destination_id
     LEFT JOIN projets p ON p.id=m.projet_id
     LEFT JOIN stock_fournisseurs f ON f.id=m.fournisseur_id
-    ORDER BY m.created_at DESC, m.id DESC LIMIT 200")->fetchAll();
-$articleFilter=(int)($_GET['article_id']??0);$pid=(int)($_GET['projet_id']??0);
-$rows=array_values(array_filter($rows,fn($r)=>(!$articleFilter||(int)$r['article_id']===$articleFilter)&&(!$pid||(int)($r['projet_id']??0)===$pid)));
+    WHERE (?=0 OR m.article_id=?) AND (?=0 OR m.projet_id=?)
+    ORDER BY m.created_at DESC, m.id DESC LIMIT 200");
+$movementQuery->execute([$articleFilter,$articleFilter,$pid,$pid]);
+$rows=$movementQuery->fetchAll();
 $articles = $db->query("SELECT id,reference,designation FROM stock_articles ORDER BY reference")->fetchAll();
 $locations = $db->query("SELECT id,nom,chemin FROM stock_emplacements WHERE actif=1 ORDER BY chemin")->fetchAll();
 $projets = $db->query("SELECT id,nom FROM projets ORDER BY nom")->fetchAll();

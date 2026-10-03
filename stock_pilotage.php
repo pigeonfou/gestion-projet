@@ -5,7 +5,7 @@ requerirConnexion(); runSchemaMigrations(); $db=getDB(); stockLotSchema($db); re
 $tabs=['reservations'=>'Réservations','lots'=>'Lots & réception','unites'=>'Unités / séries','bom'=>'BOM / nomenclatures','inventaires'=>'Inventaires','environnement'=>'Environnement'];
 $tab=$_GET['tab']??'reservations'; if(!isset($tabs[$tab]))$tab='reservations';
 $pid=(int)($_GET['projet_id']??0);$articleFilter=(int)($_GET['article_id']??0);
-function pfStockRows(array $rows): array {global $pid,$articleFilter;return array_values(array_filter($rows,fn($r)=>(!$pid||((int)($r['projet_id']??0)===$pid))&&(!$articleFilter||((int)($r['article_id']??0)===$articleFilter))));}
+function pfStockRows(array $rows): array {global $pid,$articleFilter;return array_values(array_filter($rows,fn($r)=>(!$pid||((int)($r['projet_id']??0)===$pid))&&(!$articleFilter||((int)($r['article_id']??$r['article_parent_id']??0)===$articleFilter))));}
 $stockContextQuery=($pid?'&projet_id='.$pid:'').($articleFilter?'&article_id='.$articleFilter:'');
 $articles=$db->query("SELECT id,reference,designation FROM stock_articles ORDER BY reference")->fetchAll();
 $projets=$db->query("SELECT id,nom FROM projets ORDER BY nom")->fetchAll();
