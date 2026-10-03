@@ -73,3 +73,18 @@ body:has(.r1b-process-main) { overflow:hidden; }
 #notes-dialog .note-dialog-actions { display:flex; flex-wrap:wrap; gap:.5rem; }
 #notes-dialog .btn { width:auto; margin:0; }
 #notes-dialog [hidden] { display:none !important; }
+
+/* Keep the complete history card below the fixed step navigation. */
+.r1b-process-scroll { position:relative; isolation:isolate; }
+.r1b-process-scroll .history-step-panel {
+  position:sticky;
+  top:0;
+  display:flex;
+  flex-direction:column;
+  max-height:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+  z-index:1;
+}
+.history-step-panel > .r1b-page-head { flex:none; }
+.history-step-panel > .history-step-frame { flex:1 1 680px; min-height:0; }
