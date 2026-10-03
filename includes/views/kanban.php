@@ -66,3 +66,6 @@ foreach ($taches as $t) {
     </div>
   <?php endforeach; ?>
 </div>
+
+</div><!-- Résultats des filtres temps réel -->
+<script src="<?=url('assets/js/live-filters.js?v=1')?>" defer></script>
