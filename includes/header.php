@@ -22,10 +22,10 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
 <body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
         <div class="header-container">
-            <a href="<?= url('projets.php') ?>" class="logo">
+            <div class="logo">
                 <i class="fas fa-project-diagram"></i>
                 <span><?= e($siteNom) ?></span>
-            </a>
+            </div>
             <?php if ($user): ?>
             <nav class="nav" aria-label="Navigation principale">
                 <a href="<?= url('projets.php') ?>" class="nav-link <?= in_array(($activePage ?? ''), ['accueil','projets'], true) ? 'active' : '' ?>">

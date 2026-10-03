@@ -398,7 +398,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-12') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
@@ -420,12 +420,12 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-12') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=5') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
-    <div class="r1b-sidebar-title">ESPACE PROJET</div>
+    <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
     <nav class="r1b-nav" aria-label="Navigation du projet">
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
         <i class="fas fa-th-large"></i> Synthèse du projet

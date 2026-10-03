@@ -117,3 +117,9 @@ body:has(.r1b-process-main) { overflow:hidden; }
 #st-reference-dialog label { display:block; margin-top:1rem; }
 
 .decision-snapshot{white-space:normal}.decision-snapshot .table-wrapper{max-width:100%;overflow-x:auto}.decision-snapshot table{min-width:760px;table-layout:auto}.decision-snapshot table th,.decision-snapshot table td{width:auto!important;overflow-wrap:normal;word-break:normal;white-space:normal}.decision-snapshot p{white-space:pre-wrap;margin:.7rem 0}
+
+/* Keep the nine history controls on one row, including embedded step history. */
+.history-toolbar { overflow-x:auto; }
+.decision-history-filters { grid-template-columns:minmax(160px,2fr) minmax(110px,1.2fr) minmax(115px,1.1fr) minmax(110px,1fr) repeat(2,minmax(125px,1fr)) repeat(2,minmax(105px,1fr)) minmax(65px,.6fr); gap:.5rem; }
+.decision-history-filters .history-search { grid-column:auto; }
+.decision-history-filters label { white-space:nowrap; }
