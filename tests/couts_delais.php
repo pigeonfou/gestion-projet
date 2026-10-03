@@ -60,3 +60,5 @@ check(normalizeEstimationVariation('Forte')==='Fort' && normalizeEstimationVaria
 check(estimationDecimal('-1')===0.0 && estimationDecimal('INF')===0.0, 'Quantités/coûts invalides');
 echo "OK : quantité décimale, totaux recalculés, trois variations, compatibilité, stockage SQLite distinct
 ";
+
+check(normalizeEstimationVariation('') === '', 'Risque absent reste inconnu');

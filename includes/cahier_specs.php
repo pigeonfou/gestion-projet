@@ -368,7 +368,7 @@ function parseComposantsStFromPost(array $post): array {
             $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
             $duree = trim((string)($post['cp_duree'][$i] ?? ''));
             $var = normalizeEstimationVariation($post['cp_variation'][$i] ?? '');
-            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0 && $delai === null && $aff === '' && $duree === '' && $var === 'Moyen') {
+            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0 && $delai === null && $aff === '' && $duree === '' && in_array($var, ['', 'Moyen'], true)) {
                 continue;
             }
             if (!isset($bySt[$stId])) {
@@ -394,7 +394,7 @@ function parseComposantsStFromPost(array $post): array {
             $duree = trim((string)($post['cp_duree'][$i] ?? ''));
             $var = normalizeEstimationVariation($post['cp_variation'][$i] ?? '');
             $delai = parseDelaiJours($post['cp_delai_jours'][$i] ?? '');
-            if ($aff === '' && $duree === '' && $delai === null && $var === 'Moyen') {
+            if ($aff === '' && $duree === '' && $delai === null && in_array($var, ['', 'Moyen'], true)) {
                 continue;
             }
             if (!isset($bySt[$stId])) {
