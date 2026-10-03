@@ -19,3 +19,8 @@ function pfTaskLinks(array $task): void {
 }
 function pfRiskBadge(string $risk): string { $risk=normalizeEstimationVariation($risk);return '<span class="pf-tag pf-risk-'.strtolower($risk).'">'.e($risk?:'Non renseigné').'</span>'; }
 function pfMoney($value,string $tax='HT'): string{return number_format((float)$value,2,',',' ').' € '.($tax==='TTC'?'TTC':'HT');}
+function pfStateBadge(string $state): string {
+ $states=['validee'=>['Validée','success'],'termine'=>['Terminé','success'],'libere'=>['Libéré','success'],'brouillon'=>['Brouillon','neutral'],'en_cours'=>['En cours','info'],'quarantaine'=>['Quarantaine','warning'],'rejete'=>['Rejeté','danger'],'annule'=>['Annulé','neutral']];
+ [$label,$tone]=$states[$state]??[$state,'neutral'];
+ return '<span class="pf-tag pf-tone-'.$tone.'">'.e($label).'</span>';
+}
