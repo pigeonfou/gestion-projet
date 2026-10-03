@@ -258,3 +258,9 @@ input.form-control[name="cible_delai"] {
 }
 
 input.form-control:is([name="cible_quantite"],[name="cible_delai"]) { padding-inline:.4rem; }
+
+/* Selection and validation are independent: selected completed steps keep their check. */
+.r1b-step.done.active .r1b-step-circle {
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);
+  box-shadow:0 4px 12px rgba(124,58,237,.35);
+}

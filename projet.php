@@ -394,7 +394,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-3') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-10') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -406,9 +406,10 @@ require __DIR__ . '/includes/header.php';
 
 function stepClass(int $n, int $displayed, array $validated): string
 {
-    if (in_array($n, $validated, true)) return 'r1b-step done';
-    if ($n === $displayed) return 'r1b-step active';
-    return 'r1b-step';
+    $classes = ['r1b-step'];
+    if (in_array($n, $validated, true)) $classes[] = 'done';
+    if ($n === $displayed) $classes[] = 'active';
+    return implode(' ', $classes);
 }
 
 ?>
@@ -628,7 +629,7 @@ function stepClass(int $n, int $displayed, array $validated): string
         <div class="r1b-stepper">
           <?php $firstStep = true; foreach ($steps as $n => $s): ?>
             <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $validatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
-            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>">
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>" <?= $n === $currentStep ? 'aria-current="step"' : '' ?>>
               <div class="r1b-step-circle"><?= in_array((int)$n, $validatedSteps, true) ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
             </a>
