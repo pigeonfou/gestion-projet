@@ -1,4 +1,4 @@
-<?php $notesRows=projectNotes($db,$id,true); $activeNotes=array_values(array_filter($notesRows,static fn($n)=>$n['deleted_at']===null)); ?>
+<?php $notesRows=projectNotes($db,$id,true); if($currentStep===3) $notesRows=array_values(array_filter($notesRows,static fn($n)=>(int)$n['etape']>=1 && (int)$n['etape']<=3)); $activeNotes=array_values(array_filter($notesRows,static fn($n)=>$n['deleted_at']===null)); ?>
 <div class="mt-3">
   <label for="notes-summary" class="text-sm font-medium">Notes / résultats</label>
   <textarea id="notes-summary" class="form-control" rows="3" readonly placeholder="Aucune note enregistrée."><?= e(projectNotesText($activeNotes)) ?></textarea>

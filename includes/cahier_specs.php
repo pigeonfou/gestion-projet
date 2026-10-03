@@ -192,7 +192,7 @@ function stTypeHasCost(string $type): bool {
 /** Canonical qualitative values, with compatibility for older labels. */
 function normalizeEstimationVariation($value): string {
     return match (is_scalar($value) ? (string)$value : '') {
-        'Faible' => 'Faible', 'Fort', 'Forte' => 'Fort', default => 'Moyen',
+        'Faible' => 'Faible', 'Fort', 'Forte' => 'Fort', 'Moyen', 'Moyenne' => 'Moyen', default => '',
     };
 }
 function estimationDecimal($value, float $default = 0): float {
@@ -320,6 +320,18 @@ function saveSpecsTechniques(int $cahierId, array $techniques): void {
         $data = [];
     }
     validateStReferences($techniques, loadSpecs($cahierId)['specs_techniques']);
+    // Preserve legacy unspecified fields when a form merely resubmits its display defaults.
+    $oldById=[]; foreach($data['specs_techniques']??[] as $old) $oldById[$old['id']]=$old;
+    foreach($techniques as &$tech) {
+        $old=$oldById[$tech['id']]??null;
+        if(!$old || ($old['type']??'')!==$tech['type']) continue;
+        if(!array_key_exists('quantite',$old) && !array_key_exists('cout_unitaire',$old)
+            && ($tech['quantite']??null)===1.0 && ($tech['cout_unitaire']??null)===(float)($old['cout_estime']??0)) {
+            unset($tech['quantite'],$tech['cout_unitaire']);
+        }
+        if(!array_key_exists('variation',$old) && ($tech['variation']??'')==='') unset($tech['variation']);
+    }
+    unset($tech);
     $data['specs_techniques'] = array_values($techniques);
     saveSpecs($cahierId, $data);
 }

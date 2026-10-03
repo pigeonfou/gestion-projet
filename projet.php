@@ -283,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id,snapshot_json) VALUES(?,?,?,?,?,?)')
-            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet) : null]);
+            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet, projectNotes($db,$id)) : null]);
         $db->commit();
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();

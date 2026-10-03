@@ -4,6 +4,7 @@ require_once __DIR__ . '/cahier_specs.php';
 function renderEstimationVariation(string $prefix, array $data = []): void {
     $variation = normalizeEstimationVariation($data['variation'] ?? '');
     echo '<select name="'.e($prefix).'_variation[]" class="form-control estimation-variation" aria-label="Variation — risque/incertitude">';
+    echo '<option value=""'.($variation === '' ? ' selected' : '').'>Non renseigné</option>';
     foreach (['Faible', 'Moyen', 'Fort'] as $value) echo '<option value="'.$value.'"'.($variation === $value ? ' selected' : '').'>'.$value.'</option>';
     echo '</select>';
 }
