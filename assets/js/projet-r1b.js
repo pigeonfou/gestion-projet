@@ -1,3 +1,27 @@
+/* One calculation for both estimate and supplier rows. */
+function recalcEstimationRow(row, hasCost = true) {
+  const decimal = value => Math.max(0, parseFloat(String(value || '').replace(',', '.')) || 0);
+  const qty = row.querySelector('.cp-qty');
+  const unit = row.querySelector('.cp-unit');
+  if (!qty || !unit) return 0;
+  qty.hidden = !hasCost;
+  qty.readOnly = unit.readOnly = !hasCost;
+  row.querySelectorAll('.estimation-cost').forEach(cell => { cell.hidden = !hasCost; });
+  const total = hasCost ? decimal(qty.value) * decimal(unit.value) : 0;
+  const output = row.querySelector('.cp-total');
+  if (output) output.value = total.toFixed(2).replace('.', ',') + ' €';
+  const saved = row.querySelector('.estimation-total-input');
+  if (saved) saved.value = total.toFixed(2);
+  const tax = row.querySelector('.cp-taxe')?.value || 'HT';
+  const label = row.querySelector('.cp-total-taxe');
+  const taxInput = row.querySelector('.cp-total-taxe-input');
+  if (label) label.textContent = tax;
+  if (taxInput) taxInput.value = tax;
+  return total;
+}
+function estimationCells(prefix) {
+  return document.getElementById('estimation-' + prefix + '-cells').innerHTML;
+}
 /* JS page projet */
 (function() {
   function renumberBlock(block) {
@@ -25,10 +49,8 @@
       let ht = 0, ttc = 0;
       body.querySelectorAll('.st-row').forEach(row => {
         const hasCost = ['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(row.querySelector('[name="st_type[]"]').value);
-        row.querySelector('.cp-cost-cell').style.display = hasCost ? '' : 'none';
-        row.querySelector('.st-cost').readOnly = !hasCost;
-        const cost = hasCost ? parseStCost((row.querySelector('.st-cost') || {}).value) : 0;
-        const tax = (row.querySelector('.st-tax') || {}).value || 'HT';
+        const cost = recalcEstimationRow(row, hasCost);
+        const tax = row.querySelector('.cp-taxe')?.value || 'HT';
         if (tax === 'TTC') ttc += cost; else ht += cost;
       });
       const out = block.querySelector('.sf-cost-value');
@@ -45,11 +67,13 @@
           const row = rows[0];
           row.querySelector('input[type="text"]').value = '';
           row.querySelector('select').value = 'Matériel';
-          const cost = row.querySelector('.st-cost');
+          const cost = row.querySelector('.cp-unit');
           if (cost) cost.value = '0';
+          row.querySelector('.cp-qty').value = '1';
+          row.querySelector('[name="st_variation[]"]').value = 'Moyen';
           const delay = row.querySelector('.st-delay');
           if (delay) delay.value = '';
-          const tax = row.querySelector('.st-tax');
+          const tax = row.querySelector('.cp-taxe');
           if (tax) tax.value = 'HT';
           renumberBlock(block);
           recalcSfCost();
@@ -80,8 +104,7 @@
             '<option value="3D">3D</option>' +
             '<option value="PCB">PCB</option>' +
           '</select></td>' +
-          '<td><div class="cp-cost-cell"><input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="0">' +
-          '<select name="st_cout_taxe[]" class="form-control st-tax"><option value="HT">HT</option><option value="TTC">TTC</option></select></div></td>' +
+          estimationCells('st') +
           '<td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" aria-label="Délai estimé en jours"></td>' +
           '<td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>';
         body.appendChild(tr);
@@ -92,10 +115,10 @@
     }
 
     body.addEventListener('input', e => {
-      if (e.target.matches('.st-cost')) recalcSfCost();
+      if (e.target.matches('.cp-unit, .cp-qty')) recalcSfCost();
     });
     body.addEventListener('change', e => {
-      if (e.target.matches('.st-tax, [name="st_type[]"]')) recalcSfCost();
+      if (e.target.matches('.cp-taxe, [name="st_type[]"]')) recalcSfCost();
     });
     recalcSfCost();
 
@@ -128,16 +151,7 @@
   }
 
   function recalc(row) {
-    const qty = parseDecimal((row.querySelector('.cp-qty') || {}).value);
-    const unit = parseDecimal((row.querySelector('.cp-unit') || {}).value);
-    const tot = row.querySelector('.cp-total');
-    if (tot) tot.value = (qty * unit).toFixed(2).replace('.', ',') + ' €';
-    const unitTax = row.querySelector('select[name="cp_cout_unitaire_taxe[]"]');
-    const totalTax = row.querySelector('.cp-total-taxe');
-    const totalTaxInput = row.querySelector('.cp-total-taxe-input');
-    const tax = unitTax ? unitTax.value : 'HT';
-    if (totalTax) totalTax.textContent = tax;
-    if (totalTaxInput) totalTaxInput.value = tax;
+    recalcEstimationRow(row);
     const block = row.closest('.cp-st-block');
     if (block) recalcBlock(block);
   }
@@ -206,16 +220,13 @@
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="' + type + '"></td>' +
+            '<input type="hidden" name="cp_type[]" value="' + type + '">' +
+            '<input type="hidden" name="cp_duree[]" value="">' +
+            (type === 'PCB' ? '<label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option>' + (window.PROJECTFLOW_USERS || []).map(u => '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>').join('') + '</select>' : '<input type="hidden" name="cp_affectation[]" value="">') + '</td>' +
             '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_reference[]" class="form-control" value=""></td>' +
             '<td><input type="text" name="cp_fournisseur[]" class="form-control" value=""></td>' +
-            '<td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value=""></td>' +
-            '<td><div class="cp-cost-cell"><input type="number" step="any" min="0" inputmode="decimal" name="cp_cout_unitaire[]" class="form-control cp-unit" value="">' +
-            '<select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe"><option value="HT" selected>HT</option><option value="TTC">TTC</option></select></div></td>' +
-            '<td><div class="cp-cost-cell"><input type="text" class="form-control cp-total" value="" readonly tabindex="-1">' +
-            '<span class="form-control cp-total-taxe">HT</span><input type="hidden" name="cp_cout_total_taxe[]" value="HT" class="cp-total-taxe-input"></div>' +
-            (type === 'PCB' ? '<label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option>' + (window.PROJECTFLOW_USERS || []).map(u => '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>').join('') + '</select>' : '<input type="hidden" name="cp_affectation[]" value="">') + '<input type="hidden" name="cp_duree[]" value=""><input type="hidden" name="cp_variation[]" value=""></td>' +
+            estimationCells('cp') +
             '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         } else {
@@ -231,13 +242,14 @@
             '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
             '<input type="hidden" name="cp_cout_total_taxe[]" value="HT"></td>' +
             '<td><select name="cp_affectation[]" class="form-control">' + opts + '</select><input type="hidden" name="cp_duree[]" value=""></td>' +
-            '<td><select name="cp_variation[]" class="form-control"><option value="Forte">Forte</option><option value="Moyenne" selected>Moyenne</option><option value="Faible">Faible</option></select></td>' +
+            '<td>' + document.getElementById('estimation-cp-variation').innerHTML + '</td>' +
             '<td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" aria-label="Délai en jours"></td>' +
             '<td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>';
         }
         body.appendChild(tr);
         bindRow(tr);
         renumber(block);
+        recalcEstimationRow(tr);
         recalcBlock(block);
       });
     }

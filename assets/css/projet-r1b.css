@@ -199,3 +199,14 @@
 /* Etape 2 : laisser suffisamment de place au montant décimal et à HT/TTC. */
 .st-table .st-cost { min-width: 7.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 .st-table .st-tax { width: 4.5rem; min-width: 4.5rem; flex: 0 0 4.5rem; }
+
+/* Shared cost/delay columns; internal work keeps delay and uncertainty only. */
+.estimation-cost[hidden], .cp-qty[hidden] { display:none !important; }
+.estimation-variation { min-width:5.5rem; max-width:7rem; font-size:.8rem; padding:.3rem .4rem; }
+.estimation-qty-head { min-width:5rem; }
+.estimation-unit-head { min-width:12rem; }
+.estimation-total-head { min-width:10rem; }
+.estimation-variation-head { min-width:6rem; }
+.st-table input.form-control, .st-table select.form-control { font-size:.8rem; padding:.3rem .4rem; }
+.st-table .cp-qty { min-width:4rem; }
+.st-table .st-delay { min-width:6rem; }

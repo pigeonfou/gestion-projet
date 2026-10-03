@@ -186,6 +186,21 @@ function stTypeHasCost(string $type): bool {
     return in_array($type, ['Matériel', 'Composant', 'Prestataire', 'PCB'], true);
 }
 
+/** Canonical qualitative values, with compatibility for older labels. */
+function normalizeEstimationVariation($value): string {
+    return match (is_scalar($value) ? (string)$value : '') {
+        'Faible' => 'Faible', 'Fort', 'Forte' => 'Fort', default => 'Moyen',
+    };
+}
+function estimationDecimal($value, float $default = 0): float {
+    if (!is_scalar($value)) return $default;
+    $value = str_replace(',', '.', trim((string)$value));
+    return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0 ? (float)$value : $default;
+}
+function estimationTotal(float $quantity, float $unit): float {
+    return is_finite($quantity * $unit) ? round($quantity * $unit, 2) : 0;
+}
+
 function parseDelaiJours($value): ?float {
     $value = str_replace(',', '.', trim((string)$value));
     return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0
@@ -208,7 +223,10 @@ function parseSpecsTechniquesFromPost(array $post): array {
         $sf = trim((string)$sf);
         $desc = trim((string)($descs[$i] ?? ''));
         $type = trim((string)($types[$i] ?? 'Matériel'));
-        $cost = max(0, (float)str_replace(',', '.', (string)($costs[$i] ?? '0')));
+        // Old submissions and old estimates preserve their amount with quantity 1.
+        $qty = estimationDecimal($post['st_quantite'][$i] ?? 1, 1);
+        $unit = estimationDecimal($post['st_cout_unitaire'][$i] ?? ($costs[$i] ?? 0));
+        $cost = estimationTotal($qty, $unit);
         $taxe = (($taxes[$i] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
         if (!in_array($type, $allowedTypes, true)) {
             $type = 'Matériel';
@@ -228,7 +246,10 @@ function parseSpecsTechniquesFromPost(array $post): array {
             'sf' => 'S.F.' . $n,
             'description' => $desc,
             'type' => $type,
-            'cout_estime' => stTypeHasCost($type) ? round($cost, 2) : 0,
+            'quantite' => stTypeHasCost($type) ? $qty : null,
+            'cout_unitaire' => stTypeHasCost($type) ? $unit : null,
+            'variation' => normalizeEstimationVariation($post['st_variation'][$i] ?? ''),
+            'cout_estime' => stTypeHasCost($type) ? $cost : 0,
             'delai_jours' => parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
             'cout_taxe' => $taxe,
         ];
@@ -244,6 +265,9 @@ function parseSpecsTechniquesFromPost(array $post): array {
                 'id' => 'S.T.' . $n . '.' . $m,
                 'description' => $row['description'],
                 'type' => $row['type'],
+                'quantite' => $row['quantite'],
+                'cout_unitaire' => $row['cout_unitaire'],
+                'variation' => $row['variation'],
                 'cout_estime' => $row['cout_estime'] ?? 0,
                 'cout_taxe' => $row['cout_taxe'] ?? 'HT',
                 'delai_jours' => $row['delai_jours'] ?? null,
@@ -291,14 +315,15 @@ function parseComposantsStFromPost(array $post): array {
             $des = trim((string)($post['cp_designation'][$i] ?? ''));
             $ref = trim((string)($post['cp_reference'][$i] ?? ''));
             $four = trim((string)($post['cp_fournisseur'][$i] ?? ''));
-            $qty = (float)str_replace(',', '.', (string)($post['cp_quantite'][$i] ?? '0'));
-            $cu = (float)str_replace(',', '.', (string)($post['cp_cout_unitaire'][$i] ?? '0'));
+            $qty = estimationDecimal($post['cp_quantite'][$i] ?? 0);
+            $cu = estimationDecimal($post['cp_cout_unitaire'][$i] ?? 0);
             $cuTaxe = ($post['cp_cout_unitaire_taxe'][$i] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
             $ctTaxe = $cuTaxe;
             $delai = parseDelaiJours($post['cp_delai_jours'][$i] ?? '');
             $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
             $duree = trim((string)($post['cp_duree'][$i] ?? ''));
-            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0 && $delai === null && $aff === '' && $duree === '') {
+            $var = normalizeEstimationVariation($post['cp_variation'][$i] ?? '');
+            if ($des === '' && $ref === '' && $four === '' && $qty <= 0 && $cu <= 0 && $delai === null && $aff === '' && $duree === '' && $var === 'Moyen') {
                 continue;
             }
             if (!isset($bySt[$stId])) {
@@ -311,23 +336,20 @@ function parseComposantsStFromPost(array $post): array {
                 'quantite' => $qty,
                 'cout_unitaire' => $cu,
                 'cout_unitaire_taxe' => $cuTaxe,
-                'cout_total' => round($qty * $cu, 2),
+                'cout_total' => estimationTotal($qty, $cu),
                 'cout_total_taxe' => $ctTaxe,
                 'delai_jours' => $delai,
                 'affectation' => $aff,
                 'duree' => $duree,
-                'variation' => in_array(($post['cp_variation'][$i] ?? ''), ['Forte', 'Moyenne', 'Faible'], true) ? $post['cp_variation'][$i] : 'Moyenne',
+                'variation' => $var,
             ];
         } else {
             // Logiciel et 3D
             $aff = trim((string)($post['cp_affectation'][$i] ?? ''));
             $duree = trim((string)($post['cp_duree'][$i] ?? ''));
-            $var = trim((string)($post['cp_variation'][$i] ?? 'Moyenne'));
-            if (!in_array($var, ['Forte', 'Moyenne', 'Faible'], true)) {
-                $var = 'Moyenne';
-            }
+            $var = normalizeEstimationVariation($post['cp_variation'][$i] ?? '');
             $delai = parseDelaiJours($post['cp_delai_jours'][$i] ?? '');
-            if ($aff === '' && $duree === '' && $delai === null) {
+            if ($aff === '' && $duree === '' && $delai === null && $var === 'Moyen') {
                 continue;
             }
             if (!isset($bySt[$stId])) {

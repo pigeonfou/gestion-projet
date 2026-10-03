@@ -2,6 +2,7 @@
 $pageTitle = 'Projet';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/estimation_fields.php';
 require_once __DIR__ . '/includes/task_workflow.php';
 require_once __DIR__ . '/includes/task_filters.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
@@ -393,7 +394,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>"></head><body class="history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=estimation-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-7') ?>"></head><body class="history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main></body></html>
     <?php
@@ -720,7 +721,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                           <th style="width:5.5rem">ID</th>
                           <th>Description</th>
                           <th style="width:8.5rem">Type</th>
-                          <th style="width:13rem;min-width:13rem">Coût unitaire</th>
+                          <th class="estimation-qty-head">Qté</th><th class="estimation-unit-head">Coût unitaire</th><th class="estimation-total-head">Coût total</th><th class="estimation-variation-head">Variation</th>
                           <th>Délai estimé (jours)</th>
                           <th style="width:2.5rem"></th>
                         </tr>
@@ -743,15 +744,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                               <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
                             </select>
                           </td>
-                          <td>
-                            <div class="cp-cost-cell" style="<?= stTypeHasCost($ty) ? '' : 'display:none' ?>">
-                              <input type="number" min="0" step="any" inputmode="decimal" name="st_cout_estime[]" class="form-control st-cost" value="<?= e((string)($tr['cout_estime'] ?? 0)) ?>">
-                              <select name="st_cout_taxe[]" class="form-control st-tax">
-                                <option value="HT" <?= (($tr['cout_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
-                                <option value="TTC" <?= (($tr['cout_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
-                              </select>
-                            </div>
-                          </td>
+                          <?php renderEstimationCostCells('st', $tr, stTypeHasCost($ty)); ?>
+                          <td><?php renderEstimationVariation('st', $tr); ?></td>
                           <td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" value="<?= e((string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
@@ -843,7 +837,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th style="width:5rem">Qté</th>
                             <th style="width:12rem;min-width:12rem">Coût unitaire</th>
                             <th style="width:10.5rem;min-width:10.5rem">Coût total</th>
-                            <th>Délai (jours)</th>
+                            <th class="estimation-variation-head">Variation</th><th>Délai estimé (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -858,29 +852,13 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <td><input type="text" name="cp_designation[]" class="form-control" value="<?= e($it['designation'] ?? '') ?>"></td>
                             <td><input type="text" name="cp_reference[]" class="form-control" value="<?= e($it['reference'] ?? '') ?>"></td>
                             <td><input type="text" name="cp_fournisseur[]" class="form-control" value="<?= e($it['fournisseur'] ?? '') ?>"></td>
-                            <td><input type="number" step="any" min="0" name="cp_quantite[]" class="form-control cp-qty" value="<?= e((string)($it['quantite'] ?? '')) ?>"></td>
-                            <td>
-                              <div class="cp-cost-cell">
-                                <input type="number" step="any" min="0" name="cp_cout_unitaire[]" inputmode="decimal" class="form-control cp-unit" value="<?= e((string)($it['cout_unitaire'] ?? '')) ?>">
-                                <select name="cp_cout_unitaire_taxe[]" class="form-control cp-taxe">
-                                  <option value="HT" <?= (($it['cout_unitaire_taxe'] ?? 'HT') === 'HT') ? 'selected' : '' ?>>HT</option>
-                                  <option value="TTC" <?= (($it['cout_unitaire_taxe'] ?? '') === 'TTC') ? 'selected' : '' ?>>TTC</option>
-                                </select>
-                              </div>
-                            </td>
-                            <td>
-                              <div class="cp-cost-cell">
-                                <input type="text" class="form-control cp-total" value="<?= e((string)($it['cout_total'] ?? '')) ?>" readonly tabindex="-1">
-                                <span class="form-control cp-total-taxe" aria-label="Taxe du coût total"><?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?></span>
-                                <input type="hidden" name="cp_cout_total_taxe[]" value="<?= e($it['cout_unitaire_taxe'] ?? $it['cout_total_taxe'] ?? 'HT') ?>" class="cp-total-taxe-input">
-                              </div>
-                              <!-- champs fantômes pour aligner les index des tableaux non-matériel -->
+                            <?php ob_start(); ?>
                               <?php if ($stType === 'PCB'): ?>
                               <label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option><?php foreach ($users as $u): ?><option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option><?php endforeach; ?></select>
                               <?php else: ?><input type="hidden" name="cp_affectation[]" value="<?= e($it['affectation'] ?? '') ?>"><?php endif; ?>
                               <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
-                              <input type="hidden" name="cp_variation[]" value="<?= e($it['variation'] ?? '') ?>">
-                            </td>
+                            <?php $extraTotal = ob_get_clean(); renderEstimationCostCells('cp', $it, true, $extraTotal); ?>
+                            <td><?php renderEstimationVariation('cp', $it); ?></td>
                             <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
                           </tr>
@@ -894,8 +872,8 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <th style="width:4rem">ID</th>
                             <th>Affectation</th>
 
-                            <th style="width:9rem">Variation possible</th>
-                            <th>Délai (jours)</th>
+                            <th class="estimation-variation-head">Variation</th>
+                            <th>Délai estimé (jours)</th>
                             <th style="width:2.2rem"></th>
                           </tr>
                         </thead>
@@ -924,12 +902,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                             </td>
                             <td>
                               <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
-                              <?php $vv = $it['variation'] ?? 'Moyenne'; ?>
-                              <select name="cp_variation[]" class="form-control">
-                                <option value="Forte" <?= $vv === 'Forte' ? 'selected' : '' ?>>Forte</option>
-                                <option value="Moyenne" <?= $vv === 'Moyenne' ? 'selected' : '' ?>>Moyenne</option>
-                                <option value="Faible" <?= $vv === 'Faible' ? 'selected' : '' ?>>Faible</option>
-                              </select>
+                              <?php renderEstimationVariation('cp', $it); ?>
                             </td>
                             <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
                             <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
@@ -984,7 +957,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <div class="sf-table-wrap">
                 <table class="sf-table">
                   <thead><tr>
-                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Délai (jours)</th><th>Affecter à</th><th>État tâche</th>
+                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th>Délai estimé (jours)</th><th>Affecter à</th><th>État tâche</th>
                   </tr></thead>
                   <tbody>
                   <?php foreach ($purchaseRows as $pr): ?>
@@ -1218,7 +1191,10 @@ function stepClass(int $n, int $displayed, array $validated): string
 </div><!-- /.r1b-layout -->
 
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
-<script src="<?= url('assets/js/projet-r1b.js') ?>"></script>
+<template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
+<template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
+<template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
+<script src="<?= url('assets/js/projet-r1b.js?v=estimation-1') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
