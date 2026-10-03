@@ -28,7 +28,7 @@ function ddUpstream(array $specs): array {
     return array_intersect_key($specs, array_flip(['objectifs','resultats_attendus','cas_usage','profils_utilisateurs','fonctions','specs_techniques','delais','livrables_attendus','decision_cibles']));
 }
 function ddSnapshot(array $specs, array $project, array $notes = []): string {
-    return json_encode(['version'=>1,'analysis'=>ddConsolidate($specs),'sources'=>ddUpstream($specs),'notes'=>array_values(array_filter($notes,static fn($n)=>(int)($n['etape']??0)>=1 && (int)$n['etape']<=2 && empty($n['deleted_at']))),'project'=>array_intersect_key($project,array_flip(['nom','cadrage_commerciale','cadrage_technique','cadrage_destination']))], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+    return json_encode(['version'=>1,'analysis'=>ddConsolidate($specs),'sources'=>ddUpstream($specs),'notes'=>array_values(array_filter($notes,static fn($n)=>(int)($n['etape']??0)>=1 && (int)$n['etape']<=2 && empty($n['deleted_at']))),'project'=>array_intersect_key($project,array_flip(['nom','cadrage_commerciale','cadrage_technique','cadrage_destination']))], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION|JSON_THROW_ON_ERROR);
 }
 function ddConsolidate(array $specs, array $unusedTasks = [], array $unusedUsers = []): array {
     $specs=ddUpstream($specs);
