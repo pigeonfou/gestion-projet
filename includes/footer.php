@@ -1,8 +1,8 @@
 </main>
 <footer class="footer">
     <div class="footer-container">
-        <p>&copy; <?= date('Y') ?> ProjectFlow — Gestion de projets, processus & documentation</p>
-        <p class="footer-sub">Sécurisé · Responsive · Évolutif</p>
+        <p>&copy; <?= date('Y') ?> OddWorks — Des idées un peu différentes pour des projets bien réels</p>
+        <p class="footer-sub">Concevoir · Organiser · Réaliser</p>
     </div>
 </footer>
 <script src="<?= url('assets/js/app.js') ?>"></script>

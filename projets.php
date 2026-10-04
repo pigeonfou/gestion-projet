@@ -275,8 +275,9 @@ require __DIR__ . '/includes/header.php';
 <div class="dash-wrap">
   <div class="dash-page-head">
     <div>
-      <h2>Tableau de bord</h2>
-      <p class="subtitle">Vue d'ensemble des projets de conception</p>
+      <p class="dash-kicker">ODDWORKS · R&amp;D PROJECT HUB</p>
+      <h2>Bonjour <?= e($user['identifiant']) ?> <span aria-hidden="true">👋</span></h2>
+      <p class="subtitle">Des idées différentes, pour de vrais projets.</p>
     </div>
     <div class="dash-toolbar">
       <form method="GET" class="pf-filter" style="display:flex;gap:.5rem;"><input type="search" class="form-control" name="q" value="<?=e($projectQuery)?>" aria-label="Rechercher un projet" placeholder="Rechercher un projet…"><button class="btn btn-secondary">Filtrer</button>

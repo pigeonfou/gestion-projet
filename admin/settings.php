@@ -64,7 +64,7 @@ require __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
-<form method="post" class="card card-body" style="margin-bottom:20px"><?=csrfField()?><input type="hidden" name="action" value="save_appearance"><h2>Apparence</h2><div class="form-row"><label>Accent de navigation<select class="form-control" name="ui_accent"><?php foreach(['ocean'=>'Océan','indigo'=>'Indigo','slate'=>'Ardoise'] as $value=>$label):?><option value="<?=e($value)?>" <?=getSetting('ui_accent','ocean')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Densité<select class="form-control" name="ui_density"><option value="comfortable" <?=getSetting('ui_density','comfortable')==='comfortable'?'selected':''?>>Confortable</option><option value="compact" <?=getSetting('ui_density','comfortable')==='compact'?'selected':''?>>Compacte</option></select></label></div><p class="text-muted">La sélection, la validation et le refus gardent leurs significations. La densité compacte réduit les espacements des listes.</p><button class="btn btn-primary">Enregistrer l’apparence</button></form>
+<form method="post" class="card card-body" style="margin-bottom:20px"><?=csrfField()?><input type="hidden" name="action" value="save_appearance"><h2>Apparence</h2><div class="form-row"><label>Accent de navigation<select class="form-control" name="ui_accent"><?php foreach(['ocean'=>'OddWorks cyan','indigo'=>'Violet créatif','slate'=>'Ardoise'] as $value=>$label):?><option value="<?=e($value)?>" <?=getSetting('ui_accent','ocean')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Densité<select class="form-control" name="ui_density"><option value="comfortable" <?=getSetting('ui_density','comfortable')==='comfortable'?'selected':''?>>Confortable</option><option value="compact" <?=getSetting('ui_density','comfortable')==='compact'?'selected':''?>>Compacte</option></select></label></div><p class="text-muted">La sélection, la validation et le refus gardent leurs significations. La densité compacte réduit les espacements des listes.</p><button class="btn btn-primary">Enregistrer l’apparence</button></form>
 <form method="POST">
     <?=csrfField()?>
     <input type="hidden" name="action" value="save">
@@ -139,10 +139,10 @@ require __DIR__ . '/../includes/header.php';
             </div>
             <div class="form-group">
                 <label>Dossier racine distant</label>
-                <input type="text" name="nextcloud_root" class="form-control" value="<?= e($s['nextcloud_root']) ?>" placeholder="ProjectFlow">
+                <input type="text" name="nextcloud_root" class="form-control" value="<?= e($s['nextcloud_root']) ?>" placeholder="OddWorks">
                 <p class="text-muted text-sm mt-1">Arborescence : <code>/{racine}/Projet_{id}_{nom}/{phase}/fichier</code></p>
             </div>
-            <p>Tous les types de fichiers sont acceptés, sans limite de taille imposée par ProjectFlow.</p>
+            <p>Tous les types de fichiers sont acceptés, sans limite de taille imposée par OddWorks.</p>
             <button type="submit" name="action" value="test_nextcloud" class="btn btn-secondary" formaction="" onclick="this.form.action.value='test_nextcloud'">
                 <i class="fas fa-plug"></i> Tester la connexion
             </button>
