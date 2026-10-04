@@ -13,7 +13,7 @@ if (estConnecte()) {
     <meta name="theme-color" content="#081726">
     <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=1') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=2') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="login-page oddworks-login">

@@ -97,7 +97,7 @@ require __DIR__.'/includes/header.php';
 <div class="page-header"><h1>Documents externes</h1><?php if($pid):?>
 
 <a class="btn btn-secondary" href="<?=url('projet.php?id='.$pid)?>">Retour au projet</a><?php endif;?></div>
-<p>Les documents sont transférés vers Nextcloud. ProjectFlow conserve uniquement leurs références et métadonnées. Aucun document généré par cet écran n’est écrit sur le disque du serveur.</p>
+<p>Les documents sont transférés vers Nextcloud. OddWorks conserve uniquement leurs références et métadonnées. Aucun document généré par cet écran n’est écrit sur le disque du serveur.</p>
 <?php if($result):?><div class="alert alert-<?=$result['ok']?'success':'error'?>"><?=e($result['message'])?></div><?php endif;?>
 <section class="card card-body" style="margin-top:20px"><div class="pf-section-head"><h2>Bibliothèque documentaire · <?=count($docs)?></h2><?php if($stFilter!==''):?><a href="<?=url('documents_externes.php?projet_id='.$pid)?>">Voir tous les documents du projet</a><?php endif;?></div>
 <label for="docSearch">Rechercher un document</label><input id="docSearch" type="search" class="form-control" data-pf-filter="pf-doc-table" placeholder="Nom, dossier, S.T.…" style="max-width:400px;margin:8px 0 16px">
@@ -112,7 +112,7 @@ require __DIR__.'/includes/header.php';
 <h2>Importer un document sur Nextcloud</h2>
 <label for="uploadFolder">Dossier</label><input id="uploadFolder" class="form-control" value="01_Besoin" pattern="[A-Za-z0-9_-]+" required>
 <label for="uploadFile">Fichier</label><input id="uploadFile" type="file" class="form-control" required>
-<p>Tous les types de fichiers sont acceptés. Aucune limite de taille n’est imposée par ProjectFlow.</p>
+<p>Tous les types de fichiers sont acceptés. Aucune limite de taille n’est imposée par OddWorks.</p>
 <button class="btn btn-primary" type="submit">Envoyer sur Nextcloud</button>
 <progress id="uploadProgress" max="100" value="0" hidden style="width:100%"></progress>
 <p id="uploadStatus" role="status" aria-live="polite"></p>

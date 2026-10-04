@@ -9,9 +9,9 @@
   --ow-violet:#6f4bf2;
   --ow-yellow:#ffb51f;
   --ow-mint:#56d8c9;
-  --ow-bg:#edf3f7;
-  --ow-surface:#ffffff;
-  --ow-line:#d8e3eb;
+  --ow-bg:#dce8ef;
+  --ow-surface:#eaf2f6;
+  --ow-line:#bdcfdb;
   --ow-ink:#102335;
   --ow-muted:#607488;
   --ow-shadow:0 10px 30px rgba(8,23,38,.07);
@@ -69,7 +69,7 @@ body.pf-app{
 .pf-app :is(.card,.r1b-card,.dash-card,.dash-kpi,.st-sf-block,.r1b-stepper-wrap,.dd-card){
   border:1px solid var(--ow-line)!important;
   border-radius:14px!important;
-  background:rgba(255,255,255,.96)!important;
+  background:var(--ow-surface)!important;
   box-shadow:var(--ow-shadow)!important;
 }
 .pf-app .card-header{padding:16px 20px;border-bottom-color:#e5edf2}
@@ -255,4 +255,83 @@ body.oddworks-login{
   .pf-app .main-content,.pf-app .r1b-main{padding:16px!important}
   body.oddworks-login{padding:14px}
   .oddworks-login .login-card{padding:28px 22px}
+}
+
+/* Complete the identity across secondary screens and embedded views.
+   Screen-only surfaces leave document printing and status colors intact. */
+@media screen {
+  :root {
+    --ow-surface-alt:#dfedf2;
+    --ow-surface-raised:#f5fafc;
+    --ow-panel-head:linear-gradient(110deg,#d2e9ee,#e2e4f4);
+  }
+  .pf-app :is(.card,.r1b-card,.dash-card,.st-sf-block,.dd-card,.cdc-test-section,.pf-create) {
+    background:var(--ow-surface)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.card-header,.pf-sf-title,.st-sf-header,.cdc-test-section>header) {
+    background:var(--ow-panel-head)!important;
+    border-bottom:1px solid var(--ow-line);
+  }
+  .pf-app :is(.card-header,.st-sf-header) {border-radius:13px 13px 0 0}
+  .pf-app :is(.r1b-step-content,.r1b-step-tools,.dash-card,.cdc-test-section)>:is(h2,h3,h4):first-child {
+    padding-bottom:12px;border-bottom:2px solid #a4cdd6;
+  }
+  .pf-app :is(.pf-create,.r1b-info-box,.pf-empty,.empty-state,.sf-resume) {
+    background:var(--ow-surface-alt)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.dash-proj-item,.r1b-kanban-card,.pf-links a,.dash-step,.modal-content,.user-dropdown-menu) {
+    background:var(--ow-surface-raised)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.dash-kpi,.pf-metric,.stat-card) {
+    background:linear-gradient(125deg,#102a40,#173c50)!important;
+    border-color:#234b61!important;color:#eaf5fa!important;
+    box-shadow:0 8px 22px #08172618!important;
+  }
+  .pf-app :is(.dash-kpi-value,.pf-metric strong,.stat-value) {color:#fff!important}
+  .pf-app :is(.dash-kpi-label,.pf-metric span,.stat-label) {color:#bad1df!important}
+  .pf-app .dash-kpi:hover,.pf-app a.pf-metric:hover {border-color:var(--ow-cyan)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) {background:transparent!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) th {
+    background:#cfdee8!important;color:#29475b!important;border-color:#b8cbd8!important;
+  }
+  .pf-app :is(.table,.sf-table,.stocks-table) td {border-color:#c4d5df!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) tbody tr:nth-child(even):not(.stock-low) {
+    background:#dfebf1;
+  }
+  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:#d3edf0!important}
+  .pf-app :is(input,textarea,select).form-control,
+  .pf-app :is(.st-table,.cp-table,.sf-table) :is(input,select,textarea) {
+    background:var(--ow-surface-raised)!important;border-color:#aec6d5!important;
+  }
+  .pf-app :is(input,textarea,select):disabled {background:#dbe5ed!important}
+  .pf-app :is(.r1b-stepper-wrap,.cdc-stepper,.history-toolbar,.task-filter-toolbar,.cdc-test-toolbar) {
+    background:var(--ow-panel-head)!important;border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.task-filter-toolbar,.cdc-test-toolbar) {box-shadow:var(--ow-shadow)}
+  .pf-app .cdc-test-toolbar {top:calc(var(--header-h) + 8px)}
+  .pf-app .cdc-test-nav {background:var(--ow-navy-2)!important;border-color:#234b61!important}
+  .pf-app .cdc-test-nav a {color:#c0d6e3!important}
+  .pf-app .cdc-test-nav a:hover {background:#174559!important;color:#fff!important}
+  .pf-app :is(.cdc-section-number,.cdc-test-badge) {background:#c4e9ed;color:#075f73}
+  .pf-app .cdc-test-section>header {padding:12px;border-radius:9px}
+  .pf-app .dd-kpi {background:var(--ow-panel-head)!important}
+  .pf-app .dd-cap-card {background:var(--ow-surface-alt)!important}
+  .pf-app :is(.dd-summary,.dd-gantt,.dd-gantt-wrap) {background:var(--ow-surface-alt)!important}
+  .pf-app .r1b-kanban-col {background:#d6e3eb!important}
+  .pf-app .kanban-col-validation {border-top-color:var(--ow-orange)!important}
+  .pf-app .kanban-col-done {border-top-color:var(--success)!important}
+  .pf-app :is(#notes-dialog,#st-reference-dialog) {background:var(--ow-surface)!important}
+  .pf-app .history-step-frame {background:var(--ow-surface)!important;border-color:var(--ow-line)}
+  body.pf-app.history-embedded {background:var(--ow-surface)!important}
+  .pf-app.history-embedded .history-toolbar {box-shadow:none!important}
+  .pf-app.history-embedded .decision-history {background:transparent!important}
+  .pf-app :is(.tabs,.tab-nav) {border-color:var(--ow-line)}
+  .pf-app .tab-btn.active {color:#076e85;border-bottom-color:var(--ow-cyan)}
+  .pf-app .r1b-sidebar-foot select {
+    background:#123047!important;color:#d6e7f0!important;border-color:#35596e!important;
+  }
+  .oddworks-login-shell,.oddworks-login .login-card {background:var(--ow-surface)}
 }
