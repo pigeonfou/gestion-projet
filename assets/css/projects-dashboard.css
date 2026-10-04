@@ -13,7 +13,7 @@
 .dash-card h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 1rem; color: var(--text-primary, #0f172a); }
 .dash-proj-list { display: flex; flex-direction: column; gap: .75rem; }
 .dash-proj-item {
-  border: 1px solid #f1f5f9; border-radius: 10px; padding: 1rem;
+  border: 1px solid var(--border-subtle, #f1f5f9); border-radius: 10px; padding: 1rem;
   cursor: pointer; transition: border-color .15s, background .15s; text-decoration: none; color: inherit; display: block;
 }
 .dash-proj-item:hover { border-color: #c4b5fd; background: var(--surface-raised, #faf5ff); }
@@ -28,7 +28,7 @@
 .dash-proj-fill { height: 100%; background: #7c3aed; border-radius: 999px; transition: width .3s; }
 .dash-proj-meta { margin-top: .5rem; font-size: .75rem; color: var(--text-secondary, #64748b); }
 .dash-proj-actions { margin-top: .65rem; display: flex; gap: .4rem; flex-wrap: wrap; }
-.dash-side-item { padding: .65rem 0; border-bottom: 1px solid #f1f5f9; font-size: .875rem; }
+.dash-side-item { padding: .65rem 0; border-bottom: 1px solid var(--border-subtle, #f1f5f9); font-size: .875rem; }
 .dash-side-item:last-child { border-bottom: none; }
 .dash-side-title { font-weight: 500; margin: 0 0 .15rem; }
 .dash-side-meta { font-size: .75rem; color: var(--text-secondary, #64748b); }
@@ -45,7 +45,7 @@
 .dash-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary, #64748b); }
 .dash-empty i { font-size: 2.5rem; opacity: .35; margin-bottom: .75rem; display: block; }
 .dash-archive-wrap { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-.dash-archive-section { border: 1px solid #f1f5f9; border-radius: 10px; padding: 1rem; background: var(--surface-raised, #f8fafc); }
+.dash-archive-section { border: 1px solid var(--border-subtle, #f1f5f9); border-radius: 10px; padding: 1rem; background: var(--surface-raised, #f8fafc); }
 .dash-archive-section h4 {
   font-size: .9rem; font-weight: 600; margin: 0 0 .75rem; color: var(--text-secondary, #334155);
   display: flex; align-items: center; gap: .4rem;

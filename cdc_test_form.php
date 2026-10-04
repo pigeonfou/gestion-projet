@@ -22,7 +22,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 }
 $sections=cdcTestSections();require __DIR__.'/includes/header.php';
 ?>
-<link rel="stylesheet" href="<?= url('assets/css/cdc-test.css?v=night-1') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/cdc-test.css?v=night-2') ?>">
 <div class="cdc-test-page">
   <div class="cdc-test-heading"><div><span class="cdc-test-badge">FORMULAIRE D’ESSAI</span><h1>CDC-Test-Form</h1><p>Projet associé : <strong><?= e($project['nom']) ?></strong></p></div><a class="btn btn-secondary" href="<?= url('projet.php?id='.$id.'&view=processus&step=1') ?>">Retour au projet</a></div>
   <p class="cdc-test-notice">Équipement électronique · À compléter en réunion ou à partir d’un mail. Tous les champs sont facultatifs : notez ce qui est connu, laissez le reste vide et complétez au fil des échanges.</p>

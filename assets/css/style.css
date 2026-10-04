@@ -236,7 +236,7 @@ body {
   align-items: center;
   gap: .5rem;
   padding: .45rem .6rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle, #f1f5f9);
   font-size: .82rem;
 }
 .fn-row:last-child { border-bottom: none; }
@@ -312,7 +312,7 @@ body {
 .docs-list li {
   padding: .4rem .5rem;
   font-size: .78rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle, #f1f5f9);
   display: flex;
   align-items: center;
   gap: .4rem;
@@ -323,7 +323,7 @@ body {
   word-break: break-all;
 }
 .docs-list li a:hover { text-decoration: underline; }
-.docs-list li i { color: #ef4444; flex-shrink: 0; }
+.docs-list li i { color: var(--state-danger, #ef4444); flex-shrink: 0; }
 .docs-section {
   margin-top: 1rem;
   padding-top: .75rem;
@@ -418,11 +418,11 @@ tr:hover td { background:var(--surface-raised, #f8fafc); }
 .badge-urgente{background:var(--state-danger-bg, #fee2e2);color:var(--state-danger, #b91c1c)}
 .badge-a_faire{background:var(--surface-muted, #f1f5f9);color:var(--text-secondary, #475569)}
 .badge-en_cours{background:var(--state-info-bg, #dbeafe);color:var(--state-info, #1d4ed8)}
-.badge-terminee{background:var(--state-success-bg, #dcfce7);color:#15803d}
+.badge-terminee{background:var(--state-success-bg, #dcfce7);color:var(--state-success, #15803d)}
 .badge-admin{background:var(--state-info-bg, #ede9fe);color:var(--state-info, #6d28d9)}
 .badge-utilisateur{background:var(--state-info-bg, #e0e7ff);color:var(--state-info, #4338ca)}
 .badge-obligatoire{background:var(--state-danger-bg, #fee2e2);color:var(--state-danger, #b91c1c)}
-.badge-facultative{background:var(--state-success-bg, #f0fdf4);color:#15803d}
+.badge-facultative{background:var(--state-success-bg, #f0fdf4);color:var(--state-success, #15803d)}
 .alert {
   display:flex; align-items:center; gap:.6rem; padding:.7rem 1rem;
   border-radius:var(--radius); margin-bottom:1rem; font-size:.9rem; position:relative;
@@ -655,12 +655,12 @@ tr:hover td { background:var(--surface-raised, #f8fafc); }
 .stocks-table tr.stock-low { background:var(--state-danger-bg, #fef2f2); }
 .stock-ref { font-weight:700; color:var(--state-info, #5b21b6); text-decoration:none; font-family:ui-monospace,monospace; }
 .stock-ref:hover { text-decoration:underline; }
-.stock-alert { color:#dc2626; margin-left:.25rem; }
+.stock-alert { color:var(--state-danger, #dc2626); margin-left:.25rem; }
 .badge-type { display:inline-block; padding:.15rem .45rem; border-radius:999px; font-size:.7rem; font-weight:600; }
 .badge-piece { background:var(--state-info-bg, #ede9fe); color:var(--state-info, #5b21b6); }
 .badge-equipement { background:var(--state-info-bg, #e0f2fe); color:var(--state-info, #0369a1); }
 .table-actions { white-space:nowrap; display:flex; gap:.25rem; align-items:center; }
-.btn-sf-del { background:transparent; border:none; color:#dc2626; font-size:1.25rem; cursor:pointer; line-height:1; padding:.15rem .35rem; border-radius:4px; }
+.btn-sf-del { background:transparent; border:none; color:var(--state-danger, #dc2626); font-size:1.25rem; cursor:pointer; line-height:1; padding:.15rem .35rem; border-radius:4px; }
 .btn-sf-del:hover { background:var(--state-danger-bg, #fef2f2); }
 
 

@@ -487,3 +487,23 @@ body.oddworks-login{
   .pf-app .dd-gantt-legend span:nth-child(3) {color:var(--state-warning)}
   .pf-app .dd-gantt-legend span:nth-child(4) {color:var(--state-success)}
 }
+
+@media screen {
+  .pf-app :is(hr,fieldset) {border-color:var(--border-default)}
+  .pf-app :is(.r1b-step-circle,.dash-step-num) {color:var(--text-primary)}
+  .pf-app .btn-primary:focus-visible {outline-color:var(--text-primary)}
+}
+
+/* Filled actions need a distinct foreground from semantic status text. */
+@media screen {
+  .pf-app {--on-accent:#fff}
+  html[data-color-scheme="dark"] .pf-app {--on-accent:#061b28}
+  html[data-color-scheme="dark"] .pf-app[data-accent="indigo"],
+  html[data-color-scheme="dark"] .pf-app[data-accent="slate"] {--on-accent:#fff}
+  .pf-app :is(.nav-link.active,.r1b-nav a.active,.r1b-step.active .r1b-step-circle) {
+    background:linear-gradient(135deg,var(--ow-cyan),var(--ow-cyan-deep))!important;
+  }
+  .pf-app :is(.btn-primary,.btn-r1b-primary,.nav-link.active,.nav-link.active i,.r1b-nav a.active,.r1b-step.active .r1b-step-circle) {
+    color:var(--on-accent)!important;
+  }
+}

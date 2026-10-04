@@ -11,7 +11,7 @@ $taskFilterBase=$showProjectLink?'taches.php':'projet.php?id='.(int)$id.'&view=t
 $statusFormAction=url($taskFilterBase.'&'.taskFilterQuery($taskFilters));
 if($showProjectLink)$statusFormAction=url('taches.php?'.taskFilterQuery($taskFilters));
 ?>
-<link rel="stylesheet" href="<?=url('assets/css/task-filters.css?v=night-1')?>">
+<link rel="stylesheet" href="<?=url('assets/css/task-filters.css?v=night-2')?>">
 <form class="task-filter-toolbar" data-live-filters data-highlight-color="<?= e(searchHighlightColor()) ?>" method="GET" action="<?=url($showProjectLink?'taches.php':'projet.php')?>" aria-label="Recherche, filtres et tri des tâches">
 <?php if(!$showProjectLink):?><input type="hidden" name="id" value="<?=(int)$id?>"><input type="hidden" name="view" value="taches"><?php endif;?>
 <div class="task-filter-search"><label for="tf_q">Recherche</label><input id="tf_q" name="tf_q" type="search" maxlength="200" value="<?=e($taskFilters['q'])?>" placeholder="Titre, description, résultats, responsable, n°…"></div>
