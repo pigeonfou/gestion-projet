@@ -1229,7 +1229,7 @@ function stepClass(int $n, int $displayed, array $validated): string
   <div class="footer-container"><p>&copy; <?= date('Y') ?> OddWorks — Processus R1b</p></div>
 </footer>
 <script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
-<script src="<?= url('assets/js/st-hierarchy.js?v=2') ?>"></script>
+<script src="<?= url('assets/js/st-hierarchy.js?v=3') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>

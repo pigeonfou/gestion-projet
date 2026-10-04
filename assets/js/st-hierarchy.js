@@ -154,10 +154,17 @@
   let submitting = false;
   form.addEventListener('submit', async event => {
     if (submitting) return;
+    const live = active();
+    const blankParents = rows().filter(row => !field(row, 'st_description').value.trim() && (
+      live.some(child => parent(child) === uid(row)) ||
+      saved.some(child => child.parent_uid === uid(row) && live.some(current => uid(current) === child.uid))
+    ));
+    // Keep normal saves native. Only pause a submission that needs a deletion warning.
+    if (!blankParents.length) return;
     event.preventDefault();
     const submitter = event.submitter;
-    for (const row of rows()) {
-      if (!field(row, 'st_description').value.trim() && !await window.stHierarchy.beforeDelete(row)) return;
+    for (const row of blankParents) {
+      if (!await window.stHierarchy.beforeDelete(row)) return;
     }
     submitting = true;
     form.requestSubmit(submitter);
