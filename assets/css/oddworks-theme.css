@@ -507,3 +507,9 @@ body.oddworks-login{
     color:var(--on-accent)!important;
   }
 }
+
+@media screen {
+  .pf-app .r1b-sidebar-foot label {color:#c0d6e3!important}
+  .pf-app {--primary-light:var(--action-link)}
+  .pf-app .cdc-stepper .step.active span {color:var(--on-accent)}
+}

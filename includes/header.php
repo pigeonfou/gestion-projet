@@ -17,11 +17,11 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - <?= e($siteNom) ?></title>
     <meta name="theme-color" content="#081726">
     <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-2') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-2') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-3') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-3') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-2') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-2') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-3') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-3') ?>">
 </head>
 <body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
