@@ -12,8 +12,8 @@ if (estConnecte()) {
     <title>Connexion - OddWorks</title>
     <meta name="theme-color" content="#081726">
     <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-3') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-3') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="login-page oddworks-login">

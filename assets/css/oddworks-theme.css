@@ -82,7 +82,7 @@ radial-gradient(circle at 90% 0%,rgba(9,185,201,.07),transparent 26rem),
   border:0!important;
   box-shadow:0 7px 16px rgba(9,185,201,.19)!important;
 }
-.pf-app :is(.btn-primary,.btn-r1b-primary):hover{background:linear-gradient(135deg,#09aeba,#07899c)!important}
+.pf-app :is(.btn-primary,.btn-r1b-primary):hover{background:linear-gradient(135deg,var(--ow-cyan-deep),var(--ow-cyan-deep))!important}
 .pf-app :is(.btn-secondary,.btn-r1b-secondary){background:var(--surface-raised, #f7fafc)!important;border:1px solid var(--ow-line)!important;color:var(--text-primary, #30475b)!important}
 .pf-app .btn-danger{background:#ef5350!important}
 .pf-app :is(input,textarea,select).form-control{
@@ -175,7 +175,7 @@ radial-gradient(circle at 90% 0%,rgba(9,185,201,.07),transparent 26rem),
 .pf-app .footer-sub{display:block!important;color:#6fdde3!important}
 
 /* Appearance variants keep the OddWorks identity while changing accent. */
-body[data-accent="indigo"]{--ow-cyan:#7660f5;--ow-cyan-deep:#6247e5;--pf-selected:#efecff}
+body[data-accent="indigo"]{--ow-cyan:#725bf0;--ow-cyan-deep:#6247e5;--pf-selected:#efecff}
 body[data-accent="slate"]{--ow-cyan:#60778a;--ow-cyan-deep:#465d70;--pf-selected:#edf2f5}
 
 /* Login */
@@ -512,4 +512,8 @@ body.oddworks-login{
   .pf-app .r1b-sidebar-foot label {color:#c0d6e3!important}
   .pf-app {--primary-light:var(--action-link)}
   .pf-app .cdc-stepper .step.active span {color:var(--on-accent)}
+}
+
+@media screen {
+  .pf-app .dash-kicker {color:var(--action-link)}
 }
