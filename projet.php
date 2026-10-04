@@ -707,7 +707,6 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
-              <details class="st-structure" open><summary>Structure des S.T.</summary><div id="st-structure-tree"></div></details>
               <div id="st-hierarchy-status" role="status" aria-live="polite"></div>
               <?php foreach ($fonctionsSF as $sf): ?>
                 <?php
@@ -782,6 +781,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
                 </div>
               <?php endforeach; ?>
+              <details class="st-structure" open><summary>Structure des S.T.</summary><div id="st-structure-tree"></div></details>
               <?php ob_start(); ?>
               <div class="mt-3">
                 <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
