@@ -20,7 +20,7 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=4') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=2') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=3') ?>">
 </head>
 <body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">

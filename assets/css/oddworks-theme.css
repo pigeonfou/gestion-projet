@@ -335,3 +335,19 @@ body.oddworks-login{
   }
   .oddworks-login-shell,.oddworks-login .login-card {background:var(--ow-surface)}
 }
+
+/* Desktop project navigation fills the space below the header. */
+@media screen and (min-width:951px) {
+  .pf-app .r1b-layout {min-height:calc(100dvh - var(--header-h))}
+  .pf-app .r1b-layout > .r1b-sidebar {
+    height:calc(100dvh - var(--header-h));
+    min-height:0;
+    max-height:calc(100dvh - var(--header-h));
+    box-sizing:border-box;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+  }
+  .pf-app .r1b-sidebar > * {flex-shrink:0}
+  .pf-app .r1b-sidebar-foot {margin-top:auto}
+}

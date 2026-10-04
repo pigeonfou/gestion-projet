@@ -398,7 +398,7 @@ $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=2') ?>"></head><body class="pf-app history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=3') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
