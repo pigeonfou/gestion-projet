@@ -33,6 +33,7 @@ function estimationCells(prefix) {
       const hid = row.querySelector('input[name="st_sf[]"]');
       if (hid) hid.value = sfId;
     });
+    document.dispatchEvent(new Event('st-rows-changed'));
   }
 
   document.querySelectorAll('.st-sf-block:not(.cp-st-block)').forEach(block => {
@@ -62,13 +63,18 @@ function estimationCells(prefix) {
 
     function bindDel(btn) {
       btn.addEventListener('click', () => {
+        const deleting = btn.closest('.st-row');
+        if (window.stHierarchy && !window.stHierarchy.beforeDelete(deleting)) return;
         const rows = body.querySelectorAll('.st-row');
         if (rows.length <= 1) {
           const row = rows[0];
           row.querySelector('input[type="text"]').value = '';
-          row.querySelector('select').value = 'Matériel';
+          row.querySelector('[name="st_type[]"]').value = 'Matériel';
           row.querySelector('[name="st_reference_uid[]"]').value = '';
-          row.querySelector('select').dispatchEvent(new Event('change', { bubbles:true }));
+          const parent = row.querySelector('[name="st_parent_uid[]"]');
+          if (parent) parent.value = '';
+          row.querySelector('[name="st_uid[]"]').value = crypto.randomUUID().replaceAll('-', '');
+          row.querySelector('[name="st_type[]"]').dispatchEvent(new Event('change', { bubbles:true }));
           const cost = row.querySelector('.cp-unit');
           if (cost) cost.value = '0';
           row.querySelector('.cp-qty').value = '1';

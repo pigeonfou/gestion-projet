@@ -46,6 +46,7 @@ jobs:
           if [[ -f "$test_dir/tests/couts_delais.php" ]]; then
             php "$test_dir/tests/couts_delais.php"
             php "$test_dir/tests/st_references.php"
+            php "$test_dir/tests/st_hierarchy.php"
           fi
           if [[ -f "$test_dir/tests/nextcloud_sans_curl.php" ]]; then
             php -n "$test_dir/tests/nextcloud_sans_curl.php"

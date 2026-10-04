@@ -100,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $cid = getOrCreateCahierId($id);
             $techniques = parseSpecsTechniquesFromPost($_POST);
-            saveSpecsTechniques($cid, $techniques);
+            saveSpecsTechniques($cid, $techniques, is_array($_POST['st_deleted_parent_uid'] ?? null) ? $_POST['st_deleted_parent_uid'] : []);
+            $techniques = loadSpecs($cid)['specs_techniques'];
 
             // À l'étape 2, toutes les S.T. (Matériel, Composant, Prestataire, Logiciel, 3D, PCB)
             // sont synchronisées comme tâches.
@@ -401,6 +402,7 @@ if ($historyEmbedded) {
     <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<script src="<?= url('assets/js/st-hierarchy.js?v=1') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body></html>
     <?php
@@ -706,6 +708,8 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
+              <details class="st-structure" open><summary>Structure des S.T.</summary><div id="st-structure-tree"></div></details>
+              <div id="st-hierarchy-status" role="status" aria-live="polite"></div>
               <?php foreach ($fonctionsSF as $sf): ?>
                 <?php
                   $sfId = $sf['id'] ?? '';
@@ -752,7 +756,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                             <input type="hidden" name="st_uid[]" value="<?= e($tr['uid'] ?? bin2hex(random_bytes(16))) ?>">
                             <input type="hidden" name="st_reference_uid[]" value="<?= e($tr['reference_uid'] ?? '') ?>">
                           </td>
-                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
+                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…">
+                            <input type="hidden" name="st_parent_uid[]" value="<?= e($tr['parent_uid'] ?? '') ?>">
+                          </td>
                           <td>
                             <?php $ty = $tr['type'] ?? 'Matériel'; ?>
                             <select name="st_type[]" class="form-control">
@@ -1212,11 +1218,12 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
+<link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=1') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-6') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=hierarchy-1') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
