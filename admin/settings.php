@@ -12,7 +12,13 @@ $testResult = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
     $action = $_POST['action'] ?? 'save';
-    if($action==='save_appearance'){setSetting('ui_accent',in_array($_POST['ui_accent']??'', ['ocean','indigo','slate'],true)?$_POST['ui_accent']:'ocean');setSetting('ui_density',($_POST['ui_density']??'')==='compact'?'compact':'comfortable');setFlash('success','Apparence enregistrée.');redirect('admin/settings.php');}
+    if ($action === 'save_appearance') {
+        setSetting('ui_theme', in_array($_POST['ui_theme'] ?? '', ['light', 'dark', 'system'], true) ? $_POST['ui_theme'] : 'light');
+        setSetting('ui_accent', in_array($_POST['ui_accent'] ?? '', ['ocean', 'indigo', 'slate'], true) ? $_POST['ui_accent'] : 'ocean');
+        setSetting('ui_density', ($_POST['ui_density'] ?? '') === 'compact' ? 'compact' : 'comfortable');
+        setFlash('success', 'Apparence enregistrée.');
+        redirect('admin/settings.php');
+    }
 
     if ($action === 'test_nextcloud') {
         // Sauver d'abord les champs Nextcloud du formulaire pour tester les valeurs saisies
@@ -64,7 +70,7 @@ require __DIR__ . '/../includes/header.php';
 </div>
 <?php endif; ?>
 
-<form method="post" class="card card-body" style="margin-bottom:20px"><?=csrfField()?><input type="hidden" name="action" value="save_appearance"><h2>Apparence</h2><div class="form-row"><label>Accent de navigation<select class="form-control" name="ui_accent"><?php foreach(['ocean'=>'OddWorks cyan','indigo'=>'Violet créatif','slate'=>'Ardoise'] as $value=>$label):?><option value="<?=e($value)?>" <?=getSetting('ui_accent','ocean')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Densité<select class="form-control" name="ui_density"><option value="comfortable" <?=getSetting('ui_density','comfortable')==='comfortable'?'selected':''?>>Confortable</option><option value="compact" <?=getSetting('ui_density','comfortable')==='compact'?'selected':''?>>Compacte</option></select></label></div><p class="text-muted">La sélection, la validation et le refus gardent leurs significations. La densité compacte réduit les espacements des listes.</p><button class="btn btn-primary">Enregistrer l’apparence</button></form>
+<form method="post" class="card card-body" style="margin-bottom:20px"><?=csrfField()?><input type="hidden" name="action" value="save_appearance"><h2>Apparence</h2><div class="form-row"><label>Thème de l’interface<select class="form-control" name="ui_theme"><?php foreach(['light'=>'Clair','dark'=>'Sombre','system'=>'Système'] as $value=>$label):?><option value="<?=e($value)?>" <?=interfaceTheme()===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Accent de navigation<select class="form-control" name="ui_accent"><?php foreach(['ocean'=>'OddWorks cyan','indigo'=>'Violet créatif','slate'=>'Ardoise'] as $value=>$label):?><option value="<?=e($value)?>" <?=getSetting('ui_accent','ocean')===$value?'selected':''?>><?=e($label)?></option><?php endforeach;?></select></label><label>Densité<select class="form-control" name="ui_density"><option value="comfortable" <?=getSetting('ui_density','comfortable')==='comfortable'?'selected':''?>>Confortable</option><option value="compact" <?=getSetting('ui_density','comfortable')==='compact'?'selected':''?>>Compacte</option></select></label></div><p class="text-muted">Ces réglages s’appliquent à toute l’application. Système suit automatiquement le thème du navigateur. La sélection, la validation et le refus gardent leurs significations. La densité compacte réduit les espacements des listes.</p><button class="btn btn-primary">Enregistrer l’apparence</button></form>
 <form method="POST">
     <?=csrfField()?>
     <input type="hidden" name="action" value="save">

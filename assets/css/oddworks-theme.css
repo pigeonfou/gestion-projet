@@ -31,7 +31,7 @@
 }
 body.pf-app{
   background:
-    radial-gradient(circle at 90% 0%,rgba(9,185,201,.07),transparent 26rem),
+radial-gradient(circle at 90% 0%,rgba(9,185,201,.07),transparent 26rem),
     radial-gradient(circle at 15% 100%,rgba(111,75,242,.045),transparent 30rem),
     var(--ow-bg);
   color:var(--ow-ink);
@@ -72,23 +72,23 @@ body.pf-app{
   background:var(--ow-surface)!important;
   box-shadow:var(--ow-shadow)!important;
 }
-.pf-app .card-header{padding:16px 20px;border-bottom-color:#e5edf2}
+.pf-app .card-header{padding:16px 20px;border-bottom-color:var(--border-default, #e5edf2)}
 .pf-app .card-body{padding:20px}
 .pf-app :is(.btn,.btn-r1b){border-radius:9px;font-weight:700;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
 .pf-app :is(.btn,.btn-r1b):hover{transform:translateY(-1px)}
 .pf-app :is(.btn-primary,.btn-r1b-primary){
-  background:linear-gradient(135deg,#0ac1ce,#079ab0)!important;
+  background:linear-gradient(135deg,var(--ow-cyan),var(--ow-cyan-deep))!important;
   color:#fff!important;
   border:0!important;
   box-shadow:0 7px 16px rgba(9,185,201,.19)!important;
 }
 .pf-app :is(.btn-primary,.btn-r1b-primary):hover{background:linear-gradient(135deg,#09aeba,#07899c)!important}
-.pf-app :is(.btn-secondary,.btn-r1b-secondary){background:#f7fafc!important;border:1px solid var(--ow-line)!important;color:#30475b!important}
+.pf-app :is(.btn-secondary,.btn-r1b-secondary){background:var(--surface-raised, #f7fafc)!important;border:1px solid var(--ow-line)!important;color:var(--text-primary, #30475b)!important}
 .pf-app .btn-danger{background:#ef5350!important}
 .pf-app :is(input,textarea,select).form-control{
-  border:1px solid #c9d8e2!important;
+  border:1px solid var(--border-default, #c9d8e2)!important;
   border-radius:9px!important;
-  background:#fbfdfe!important;
+  background:var(--surface-raised, #fbfdfe)!important;
   color:var(--ow-ink)!important;
 }
 .pf-app :is(input,textarea,select).form-control:focus{
@@ -97,9 +97,9 @@ body.pf-app{
   box-shadow:0 0 0 3px rgba(9,185,201,.14)!important;
 }
 .pf-app :focus-visible{outline:3px solid rgba(9,185,201,.45);outline-offset:2px}
-.pf-app a{color:#087f98}
-.pf-app :is(.table,.sf-table) th{background:#f3f7fa!important;color:#5a6e80!important;border-color:#dce6ed!important}
-.pf-app :is(.table,.sf-table) td{border-color:#e2eaf0!important}
+.pf-app a{color:var(--state-info, #087f98)}
+.pf-app :is(.table,.sf-table) th{background:var(--surface-muted, #f3f7fa)!important;color:var(--text-secondary, #5a6e80)!important;border-color:var(--border-default, #dce6ed)!important}
+.pf-app :is(.table,.sf-table) td{border-color:var(--border-default, #e2eaf0)!important}
 .pf-app :is(.table,.sf-table) tbody tr:hover{background:#f5fcfd!important}
 
 /* Project dashboard */
@@ -111,11 +111,11 @@ body.pf-app{
 .pf-app .dash-kpi:nth-child(3):before{background:var(--ow-orange)}
 .pf-app .dash-kpi:nth-child(4):before{background:var(--ow-yellow)}
 .pf-app .dash-kpi-value{font-weight:800!important;font-size:2rem!important}
-.pf-app .dash-kpi-label{font-weight:700!important;color:#627486!important}
-.pf-app .dash-proj-item{border:1px solid #e2eaf0!important;border-radius:12px!important;background:#fff}
+.pf-app .dash-kpi-label{font-weight:700!important;color:var(--text-secondary, #627486)!important}
+.pf-app .dash-proj-item{border:1px solid var(--border-default, #e2eaf0)!important;border-radius:12px!important;background:var(--surface-raised, #fff)}
 .pf-app .dash-proj-item:hover{border-color:#90dfe5!important;background:#f4fdfe!important}
 .pf-app .dash-proj-fill{background:linear-gradient(90deg,var(--ow-violet),var(--ow-cyan))!important}
-.pf-app .dash-proj-badge{background:#e5f9fb!important;color:#087b8f!important}
+.pf-app .dash-proj-badge{background:var(--state-info-bg, #e5f9fb)!important;color:var(--state-info, #087b8f)!important}
 
 /* R1b: dark working sidebar, light workspace, cyan selected state. */
 .pf-app .r1b-layout{grid-template-columns:218px minmax(0,1fr)}
@@ -138,36 +138,36 @@ body.pf-app{
 .pf-app .r1b-main{background:transparent!important}
 .pf-app .r1b-process-header{background:var(--ow-bg)!important}
 .pf-app .r1b-stepper-wrap{box-shadow:none!important}
-.pf-app .r1b-step-circle{background:#e8eef3!important;color:#6b7f90!important}
+.pf-app .r1b-step-circle{background:var(--surface-muted, #e8eef3)!important;color:var(--text-secondary, #6b7f90)!important}
 .pf-app .r1b-step.active .r1b-step-circle,.pf-app .r1b-step.active.done .r1b-step-circle{
   background:linear-gradient(135deg,#10c5cf,#0792aa)!important;
   color:#fff!important;
   outline:3px solid rgba(9,185,201,.17)!important;
   box-shadow:none!important;
 }
-.pf-app .r1b-step.done .r1b-step-circle{background:#e7f7ee!important;color:#16815c!important;border-color:#bfe6d2!important}
-.pf-app .r1b-step.active .r1b-step-label{color:#07879e!important}
+.pf-app .r1b-step.done .r1b-step-circle{background:var(--state-success-bg, #e7f7ee)!important;color:var(--state-success, #16815c)!important;border-color:#bfe6d2!important}
+.pf-app .r1b-step.active .r1b-step-label{color:var(--state-info, #07879e)!important}
 .pf-app .r1b-step-line.on{background:#80ccb2!important}
 .pf-app .st-sf-block{border-left:4px solid var(--ow-cyan)!important}
-.pf-app :is(.st-sf-id,.st-id,.cp-id){color:#087f98!important}
-.pf-app .st-sf-badge{background:#e3f8fa!important;color:#087b8f!important}
+.pf-app :is(.st-sf-id,.st-id,.cp-id){color:var(--state-info, #087f98)!important}
+.pf-app .st-sf-badge{background:var(--state-info-bg, #e3f8fa)!important;color:var(--state-info, #087b8f)!important}
 
 /* Kanban and decision surfaces */
-.pf-app .r1b-kanban-col{background:#f1f6f9!important;border:1px solid #d8e4ec!important}
-.pf-app .r1b-kanban-card{border:1px solid #dce6ed!important;border-radius:11px!important;box-shadow:0 4px 12px rgba(8,23,38,.045)!important}
+.pf-app .r1b-kanban-col{background:#f1f6f9!important;border:1px solid var(--border-default, #d8e4ec)!important}
+.pf-app .r1b-kanban-card{border:1px solid var(--border-default, #dce6ed)!important;border-radius:11px!important;box-shadow:0 4px 12px rgba(8,23,38,.045)!important}
 .pf-app .r1b-kanban-card:hover{border-color:#8edbe2!important;box-shadow:0 8px 20px rgba(9,185,201,.09)!important}
 .pf-app .kanban-col-progress{border-top-color:var(--ow-cyan)!important}
 .pf-app .kanban-col-validation{border-top-color:var(--ow-orange)!important}
 .pf-app .dd-dashboard{--dd-blue:#079caf;--dd-purple:#6f4bf2}
-.pf-app .dd-kpi{background:linear-gradient(140deg,#f2fcfd,#fff)!important;border-color:#d8e8ed!important}
-.pf-app .dd-kpi-icon{background:#def8fa!important;color:#07879e!important}
-.pf-app .dd-summary{background:#eefbfc!important;border-color:#d1eef1!important}
-.pf-app .dd-nav a{background:#eef7fa!important;color:#087b8f!important}
+.pf-app .dd-kpi{background:linear-gradient(140deg,#f2fcfd,var(--surface-raised, #fff))!important;border-color:var(--border-default, #d8e8ed)!important}
+.pf-app .dd-kpi-icon{background:var(--state-info-bg, #def8fa)!important;color:var(--state-info, #07879e)!important}
+.pf-app .dd-summary{background:var(--state-info-bg, #eefbfc)!important;border-color:var(--border-default, #d1eef1)!important}
+.pf-app .dd-nav a{background:var(--state-info-bg, #eef7fa)!important;color:var(--state-info, #087b8f)!important}
 
 /* Dialogs and history */
-.pf-app :is(#notes-dialog,#st-reference-dialog){border-color:#c9d9e3!important;border-radius:14px!important;box-shadow:0 30px 80px rgba(8,23,38,.24)}
+.pf-app :is(#notes-dialog,#st-reference-dialog){border-color:var(--border-default, #c9d9e3)!important;border-radius:14px!important;box-shadow:0 30px 80px rgba(8,23,38,.24)}
 .pf-app :is(#notes-dialog,#st-reference-dialog)::backdrop{background:rgba(6,19,31,.62)!important}
-.pf-app .history-toolbar{border-color:#dae5ec!important;border-radius:11px!important;box-shadow:0 8px 18px rgba(8,23,38,.06)!important}
+.pf-app .history-toolbar{border-color:var(--border-default, #dae5ec)!important;border-radius:11px!important;box-shadow:0 8px 18px rgba(8,23,38,.06)!important}
 
 /* Footer */
 .pf-app .footer{background:#081726!important;color:#93a8b8!important;border-top:0!important;padding:16px}
@@ -186,8 +186,7 @@ body.oddworks-login{
   place-items:center;
   padding:28px;
   color:var(--ow-ink);
-  background:
-    radial-gradient(circle at 14% 18%,rgba(9,185,201,.20),transparent 25rem),
+  background:radial-gradient(circle at 14% 18%,rgba(9,185,201,.20),transparent 25rem),
     radial-gradient(circle at 86% 80%,rgba(111,75,242,.17),transparent 28rem),
     #071522;
 }
@@ -198,7 +197,7 @@ body.oddworks-login{
   grid-template-columns:minmax(0,1.12fr) minmax(360px,.88fr);
   overflow:hidden;
   border-radius:24px;
-  background:#fff;
+  background:var(--surface-raised, #fff);
   box-shadow:0 34px 90px rgba(0,0,0,.34);
 }
 .oddworks-login-hero{
@@ -206,8 +205,7 @@ body.oddworks-login{
   overflow:hidden;
   padding:52px;
   color:#fff;
-  background:
-    linear-gradient(150deg,rgba(6,21,34,.97),rgba(10,42,57,.96)),
+  background:linear-gradient(150deg,rgba(6,21,34,.97),rgba(10,42,57,.96)),
     #081726;
 }
 .oddworks-login-hero:before,.oddworks-login-hero:after{content:"";position:absolute;border-radius:999px;filter:blur(1px);opacity:.8}
@@ -231,8 +229,8 @@ body.oddworks-login{
 .oddworks-login .logo-login img{display:none}
 .oddworks-login .logo-login h1{text-align:left;font-size:1.65rem;letter-spacing:-.04em;margin-bottom:7px}
 .ow-text-accent{color:#0799ad}
-.oddworks-login .logo-login .subtitle{text-align:left;margin:0;color:#728495}
-.oddworks-login .form-group label{color:#263c4f;font-weight:700}
+.oddworks-login .logo-login .subtitle{text-align:left;margin:0;color:var(--text-secondary, #728495)}
+.oddworks-login .form-group label{color:var(--text-primary, #263c4f);font-weight:700}
 .oddworks-login .form-control{border:1px solid #ccd9e2;border-radius:10px;padding:.72rem .8rem}
 .oddworks-login .btn-primary{background:linear-gradient(135deg,#0bc3cf,#078da5);border-radius:10px;border:0;box-shadow:0 9px 18px rgba(9,185,201,.2)}
 
@@ -275,7 +273,7 @@ body.oddworks-login{
   }
   .pf-app :is(.card-header,.st-sf-header) {border-radius:13px 13px 0 0}
   .pf-app :is(.r1b-step-content,.r1b-step-tools,.dash-card,.cdc-test-section)>:is(h2,h3,h4):first-child {
-    padding-bottom:12px;border-bottom:2px solid #a4cdd6;
+    padding-bottom:12px;border-bottom:2px solid var(--border-default, #a4cdd6);
   }
   .pf-app :is(.pf-create,.r1b-info-box,.pf-empty,.empty-state,.sf-resume) {
     background:var(--ow-surface-alt)!important;
@@ -295,18 +293,18 @@ body.oddworks-login{
   .pf-app .dash-kpi:hover,.pf-app a.pf-metric:hover {border-color:var(--ow-cyan)!important}
   .pf-app :is(.table,.sf-table,.stocks-table) {background:transparent!important}
   .pf-app :is(.table,.sf-table,.stocks-table) th {
-    background:#cfdee8!important;color:#29475b!important;border-color:#b8cbd8!important;
+    background:var(--surface-muted, #cfdee8)!important;color:var(--text-primary, #29475b)!important;border-color:var(--border-default, #b8cbd8)!important;
   }
-  .pf-app :is(.table,.sf-table,.stocks-table) td {border-color:#c4d5df!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) td {border-color:var(--border-default, #c4d5df)!important}
   .pf-app :is(.table,.sf-table,.stocks-table) tbody tr:nth-child(even):not(.stock-low) {
-    background:#dfebf1;
+    background:var(--surface-muted, #dfebf1);
   }
-  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:#d3edf0!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:var(--surface-interactive)!important}
   .pf-app :is(input,textarea,select).form-control,
   .pf-app :is(.st-table,.cp-table,.sf-table) :is(input,select,textarea) {
-    background:var(--ow-surface-raised)!important;border-color:#aec6d5!important;
+    background:var(--ow-surface-raised)!important;border-color:var(--border-default, #aec6d5)!important;
   }
-  .pf-app :is(input,textarea,select):disabled {background:#dbe5ed!important}
+  .pf-app :is(input,textarea,select):disabled {background:var(--surface-muted, #dbe5ed)!important}
   .pf-app :is(.r1b-stepper-wrap,.cdc-stepper,.history-toolbar,.task-filter-toolbar,.cdc-test-toolbar) {
     background:var(--ow-panel-head)!important;border-color:var(--ow-line)!important;
   }
@@ -315,12 +313,12 @@ body.oddworks-login{
   .pf-app .cdc-test-nav {background:var(--ow-navy-2)!important;border-color:#234b61!important}
   .pf-app .cdc-test-nav a {color:#c0d6e3!important}
   .pf-app .cdc-test-nav a:hover {background:#174559!important;color:#fff!important}
-  .pf-app :is(.cdc-section-number,.cdc-test-badge) {background:#c4e9ed;color:#075f73}
+  .pf-app :is(.cdc-section-number,.cdc-test-badge) {background:var(--state-info-bg, #c4e9ed);color:var(--state-info, #075f73)}
   .pf-app .cdc-test-section>header {padding:12px;border-radius:9px}
   .pf-app .dd-kpi {background:var(--ow-panel-head)!important}
   .pf-app .dd-cap-card {background:var(--ow-surface-alt)!important}
   .pf-app :is(.dd-summary,.dd-gantt,.dd-gantt-wrap) {background:var(--ow-surface-alt)!important}
-  .pf-app .r1b-kanban-col {background:#d6e3eb!important}
+  .pf-app .r1b-kanban-col {background:var(--surface-muted, #d6e3eb)!important}
   .pf-app .kanban-col-validation {border-top-color:var(--ow-orange)!important}
   .pf-app .kanban-col-done {border-top-color:var(--success)!important}
   .pf-app :is(#notes-dialog,#st-reference-dialog) {background:var(--ow-surface)!important}
@@ -329,7 +327,7 @@ body.oddworks-login{
   .pf-app.history-embedded .history-toolbar {box-shadow:none!important}
   .pf-app.history-embedded .decision-history {background:transparent!important}
   .pf-app :is(.tabs,.tab-nav) {border-color:var(--ow-line)}
-  .pf-app .tab-btn.active {color:#076e85;border-bottom-color:var(--ow-cyan)}
+  .pf-app .tab-btn.active {color:var(--state-info, #076e85);border-bottom-color:var(--ow-cyan)}
   .pf-app .r1b-sidebar-foot select {
     background:#123047!important;color:#d6e7f0!important;border-color:#35596e!important;
   }
@@ -350,4 +348,142 @@ body.oddworks-login{
   }
   .pf-app .r1b-sidebar > * {flex-shrink:0}
   .pf-app .r1b-sidebar-foot {margin-top:auto}
+}
+
+/* Semantic palette shared by all components, including embedded history.
+   Printing keeps the light palette independently of the interface preference. */
+:root {
+  --surface-page:#dce8ef;
+  --surface-card:#eaf2f6;
+  --surface-raised:#f5fafc;
+  --surface-muted:#dfedf2;
+  --surface-interactive:#d3edf0;
+  --surface-heading:linear-gradient(110deg,#d2e9ee,#e2e4f4);
+  --text-primary:#102335;
+  --text-secondary:#526b7d;
+  --text-discreet:#607488;
+  --border-default:#bdcfdb;
+  --border-subtle:#c4d5df;
+  --action-primary:#081726;
+  --action-link:#087f98;
+  --state-info:#087b8f;
+  --state-info-bg:#e1f9fb;
+  --state-success:#16815c;
+  --state-success-bg:#e7f7ee;
+  --state-warning:#805715;
+  --state-warning-bg:#fff1d8;
+  --state-danger:#b91c1c;
+  --state-danger-bg:#fee2e2;
+  --ow-bg:var(--surface-page);
+  --ow-surface:var(--surface-card);
+  --ow-surface-alt:var(--surface-muted);
+  --ow-surface-raised:var(--surface-raised);
+  --ow-panel-head:var(--surface-heading);
+  --ow-ink:var(--text-primary);
+  --ow-muted:var(--text-secondary);
+  --ow-line:var(--border-default);
+  --primary:var(--action-primary);
+  --accent:var(--action-link);
+  --success:var(--state-success);
+  --warning:var(--state-warning);
+  --danger:var(--state-danger);
+  --pf-selected:var(--state-info-bg);
+  --pf-success-bg:var(--state-success-bg);
+  --pf-warning-bg:var(--state-warning-bg);
+  --pf-danger-bg:var(--state-danger-bg);
+}
+@media screen {
+  html {background:var(--surface-page);color-scheme:light}
+  html[data-theme="dark"],html[data-color-scheme="dark"] {
+    color-scheme:dark;
+    --surface-page:#071522;
+    --surface-card:#0d2133;
+    --surface-muted:#122a3e;
+    --surface-raised:#162f43;
+    --surface-interactive:#19384e;
+    --surface-heading:linear-gradient(110deg,#122f42,#222e4a);
+    --text-primary:#e7f0f5;
+    --text-secondary:#a5b6c3;
+    --text-discreet:#8ea4b4;
+    --border-default:#294256;
+    --border-subtle:#20384a;
+    --action-primary:#2dd4db;
+    --action-link:#65dce3;
+    --state-info:#65dce3;
+    --state-info-bg:#133a4b;
+    --state-success:#7bdeb0;
+    --state-success-bg:#123b30;
+    --state-warning:#ffd083;
+    --state-warning-bg:#443421;
+    --state-danger:#ffaaaa;
+    --state-danger-bg:#482a33;
+    --ow-violet:#7b5cf5;
+    --ow-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+  .pf-app a {color:var(--action-link)}
+  .pf-app :is(.btn-secondary,.btn-r1b-secondary):hover {background:var(--surface-interactive)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) th {color:var(--text-secondary)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:var(--surface-interactive)!important}
+  .pf-app :is(input,textarea,select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-default);
+  }
+  .pf-app :is(input,textarea,select):disabled {background:var(--surface-muted)!important;color:var(--text-secondary)!important;opacity:1}
+  .pf-app :is(input,textarea)::placeholder {color:var(--text-secondary);opacity:1}
+  .pf-app :is(input,textarea,select) {accent-color:var(--ow-cyan)}
+  .pf-app :is(input,textarea,select):focus-visible {outline:3px solid var(--ow-cyan);outline-offset:2px}
+  .pf-app :is(.btn,.btn-r1b):disabled {opacity:.55;transform:none;cursor:not-allowed}
+  .pf-app :is(.r1b-step-circle,.dash-step-num) {border:1px solid var(--border-default)}
+  .pf-app .dash-step.active {background:var(--state-info-bg)!important}
+  .pf-app .r1b-step.active .r1b-step-label {color:var(--action-link)!important}
+  .pf-app .dash-proj-item:hover {background:var(--surface-interactive)!important}
+  .pf-app :is(.dd-kpi,.dd-intro,.cdc-test-page) {color:var(--text-primary)!important}
+  .pf-app .r1b-info-box[style*="state-success"] {background:var(--state-success-bg)!important}
+  .pf-app dialog {background:var(--surface-card);color:var(--text-primary);border-color:var(--border-default)}
+  .pf-app .alert-success {background:var(--state-success-bg);color:var(--state-success);border-color:var(--state-success)}
+  .pf-app .alert-warning {background:var(--state-warning-bg);color:var(--state-warning);border-color:var(--state-warning)}
+  .pf-app :is(.alert-danger,.alert-error) {background:var(--state-danger-bg);color:var(--state-danger);border-color:var(--state-danger)}
+  .pf-app .alert-info {background:var(--state-info-bg);color:var(--state-info);border-color:var(--state-info)}
+  body[data-accent="indigo"] {--primary:var(--action-primary);--accent:var(--action-link);--pf-selected:var(--state-info-bg)}
+  body[data-accent="slate"] {--primary:var(--action-primary);--accent:var(--action-link);--pf-selected:var(--state-info-bg)}
+}
+
+@media screen and (prefers-color-scheme:dark) {
+  html[data-theme="system"]:not([data-color-scheme]) {
+    color-scheme:dark;
+    --surface-page:#071522;
+    --surface-card:#0d2133;
+    --surface-muted:#122a3e;
+    --surface-raised:#162f43;
+    --surface-interactive:#19384e;
+    --surface-heading:linear-gradient(110deg,#122f42,#222e4a);
+    --text-primary:#e7f0f5;
+    --text-secondary:#a5b6c3;
+    --text-discreet:#8ea4b4;
+    --border-default:#294256;
+    --border-subtle:#20384a;
+    --action-primary:#2dd4db;
+    --action-link:#65dce3;
+    --state-info:#65dce3;
+    --state-info-bg:#133a4b;
+    --state-success:#7bdeb0;
+    --state-success-bg:#123b30;
+    --state-warning:#ffd083;
+    --state-warning-bg:#443421;
+    --state-danger:#ffaaaa;
+    --state-danger-bg:#482a33;
+    --ow-violet:#7b5cf5;
+    --ow-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+}
+
+@media screen {
+  .pf-app .btn-success {background:#187652!important;color:#fff!important}
+  .pf-app .btn-danger {background:#b93842!important;color:#fff!important}
+  .pf-app .btn-warning {background:#9b6415!important;color:#fff!important}
+  .pf-app .btn-success:hover {background:#126140!important}
+  .pf-app .btn-danger:hover {background:#9d2834!important}
+  .pf-app .cdc-stepper .step.done span {background:#187652;color:#fff}
+  .pf-app :is(.dd-kpi-icon,.dd-gantt-legend span:nth-child(2)) {color:var(--state-info)}
+  .pf-app .dd-gantt-legend span:nth-child(3) {color:var(--state-warning)}
+  .pf-app .dd-gantt-legend span:nth-child(4) {color:var(--state-success)}
 }

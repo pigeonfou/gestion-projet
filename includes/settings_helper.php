@@ -37,6 +37,7 @@ function getAllSettings(): array {
 function defaultSettings(): array {
     return [
         'site_nom' => 'OddWorks',
+        'ui_theme' => 'light',
         'search_highlight_color' => '#ffad42',
         'site_tagline' => 'Des idées un peu différentes pour des projets bien réels',
         'nextcloud_url' => 'https://nextcloud.procomm.rd',
@@ -92,4 +93,10 @@ function sanitizePathSegment(string $name): string {
 function searchHighlightColor(?string $value = null): string {
     $value = $value ?? getSetting('search_highlight_color', '#ffad42');
     return preg_match('/^#[0-9a-fA-F]{6}$/D', $value ?? '') ? strtolower($value) : '#ffad42';
+}
+
+/** Validated global preference; existing installations keep their light theme. */
+function interfaceTheme(): string {
+    $theme = getSetting('ui_theme', 'light');
+    return in_array($theme, ['light', 'dark', 'system'], true) ? $theme : 'light';
 }

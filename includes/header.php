@@ -9,18 +9,19 @@ $siteNom = getSetting('site_nom', 'OddWorks');
 
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="<?=e(interfaceTheme())?>">
 <head>
     <meta charset="UTF-8">
+    <script src="<?=url('assets/js/appearance.js?v=1')?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - <?= e($siteNom) ?></title>
     <meta name="theme-color" content="#081726">
     <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-1') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-1') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=4') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=3') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-1') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-1') ?>">
 </head>
 <body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">

@@ -317,24 +317,24 @@ function sel(?string $cur, string $val): string {
 }
 .cdc-stepper .step {
   flex: 1; min-width: 100px; padding: .5rem .4rem; border: 1px solid var(--border);
-  background: #fff; border-radius: 6px; cursor: pointer; font-size: .75rem;
+  background: var(--surface-raised, #fff); border-radius: 6px; cursor: pointer; font-size: .75rem;
   display: flex; align-items: center; gap: .35rem; color: var(--text-muted);
 }
 .cdc-stepper .step span {
-  width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--surface-muted, #e2e8f0);
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .7rem;
 }
 .cdc-stepper .step.active { border-color: var(--primary-light); color: var(--primary); font-weight: 600; }
 .cdc-stepper .step.active span { background: var(--primary-light); color: #fff; }
 .cdc-stepper .step.done span { background: var(--success); color: #fff; }
-.cdc-progress { height: 4px; background: #e2e8f0; border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
+.cdc-progress { height: 4px; background: var(--surface-muted, #e2e8f0); border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
 .cdc-progress-bar { height: 100%; background: var(--primary-light); transition: width .25s; }
 .cdc-step-panel { display: none; }
 .cdc-step-panel.active { display: block; }
 .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .35rem .75rem; }
 .cdc-form-actions {
   display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
-  margin: 1.25rem 0 2rem; padding: 1rem; background: #fff;
+  margin: 1.25rem 0 2rem; padding: 1rem; background: var(--surface-raised, #fff);
   border: 1px solid var(--border); border-radius: 8px;
 }
 @media (max-width: 640px) {
@@ -343,15 +343,15 @@ function sel(?string $cur, string $val): string {
 }
 
 .sf-table-wrap { overflow-x: auto; }
-.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: #fff; }
-.sf-table th, .sf-table td { border: 1px solid var(--border, #e2e8f0); padding: .4rem .5rem; vertical-align: middle; }
-.sf-table th { background: #f8fafc; font-weight: 600; text-align: left; }
-.sf-table .sf-id { font-weight: 700; color: #5b21b6; font-family: ui-monospace, monospace; white-space: nowrap; }
+.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: var(--surface-raised, #fff); }
+.sf-table th, .sf-table td { border: 1px solid var(--border, var(--border-default, #e2e8f0)); padding: .4rem .5rem; vertical-align: middle; }
+.sf-table th { background: var(--surface-raised, #f8fafc); font-weight: 600; text-align: left; }
+.sf-table .sf-id { font-weight: 700; color: var(--state-info, #5b21b6); font-family: ui-monospace, monospace; white-space: nowrap; }
 .sf-table input[type="text"], .sf-table select { width: 100%; font-size: .85rem; }
 .btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
-.btn-sf-del:hover { background: #fef2f2; }
+.btn-sf-del:hover { background: var(--state-danger-bg, #fef2f2); }
 
-.section-label { font-weight: 600; font-size: .9rem; margin: 1rem 0 .5rem; color: #334155; }
+.section-label { font-weight: 600; font-size: .9rem; margin: 1rem 0 .5rem; color: var(--text-secondary, #334155); }
 </style>
 <script>
 (function(){

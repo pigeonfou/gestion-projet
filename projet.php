@@ -397,8 +397,8 @@ $validationsPending = (($projet['status']??'')==='termine' || in_array($progress
 $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
-    <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=3') ?>"></head><body class="pf-app history-embedded"><main>
+    <!doctype html><html lang="fr" data-theme="<?=e(interfaceTheme())?>"><head><meta charset="utf-8"><script src="<?=url('assets/js/appearance.js?v=1')?>"></script><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-1') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
@@ -420,8 +420,8 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-13') ?>">
-<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=5') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-1') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-1') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -1050,7 +1050,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 9).</div>
 
         <?php else: ?>
-          <div class="r1b-info-box" style="border-color:#a7f3d0;background:#ecfdf5;color:#065f46;">
+          <div class="r1b-info-box" style="border-color:var(--state-success);background:var(--state-success-bg);color:var(--state-success);">
             <strong>Archivage validé / vente</strong> (étape 9) — suite à une conformité / livraison DG.
             <br><span class="text-sm">Distinct de l’abandon NO GO resté à l’étape 3.</span>
           </div>
