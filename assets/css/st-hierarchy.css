@@ -17,3 +17,8 @@
 #st-hierarchy-status { font-size: .8rem; margin-bottom: .5rem; color: var(--text-secondary); }
 .st-row.st-highlight > td { background: var(--surface-interactive); box-shadow: inset 0 2px var(--action-link), inset 0 -2px var(--action-link); }
 .st-parent-select:focus-visible, .st-structure summary:focus-visible, .st-children summary:focus-visible { outline: 2px solid var(--action-link); outline-offset: 2px; }
+
+.st-delete-dialog { max-width: min(32rem, calc(100vw - 2rem)); padding: 1.25rem; border: 1px solid var(--border-default); border-radius: .75rem; color: var(--text-primary); background: var(--surface-raised); }
+.st-delete-dialog::backdrop { background: rgb(0 0 0 / .55); }
+.st-delete-dialog h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.st-delete-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }

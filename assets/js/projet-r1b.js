@@ -62,9 +62,9 @@ function estimationCells(prefix) {
     }
 
     function bindDel(btn) {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const deleting = btn.closest('.st-row');
-        if (window.stHierarchy && !window.stHierarchy.beforeDelete(deleting)) return;
+        if (window.stHierarchy && !await window.stHierarchy.beforeDelete(deleting)) return;
         const rows = body.querySelectorAll('.st-row');
         if (rows.length <= 1) {
           const row = rows[0];

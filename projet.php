@@ -1217,19 +1217,19 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
-<link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=1') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=2') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=hierarchy-1') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=hierarchy-2') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> OddWorks — Processus R1b</p></div>
 </footer>
 <script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
-<script src="<?= url('assets/js/st-hierarchy.js?v=1') ?>"></script>
+<script src="<?= url('assets/js/st-hierarchy.js?v=2') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>

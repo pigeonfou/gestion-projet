@@ -105,14 +105,31 @@
       kids.slice().reverse().forEach(child => stack.push([child, nested]));
     }
   }
+  function confirmDeletion(count) {
+    return new Promise(resolve => {
+      const dialog = make('dialog', '', 'st-delete-dialog');
+      dialog.setAttribute('aria-labelledby', 'st-delete-title');
+      const title = make('h3', 'Supprimer la S.T. parent ?'); title.id = 'st-delete-title';
+      const message = make('p', `Cette S.T. possède ${count} sous-tâche${count > 1 ? 's' : ''} enfant${count > 1 ? 's' : ''}. Ses enfants seront conservés et deviendront des S.T. racines.`);
+      const actions = make('div', '', 'st-delete-actions');
+      const cancel = make('button', 'Annuler', 'btn btn-secondary'); cancel.type = 'button';
+      const confirm = make('button', 'Supprimer le parent et conserver les enfants', 'btn btn-primary'); confirm.type = 'button';
+      const finish = value => {dialog.close(); dialog.remove(); resolve(value);};
+      cancel.addEventListener('click', () => finish(false));
+      confirm.addEventListener('click', () => finish(true));
+      dialog.addEventListener('cancel', event => {event.preventDefault(); finish(false);});
+      actions.append(cancel, confirm); dialog.append(title, message, actions); form.append(dialog);
+      dialog.showModal(); cancel.focus();
+    });
+  }
   window.stHierarchy = {
     refresh,
-    beforeDelete(row) {
+    async beforeDelete(row) {
       const target = uid(row);
       const children = active().filter(child => parent(child) === target);
       const historical = saved.filter(child => child.parent_uid === target && active().some(live => uid(live) === child.uid));
       const count = new Set([...children.map(uid), ...historical.map(child => child.uid)]).size;
-      if (count && !window.confirm(`Cette S.T. possède ${count} sous-tâche${count > 1 ? 's' : ''} enfant${count > 1 ? 's' : ''}. Supprimer le parent ? Ses enfants seront conservés et deviendront des S.T. racines.`)) return false;
+      if (count && !await confirmDeletion(count)) return false;
       if (count && ![...form.querySelectorAll('[name="st_deleted_parent_uid[]"]')].some(input => input.value === target)) {
         const input = make('input'); input.type = 'hidden'; input.name = 'st_deleted_parent_uid[]'; input.value = target; form.append(input);
       }
@@ -134,10 +151,17 @@
     refresh();
   });
   // Clearing a parent description also deletes it on save: use the same explicit warning.
-  form.addEventListener('submit', event => {
+  let submitting = false;
+  form.addEventListener('submit', async event => {
+    if (submitting) return;
+    event.preventDefault();
+    const submitter = event.submitter;
     for (const row of rows()) {
-      if (!field(row, 'st_description').value.trim() && !window.stHierarchy.beforeDelete(row)) {event.preventDefault(); return;}
+      if (!field(row, 'st_description').value.trim() && !await window.stHierarchy.beforeDelete(row)) return;
     }
+    submitting = true;
+    form.requestSubmit(submitter);
+    submitting = false;
   });
   form.addEventListener('input', event => {if (event.target.matches('[name="st_description[]"]')) refresh();});
   form.addEventListener('click', event => {
