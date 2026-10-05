@@ -14,28 +14,24 @@
 
   #formComposantsSt .cp-table, #formComposantsSt .cp-table tbody { display: block; }
   #formComposantsSt .cp-table thead { display: none; }
-  #formComposantsSt .cp-table .cp-row {
-    position: relative; display: grid; grid-template-columns: repeat(4,minmax(0,1fr));
-    gap: .5rem; margin-bottom: .65rem; padding: .65rem;
-    border: 1px solid var(--border-default); border-radius: .5rem; background: var(--surface-raised);
-  }
-  #formComposantsSt .cp-table .cp-row > td { display: block; width: auto!important; border: 0; padding: 0; min-width: 0; }
-  #formComposantsSt .cp-table .cp-row > td::before {
-    content: attr(data-label); display: block; margin-bottom: .25rem;
-    color: var(--text-secondary); font-size: .7rem; font-weight: 600;
-  }
-  #formComposantsSt .cp-table .cp-row > td:first-child { grid-column: 1 / -1; padding-right: 2rem; }
-  #formComposantsSt .cp-table .cp-row > td:first-child::before { display: none; }
-  #formComposantsSt .cp-table .cp-row > td:has([name="cp_designation[]"]:not([type="hidden"])) { grid-column: span 2; }
-  #formComposantsSt .cp-table .cp-row > td:last-child { position: absolute; right: .65rem; top: .4rem; }
-  #formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex: 1 1 calc(100% - 4rem); width: calc(100% - 4rem); }
-@container (max-width: 600px) {
-  #formComposantsSt .cp-table .cp-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+#formComposantsSt .cp-table .cp-row {
+  display:grid; grid-template-columns:2.4rem minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,.5fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.85fr) minmax(0,.6fr) 1.2rem;
+  gap:.25rem; align-items:start; padding:.35rem; margin-bottom:.4rem;
+  border:1px solid var(--border-default); border-radius:.4rem; background:var(--surface-raised);
 }
-@container (max-width: 340px) {
-  #formComposantsSt .cp-table .cp-row { grid-template-columns: minmax(0,1fr); }
-  #formComposantsSt .cp-table .cp-row > td:has([name="cp_designation[]"]:not([type="hidden"])) { grid-column: auto; }
-}
+#formComposantsSt .cp-table .cp-row:not(:has(.cp-unit)) { grid-template-columns:2.4rem minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 1.2rem; }
+#formComposantsSt .cp-table .cp-row > td { display:block; width:auto!important; min-width:0; padding:0; border:0; }
+#formComposantsSt .cp-table .cp-row > td::before { content:attr(data-label); display:block; height:1.1rem; font-size:.6rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#formComposantsSt .cp-table .cp-row > td:first-child { align-self:start; padding-top:1.1rem; font-size:.65rem; }
+#formComposantsSt .cp-table .cp-row > td:first-child::before { display:none; }
+#formComposantsSt .cp-table .cp-row > td:last-child { padding-top:1.1rem; }
+#formComposantsSt .cp-table .cp-row > td:last-child::before { display:none; }
+#formComposantsSt .cp-table .cp-row :is(input.form-control,select.form-control) { font-size:.68rem; height:1.8rem; padding:.15rem .2rem; }
+#formComposantsSt .cp-table .cp-cost-cell { flex-wrap:nowrap; gap:.1rem; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 0; width:0; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { flex:0 0 2rem; width:2rem; font-size:.6rem; padding:.1rem; }
+#formComposantsSt .cp-table .cp-id { white-space:nowrap; }
+#formComposantsSt .cp-table .cp-row label { font-size:.6rem; }
 /* The word "inconnue" must fit in the estimate delay field. */
 .st-table input[name="st_delai_jours[]"] { width: calc(8ch + 1.1rem); min-width: calc(8ch + 1.1rem); max-width: calc(8ch + 1.1rem); }
 
