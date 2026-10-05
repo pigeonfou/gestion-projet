@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/schema.php';
+require_once __DIR__ . '/task_assignment.php';
 
 function ensureCahierSpecsColumn(): void {
     runSchemaMigrations();
@@ -627,6 +628,7 @@ function syncTasksFromComposants(int $projetId, array $composants, array $techni
         foreach ($existing as $idLeft) {
             $del->execute([$idLeft]);
         }
+        taskSyncMainAssignments($db,$projetId,$composants);
         $db->commit();
     } catch (Throwable $e) {
         $db->rollBack();

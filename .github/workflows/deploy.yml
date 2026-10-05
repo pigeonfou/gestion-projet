@@ -92,6 +92,11 @@ jobs:
         shell: bash
         run: |
           sudo -n /usr/local/sbin/gestion-projet-deploy deploy "$DEPLOY_BRANCH"
+      - name: Rétablir les affectations des tâches principales non affectées
+        shell: bash
+        run: |
+          cd /var/www/html/gestion-projet
+          php scripts/reconcile_task_assignments.php
       - name: État final
         if: always()
         shell: bash

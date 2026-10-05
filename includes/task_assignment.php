@@ -19,11 +19,29 @@ function taskSyncAssignmentSource(PDO $db, array $task, string $assignee): void 
             unset($item);
         }
         unset($items);
-        if ($changed) $db->prepare('UPDATE cahiers SET specs_json=? WHERE id=?')->execute([json_encode($specs,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$cahier['id']]);
+        if ($changed) {
+            $db->prepare('UPDATE cahiers SET specs_json=? WHERE id=?')->execute([json_encode($specs,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),$cahier['id']]);
+            taskSyncMainAssignments($db,$pid,$specs['composants_st']);
+        }
     }
 }
 
 function taskVisibleTo(array $task, array $actor, int $ownerId): bool {
     return ($actor['role']??'')==='admin' || ($ownerId>0 && $ownerId===(int)($actor['id']??0))
         || (($actor['identifiant']??'')!=='' && ($task['assigne_a']??null)===$actor['identifiant']);
+}
+
+/** The first assigned detail line is the main S.T. task's responsible person. */
+function taskSyncMainAssignments(PDO $db, int $pid, array $components, bool $onlyUnassigned=false): void {
+    $q=$db->prepare('UPDATE taches SET assigne_a=? WHERE projet_id=? AND source_key=?'.($onlyUnassigned ? " AND COALESCE(assigne_a,'')=''" : ''));
+    foreach ($components as $stId=>$items) {
+        if (!is_array($items)) continue;
+        $assignee='';
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $candidate=trim((string)($item['affectation']??''));
+            if ($candidate!=='') { $assignee=$candidate; break; }
+        }
+        $q->execute([$assignee!==''?$assignee:null,$pid,'st:'.$pid.':'.$stId]);
+    }
 }
