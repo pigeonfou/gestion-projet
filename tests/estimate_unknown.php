@@ -32,7 +32,7 @@ $d=ddConsolidate($specs);
 unknownCheck($d['totals']['HT']===30.0 && $d['totals']['TTC']===0.0 && $d['costIncompleteCount']===1,'Known subtotal without duplicate reference cost');
 unknownCheck($d['unitHT']===null && $d['lotHT']===null && $d['margin']===null,'No invented complete cost or favorable budget margin');
 unknownCheck($d['maxDelay']===5.0 && $d['delayIncompleteCount']===2,'Maximum only among known durations, reference excluded');
-unknownCheck(ddDelaySummary($d)==='Inconnu' && strpos(ddCostSummary($d),'Sous-total connu')!==false,'Explicit report labels');
+unknownCheck(ddDelaySummary($d)==='Inconnu' && ddCostSummary($d)===ddMoney(30) && strpos(ddCostPrecision($d),'1 coût(s) inconnu(s)')!==false,'Explicit report labels');
 unknownCheck(!$d['capacityComplete'] && !$d['references'][0]['confirmed'],'Unknown fields and source reference cannot confirm capacity');
 $frozen=ddSnapshot($specs,['nom'=>'Recette']);$history=json_decode($frozen,true);
 unknownCheck($history['analysis']['margin']===null && $history['analysis']['costIncompleteCount']===1 && $history['sources']['specs_techniques'][0]['cout_unitaire_inconnu'],'Decision report freezes unknown state');

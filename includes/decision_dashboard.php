@@ -18,8 +18,16 @@ function ddCostSubtotal(array $group): string {
     return !empty($group['unknown']) ? 'Sous-total connu : '.$text.' · '.$group['unknown'].' coût(s) inconnu(s)' : $text;
 }
 function ddCostSummary(array $d): string {
-    if (!empty($d['costIncompleteCount'])) return 'Inconnu — '.ddCostSubtotal($d['totals'] + ['unknown'=>$d['costIncompleteCount']]);
+    if (!empty($d['costIncompleteCount'])) return ddCostSubtotal($d['totals']);
     return $d['lotHT'] === null ? ddCostSubtotal($d['totals']) : ddMoney($d['lotHT']);
+}
+function ddCostPrecision(array $d): string {
+    if (empty($d['costIncompleteCount'])) return '';
+    $ids = [];
+    foreach ($d['lines'] ?? [] as $line) {
+        if (!empty($line['cost_unknown'])) $ids[] = $line['id'];
+    }
+    return 'Sous-total des éléments renseignés · '.$d['costIncompleteCount'].' coût(s) inconnu(s)'.($ids ? ' : '.implode(', ', $ids) : '').' · estimation incomplète';
 }
 function ddDelaySummary(array $d): string {
     return !empty($d['delayIncompleteCount']) ? 'Inconnu' : ddDays($d['maxDelay']);
