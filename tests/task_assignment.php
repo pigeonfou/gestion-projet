@@ -3,7 +3,7 @@ $assignmentDb=tempnam(sys_get_temp_dir(),'oddworks-assignment-');
 putenv('PROJECTFLOW_DB_PATH='.$assignmentDb);
 register_shutdown_function(static fn()=>@unlink($assignmentDb));
 require __DIR__.'/../includes/cahier_specs.php';
-require __DIR__.'/../includes/task_assignment.php';
+require_once __DIR__.'/../includes/task_assignment.php';
 function checkAssignment(bool $ok,string $message):void {if(!$ok)throw new RuntimeException($message);}
 $db=getDB();
 $db->exec("CREATE TABLE utilisateurs(id INTEGER PRIMARY KEY,identifiant TEXT);
