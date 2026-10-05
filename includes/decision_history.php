@@ -14,7 +14,7 @@ function decisionHistoryFilters(array $input): array
     return [
         'h_q' => substr($text('h_q'), 0, 500),
         'h_step' => $step >= 1 && $step <= 9 ? $step : 0,
-        'h_decision' => in_array($decision, ['DONE','REFUSE','GO','NO_GO','CONFORME','NON_CONFORME'], true) ? $decision : '',
+        'h_decision' => in_array($decision, ['DEBUG_RESET','DONE','REFUSE','GO','NO_GO','CONFORME','NON_CONFORME'], true) ? $decision : '',
         'h_actor' => max(0, (int)$text('h_actor')),
         'h_from' => $date($text('h_from')),
         'h_to' => $date($text('h_to')),

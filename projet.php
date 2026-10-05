@@ -14,6 +14,7 @@ require_once __DIR__ . '/includes/decision_history.php';
 require_once __DIR__ . '/includes/project_notes.php';
 require_once __DIR__ . '/includes/decision_dashboard.php';
 require_once __DIR__ . '/includes/report_email.php';
+require_once __DIR__ . '/includes/debug.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -65,6 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action !== 'update_task_status') {
         requerirGestionProjet($id);
+    }
+    if ($action === 'debug_step') {
+        try {
+            debugChangeStep($db,$user,$id,$currentStep,is_string($_POST['debug_state']??null)?$_POST['debug_state']:'',is_string($_POST['debug_reason']??null)?$_POST['debug_reason']:'');
+            setFlash('success','[DEBUG] État de l’étape modifié et enregistré dans l’historique.');
+        } catch (InvalidArgumentException|RuntimeException $error) { setFlash('error',$error->getMessage());
+        } catch (Throwable $error) { error_log('ProjectFlow debug : '.get_class($error)); setFlash('error','Modification debug non enregistrée.'); }
+        redirect('projet.php?id='.$id.'&view=processus&step='.$currentStep);
     }
     if ($action === 'manage_note' || $action === 'save_notes') {
         try {
@@ -1083,6 +1092,24 @@ function stepClass(int $n, int $displayed, array $validated): string
       <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
         <h3>Actions et revue</h3>
         <div class="r1b-tools-resize-handle" role="separator" tabindex="0" aria-label="Redimensionner Actions et revue" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="480" aria-valuenow="300" title="Maintenir et tirer pour ajuster la largeur ; flèches gauche/droite au clavier"></div>
+        <?php if (estAdmin() && getSetting('debug_enabled','0')==='1'): ?>
+        <details class="r1b-info-box" style="margin-bottom:12px">
+          <summary><strong>DEBUG — État de l’étape <?=$currentStep?></strong></summary>
+          <form method="post" action="<?=url('projet.php?id='.$id.'&view=processus&step='.$currentStep)?>">
+            <?=csrfField()?><input type="hidden" name="action" value="debug_step">
+            <label for="debug-state">Nouvel état</label>
+            <select id="debug-state" name="debug_state" class="form-control">
+              <option value="en_cours">En cours / À reprendre</option>
+              <option value="validee">Validée</option>
+              <?php if($currentStep===3):?><option value="abandon">Abandonnée et archivée (NO GO)</option><?php endif;?>
+            </select>
+            <label for="debug-reason">Motif de la modification</label>
+            <textarea id="debug-reason" name="debug_reason" class="form-control" rows="2" required maxlength="5000"></textarea>
+            <p class="text-sm">Les étapes précédentes seront marquées validées. Les validations suivantes seront annulées. Les données saisies sont conservées.</p>
+            <button class="btn btn-secondary" type="submit">Appliquer l’état debug</button>
+          </form>
+        </details>
+        <?php endif; ?>
         <?= $stepEditorActions ?>
         <?php require __DIR__ . '/includes/views/project_notes.php'; ?>
 

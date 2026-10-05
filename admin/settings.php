@@ -13,6 +13,11 @@ $testResult = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrfRequire();
     $action = $_POST['action'] ?? 'save';
+    if ($action === 'save_debug') {
+        setSetting('debug_enabled', ($_POST['debug_enabled'] ?? '') === '1' ? '1' : '0');
+        setFlash('success', 'Mode debug enregistré.');
+        redirect('admin/settings.php');
+    }
     if ($action === 'save_report_recipients') {
         try {
             $raw=$_POST['report_recipients']??'';
@@ -88,6 +93,13 @@ require __DIR__ . '/../includes/header.php';
  <textarea id="report-recipients" name="report_recipients" class="form-control" rows="4" placeholder="Une adresse par ligne"><?=e(getSetting('report_recipients',''))?></textarea>
  <p class="text-muted">Une adresse par ligne, ou séparées par des virgules ou points-virgules. Cette liste est proposée à l’étape 3 ; les destinataires du brouillon peuvent y être modifiés.</p>
  <button class="btn btn-primary">Enregistrer les destinataires</button>
+</form>
+<form method="post" class="card card-body" style="margin-bottom:20px">
+ <?=csrfField()?><input type="hidden" name="action" value="save_debug">
+ <h2>Debug</h2>
+ <label><input type="checkbox" name="debug_enabled" value="1" <?=getSetting('debug_enabled','0')==='1'?'checked':''?>> Activer le mode debug</label>
+ <p class="text-muted">Réservé aux administrateurs. Active la modification de l’état des étapes dans « Actions et revue ». Chaque modification est journalisée avec un motif. Désactiver ce mode masque les outils et bloque leurs actions.</p>
+ <button class="btn btn-primary">Enregistrer le mode debug</button>
 </form>
 <form method="POST">
     <?=csrfField()?>
