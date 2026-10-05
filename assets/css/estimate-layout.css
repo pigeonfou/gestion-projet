@@ -58,7 +58,7 @@
 #formComposantsSt .cp-table .cp-cost-cell { display:flex; flex-wrap:nowrap; align-items:center; gap:.15rem; }
 #formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 0; width:0; min-width:0; }
 #formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { position:static; flex:0 0 2.3rem; width:2.3rem; height:1.8rem; font-size:.6rem; padding:.1rem; }
-#formComposantsSt .cp-table .cp-cost-cell .cp-taxe { background-image:none; appearance:auto; }
+#formComposantsSt .cp-table .cp-cost-cell .cp-taxe { background-image:none; appearance:none; }
 #formComposantsSt .cp-table input[type="number"] { appearance:textfield; }
 #formComposantsSt .cp-table input::-webkit-inner-spin-button, #formComposantsSt .cp-table input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 #formComposantsSt .cp-table .btn-cp-del { width:100%; min-width:0; padding:0; }
