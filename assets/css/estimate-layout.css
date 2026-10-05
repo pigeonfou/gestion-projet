@@ -40,17 +40,17 @@
 .st-table input[name="st_delai_jours[]"] { width: calc(8ch + 1.1rem); min-width: calc(8ch + 1.1rem); max-width: calc(8ch + 1.1rem); }
 
 /* One adjustable review panel shared by every process step. */
-.r1b-tools-width-control { margin-bottom:.75rem; }
-.r1b-tools-width-control label { display:flex; justify-content:space-between; gap:.5rem; }
-.r1b-tools-width-control input { width:100%; accent-color:var(--accent); }
-.r1b-tools-width-control output { white-space:nowrap; color:var(--text-secondary); }
-.r1b-tools-width-control button { font-size:.75rem; }
+.r1b-tools-resize-handle { position:absolute; left:-7px; top:0; bottom:0; width:14px; cursor:ew-resize; touch-action:none; z-index:2; border-radius:6px; }
+.r1b-tools-resize-handle::after { content:""; position:absolute; left:5px; top:35%; height:30%; width:4px; border-radius:4px; background:var(--accent); opacity:.65; }
+.r1b-tools-resize-handle:hover::after, .r1b-tools-resize-handle:focus-visible::after { opacity:1; }
+.r1b-tools-resize-handle:focus-visible { outline:2px solid var(--accent); }
+.r1b-tools-resizing { user-select:none; }
 @media(min-width:951px) {
   .pf-app .r1b-step-workspace, .pf-app .r1b-step-workspace:has(.dd-dashboard) {
     grid-template-columns:minmax(0,1fr) min(var(--review-panel-width,300px),50%);
   }
 }
-@media(max-width:950px) { .r1b-tools-width-control { display:none; } }
+@media(max-width:950px) { .r1b-tools-resize-handle { display:none; } }
 .r1b-menu-row { display:flex; align-items:center; min-width:0; }
 .pf-app .r1b-menu-row > a { flex:1; min-width:0; margin-right:0; }
 .r1b-menu-handle { flex:none; padding:.35rem; margin-right:.3rem; background:transparent; border:0; color:var(--text-secondary); cursor:grab; touch-action:none; border-radius:.3rem; }

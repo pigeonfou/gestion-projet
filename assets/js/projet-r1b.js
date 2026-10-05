@@ -338,27 +338,43 @@ function estimationCells(prefix) {
   });
 })();
 
-/* Persist the common review-panel width across projects and process steps. */
+/* Persist width adjusted directly from the review panel's left edge. */
 (() => {
-  const input = document.getElementById('r1b-tools-width');
-  const output = document.getElementById('r1b-tools-width-value');
+  const handle = document.querySelector('.r1b-tools-resize-handle');
   const workspace = document.querySelector('.r1b-step-workspace');
-  const reset = document.getElementById('r1b-tools-width-reset');
-  if (!input || !output || !workspace || !reset) return;
+  const panel = document.querySelector('.r1b-step-tools');
+  if (!handle || !workspace || !panel) return;
   const key = 'oddworks-review-panel-width';
+  let width = 300;
   function apply(value, save) {
     const parsed = Number(value);
-    const width = Number.isFinite(parsed) ? Math.min(480, Math.max(240, parsed)) : 300;
-    input.value = String(width);
-    output.value = `${width} px`;
+    width = Number.isFinite(parsed) ? Math.min(480, Math.max(240, parsed)) : 300;
     workspace.style.setProperty('--review-panel-width', `${width}px`);
+    handle.setAttribute('aria-valuenow', String(Math.round(width)));
     if (save) { try { localStorage.setItem(key, String(width)); } catch (_) {} }
   }
   let saved = null;
   try { saved = localStorage.getItem(key); } catch (_) {}
   apply(saved === null ? 300 : saved, false);
-  input.addEventListener('input', () => apply(input.value, true));
-  reset.addEventListener('click', () => apply(300, true));
+  handle.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault(); handle.setPointerCapture(event.pointerId);
+    panel.classList.add('r1b-tools-resizing');
+  });
+  handle.addEventListener('pointermove', event => {
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    apply(panel.getBoundingClientRect().right - event.clientX, false);
+  });
+  function finish() { panel.classList.remove('r1b-tools-resizing'); apply(width, true); }
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
+  handle.addEventListener('lostpointercapture', finish);
+  handle.addEventListener('dblclick', () => apply(300, true));
+  handle.addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    apply(event.key === 'Home' ? 240 : event.key === 'End' ? 480 : width + (event.key === 'ArrowLeft' ? 10 : -10), true);
+  });
 })();
 
 /* Reorder project navigation with a handle, pointer or keyboard. */
