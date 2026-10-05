@@ -30,8 +30,9 @@ $user = utilisateurCourant();
 $sql = 'SELECT t.*, p.nom AS projet_nom FROM taches t JOIN projets p ON p.id = t.projet_id';
 $params = [];
 if (!estAdmin()) {
-    $sql .= ' WHERE t.assigne_a = ?';
+    $sql .= ' WHERE (t.assigne_a = ? OR p.createur_id = ?)';
     $params[] = $user['identifiant'] ?? '';
+    $params[] = $user['id'];
 }
 $sql .= ' ORDER BY t.id DESC';
 $stmt = $db->prepare($sql);
@@ -46,7 +47,7 @@ require __DIR__ . '/includes/header.php';
       <h1><i class="fas fa-tasks"></i> Gestion des tâches</h1>
       <p class="text-muted text-sm mt-1">
         <?php if (estAdmin()): ?>Toutes les tâches de tous les projets
-        <?php else: ?>Vos tâches affectées — tous projets confondus<?php endif; ?>
+        <?php else: ?>Vos tâches affectées et les tâches des projets que vous pilotez<?php endif; ?>
       </p>
     </div>
   </div>

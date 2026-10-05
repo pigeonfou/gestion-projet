@@ -1,0 +1,36 @@
+<?php
+$assignmentDb=tempnam(sys_get_temp_dir(),'oddworks-assignment-');
+putenv('PROJECTFLOW_DB_PATH='.$assignmentDb);
+register_shutdown_function(static fn()=>@unlink($assignmentDb));
+require __DIR__.'/../includes/cahier_specs.php';
+require __DIR__.'/../includes/task_assignment.php';
+function checkAssignment(bool $ok,string $message):void {if(!$ok)throw new RuntimeException($message);}
+$db=getDB();
+$db->exec("CREATE TABLE utilisateurs(id INTEGER PRIMARY KEY,identifiant TEXT);
+CREATE TABLE projets(id INTEGER PRIMARY KEY,nom TEXT,createur_id INTEGER);
+CREATE TABLE cahiers(id INTEGER PRIMARY KEY,projet_id INTEGER,specs_json TEXT);
+CREATE TABLE taches(id INTEGER PRIMARY KEY,projet_id INTEGER,titre TEXT,description TEXT,priorite TEXT,statut TEXT);
+INSERT INTO utilisateurs VALUES(1,'owner'),(2,'worker');INSERT INTO projets VALUES(1,'Test',1),(2,'Other',2);
+INSERT INTO cahiers VALUES(1,1,'{}'),(2,2,'{}');");
+$tech=[['id'=>'S.T.1.1','type'=>'Logiciel','description'=>'Firmware']];
+$items=['S.T.1.1'=>[['id'=>'L.1','affectation'=>'owner']]];
+saveComposantsSt(1,$items);saveComposantsSt(2,$items);
+syncTasksFromComposants(1,$items,$tech);
+$task=$db->query('SELECT * FROM taches')->fetch(PDO::FETCH_ASSOC);
+$db->beginTransaction();
+$db->prepare('UPDATE taches SET assigne_a=? WHERE id=?')->execute(['worker',$task['id']]);
+taskSyncAssignmentSource($db,$task,'worker');$db->commit();
+$saved=loadSpecs(1)['composants_st'];
+checkAssignment($saved['S.T.1.1'][0]['affectation']==='worker','Manual assignment updates step 4 source');
+checkAssignment(loadSpecs(2)['composants_st']['S.T.1.1'][0]['affectation']==='owner','Other project untouched');
+syncTasksFromComposants(1,$saved,$tech);
+checkAssignment($db->query('SELECT assigne_a FROM taches')->fetchColumn()==='worker','Assignment survives step 4 resave');
+$db->beginTransaction();taskSyncAssignmentSource($db,$task,'');$db->prepare('UPDATE taches SET assigne_a=NULL WHERE id=?')->execute([$task['id']]);$db->commit();
+syncTasksFromComposants(1,loadSpecs(1)['composants_st'],$tech);
+checkAssignment($db->query('SELECT assigne_a FROM taches')->fetchColumn()===null,'Unassignment survives resave');
+$owner=['id'=>1,'identifiant'=>'owner','role'=>'utilisateur'];$worker=['id'=>2,'identifiant'=>'worker','role'=>'utilisateur'];
+checkAssignment(taskVisibleTo(['assigne_a'=>null],$owner,1),'Owner sees unassigned task');
+checkAssignment(!taskVisibleTo(['assigne_a'=>null],$worker,1),'Other user cannot see unassigned task');
+checkAssignment(taskVisibleTo(['assigne_a'=>'worker'],$worker,1),'Assignee sees own task');
+checkAssignment(taskVisibleTo(['assigne_a'=>null],['id'=>3,'role'=>'admin'],1),'Admin sees all tasks');
+echo "Task assignment: source synchronization, resave, unassignment, isolation and owner visibility OK\n";

@@ -84,6 +84,7 @@ jobs:
           php "$test_dir/tests/report_email.php"
           php "$test_dir/tests/project_validation.php"
           php "$test_dir/tests/debug.php"
+          php "$test_dir/tests/task_assignment.php"
           php "$test_dir/tests/task_filters.php"
           php "$test_dir/tests/ux_relations.php"
           echo "PHP et tests : OK"

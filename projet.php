@@ -4,6 +4,7 @@ $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/estimation_fields.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/task_assignment.php';
 require_once __DIR__ . '/includes/task_filters.php';
 require_once __DIR__ . '/includes/ux_objects.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
@@ -362,12 +363,7 @@ if ($needTasks) {
     $tachesAll->execute([$id]);
     $tachesAll = $tachesAll->fetchAll();
     $taches = $tachesAll;
-    if (!estAdmin()) {
-        $ident = $user['identifiant'] ?? '';
-        $taches = array_values(array_filter($taches, static function ($t) use ($ident) {
-            return isset($t['assigne_a']) && (string)$t['assigne_a'] === (string)$ident;
-        }));
-    }
+    $taches = array_values(array_filter($tachesAll, static fn($t) => taskVisibleTo($t,$user,(int)$projet['createur_id'])));
     foreach ($tachesAll as $t) {
         $st = $t['statut'] ?? 'a_faire';
         if (in_array($st, ['terminee', 'done', 'terminé'], true)) {
@@ -1210,11 +1206,11 @@ function stepClass(int $n, int $displayed, array $validated): string
             <?php if (estAdmin()): ?>
               Toutes les tâches du projet <?= e($projet['nom']) ?>
             <?php else: ?>
-              Vos tâches affectées — projet <?= e($projet['nom']) ?>
+              Tâches accessibles — projet <?= e($projet['nom']) ?>
             <?php endif; ?>
           </p>
         </div>
-        <?php if (estAdmin()): ?>
+        <?php if (projectCanManage($db,$id,$user)): ?>
           <a href="<?= url('tache.php?action=creer&projet_id=' . $id) ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Nouvelle tâche</a>
         <?php endif; ?>
       </div>

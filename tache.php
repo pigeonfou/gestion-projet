@@ -3,6 +3,7 @@ $pageTitle = 'Tâche';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/task_assignment.php';
 require_once __DIR__ . '/includes/ux_objects.php';
 requerirConnexion();
 $db = getDB();
@@ -54,13 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $db->beginTransaction();
         taskDependencyCheck($db,$id,$projetId,$dependency,$status);
-        $values = [$titre,$description,$priorite,$status==='validation'?'en_cours':$status,$status,$assign?:null,$deadline?:null,$resultats,$dateMetier?:null,$dependency?:null,$start?:null];
+        $values = [$titre,$description,$priorite,$status==='validation'?'en_cours':$status,$status,$assign!==''?$assign:null,$deadline?:null,$resultats,$dateMetier?:null,$dependency?:null,$start?:null];
         if ($tache) {
             $db->prepare('UPDATE taches SET titre=?,description=?,priorite=?,statut=?,kanban_status=?,assigne_a=?,date_echeance=?,resultats=?,date_metier=?,dependance_id=?,date_debut=? WHERE id=?')->execute([...$values,$id]);
         } else {
             $db->prepare('INSERT INTO taches(titre,description,priorite,statut,kanban_status,assigne_a,date_echeance,resultats,date_metier,dependance_id,date_debut,projet_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')->execute([...$values,$projetId]);
             $id = (int)$db->lastInsertId();
         }
+        if ($manager && $tache) taskSyncAssignmentSource($db,$tache,$assign);
         $details = json_encode(['affectation'=>$assign,'statut'=>$status,'resultats'=>$resultats,'date_metier'=>$dateMetier,'dependance'=>$dependency,'date_debut'=>$start,'date_echeance'=>$deadline],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
         $db->prepare('INSERT INTO tache_historique(tache_id,utilisateur_id,action,details) VALUES(?,?,?,?)')->execute([$id,$user['id'],$tache?'modification':'création',$details]);
         $db->commit();
