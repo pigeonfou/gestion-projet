@@ -376,6 +376,7 @@ function estimationCells(prefix) {
     handle.type = 'button'; handle.className = 'r1b-menu-handle'; handle.textContent = '⋮⋮';
     handle.setAttribute('aria-label', `Déplacer ${link.textContent.trim()}`);
     handle.title = 'Glisser pour déplacer ; flèches haut/bas au clavier';
+    handle.draggable = true;
     row.append(link, handle); nav.append(row);
     return row;
   });
@@ -390,8 +391,26 @@ function estimationCells(prefix) {
       rows.filter(row => !order.includes(row.dataset.menuId)).forEach(row => nav.append(row));
     }
   } catch (_) {}
+  let dragged = null;
+  nav.addEventListener('dragover', event => { if (dragged) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } });
+  nav.addEventListener('drop', event => {
+    if (!dragged) return;
+    event.preventDefault();
+    const target = event.target.closest('.r1b-menu-row');
+    if (target && target !== dragged) {
+      const rect = target.getBoundingClientRect();
+      nav.insertBefore(dragged, event.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
+      save();
+    }
+  });
   for (const row of rows) {
     const handle = row.querySelector('button');
+    handle.addEventListener('dragstart', event => {
+      dragged = row; event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', row.dataset.menuId);
+      row.classList.add('r1b-menu-moving');
+    });
+    handle.addEventListener('dragend', () => { dragged = null; row.classList.remove('r1b-menu-moving'); });
     handle.addEventListener('keydown', event => {
       if (event.key === 'ArrowUp' && row.previousElementSibling) { event.preventDefault(); nav.insertBefore(row, row.previousElementSibling); }
       else if (event.key === 'ArrowDown' && row.nextElementSibling) { event.preventDefault(); nav.insertBefore(row.nextElementSibling, row); }
@@ -399,7 +418,7 @@ function estimationCells(prefix) {
       handle.focus(); save();
     });
     handle.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
+      if (event.button !== 0 || event.pointerType === 'mouse') return;
       event.preventDefault(); handle.setPointerCapture(event.pointerId); row.classList.add('r1b-menu-moving');
     });
     handle.addEventListener('pointermove', event => {
