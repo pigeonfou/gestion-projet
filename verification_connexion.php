@@ -24,7 +24,9 @@ try {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['identifiant'] = $user['identifiant'];
         $_SESSION['role'] = $user['role'];
-        redirect('projets.php');
+        $validationId = (int)($_SESSION['validation_project_return'] ?? 0);
+        unset($_SESSION['validation_project_return']);
+        redirect($validationId > 0 ? 'validation_projet.php?id='.$validationId : 'projets.php');
     }
     redirect('login.php?erreur=identifiants');
 } catch (PDOException $e) {

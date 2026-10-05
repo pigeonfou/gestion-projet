@@ -11,7 +11,7 @@ function reportRecipients(string $raw): array {
     return array_values($out);
 }
 function reportEscape($text): string { return htmlspecialchars((string)$text,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
-function reportEmailHtml(array $project,array $specs,array $notes=[]): string {
+function reportEmailHtml(array $project,array $specs,array $notes=[],string $validationUrl=""): string {
     $d=ddConsolidate($specs);
     $esc='reportEscape';
     $cell='padding:9px;border:1px solid #cbd5e1;text-align:left;vertical-align:top;';
@@ -23,6 +23,9 @@ function reportEmailHtml(array $project,array $specs,array $notes=[]): string {
         return $html.'</table>';
     };
     $html='<html><body style="margin:0;background:#f1f5f9;color:#172b40;font-family:Arial,sans-serif"><table width="100%" cellpadding="20"><tr><td><table width="100%" cellpadding="20" cellspacing="0" style="background:#ffffff;border:1px solid #cbd5e1"><tr><td>';
+    if($validationUrl!=='' && preg_match('~^https://[^\s]+$~D',$validationUrl)) {
+        $html.='<p><a href="'.$esc($validationUrl).'" style="display:inline-block;padding:14px 20px;background:#078c9c;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px">Se rendre sur la page de validation du projet : '.$esc($project['nom']??'Projet').'</a></p>';
+    }
     $html.='<h1 style="color:#078c9c;font-size:24px">OddWorks · '.$esc($project['nom']??'Projet').'</h1><h2>Étape 3 – GO / NO GO</h2><p>Rapport des données enregistrées des étapes 1 et 2 · '.$esc(date('d/m/Y H:i')).'</p>';
     $html.=$table(['Capacité','Coût estimé','Délai estimé','Risque / Incertitude'],[[
         $d['capacityConfirmed'].' / '.count($d['capacity']).' S.T. confirmées',

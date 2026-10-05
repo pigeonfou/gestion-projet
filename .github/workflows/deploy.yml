@@ -82,6 +82,7 @@ jobs:
           php "$test_dir/tests/cdc_test.php"
           php "$test_dir/tests/decision_dashboard.php"
           php "$test_dir/tests/report_email.php"
+          php "$test_dir/tests/project_validation.php"
           php "$test_dir/tests/task_filters.php"
           php "$test_dir/tests/ux_relations.php"
           echo "PHP et tests : OK"
@@ -89,12 +90,6 @@ jobs:
         shell: bash
         run: |
           sudo -n /usr/local/sbin/gestion-projet-deploy deploy "$DEPLOY_BRANCH"
-      - name: Nettoyer uniquement les destinataires fictifs de recette
-        if: github.ref_name == 'notification'
-        shell: bash
-        run: |
-          cd /var/www/html/gestion-projet
-          php -r 'require "includes/settings_helper.php"; $db=getDB(); $s=$db->prepare("DELETE FROM parametres WHERE cle=? AND valeur=?"); $s->execute(["report_recipients", "recette1@example.invalid\nrecette2@example.invalid"]); echo "Nettoyage exact des données de recette : OK\n";'
       - name: État final
         if: always()
         shell: bash

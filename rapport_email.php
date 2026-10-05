@@ -14,7 +14,7 @@ try {
     $raw=$_POST['recipients']??[];
     if(!is_array($raw)||array_filter($raw,static fn($v)=>!is_string($v)))throw new InvalidArgumentException('Destinataires invalides.');
     $recipients=reportRecipients(implode(',',$raw));
-    $html=reportEmailHtml($project,loadSpecs(getOrCreateCahierId($id)),projectNotes(getDB(),$id));
+    $html=reportEmailHtml($project,loadSpecs(getOrCreateCahierId($id)),projectNotes(getDB(),$id),'https://projet.pigeonfou.com'.url('validation_projet.php?id='.$id));
     $draft=reportEmailDraft('OddWorks — '.$project['nom'].' — Étape 3 GO / NO GO',$recipients,$html);
 } catch(InvalidArgumentException $error) {
     setFlash('error',$error->getMessage());redirect('projet.php?id='.$id.'&view=processus&step=3');
