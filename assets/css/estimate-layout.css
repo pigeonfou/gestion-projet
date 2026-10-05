@@ -38,3 +38,16 @@
 }
 /* The word "inconnue" must fit in the estimate delay field. */
 .st-table input[name="st_delai_jours[]"] { width: calc(8ch + 1.1rem); min-width: calc(8ch + 1.1rem); max-width: calc(8ch + 1.1rem); }
+
+/* One adjustable review panel shared by every process step. */
+.r1b-tools-width-control { margin-bottom:.75rem; }
+.r1b-tools-width-control label { display:flex; justify-content:space-between; gap:.5rem; }
+.r1b-tools-width-control input { width:100%; accent-color:var(--accent); }
+.r1b-tools-width-control output { white-space:nowrap; color:var(--text-secondary); }
+.r1b-tools-width-control button { font-size:.75rem; }
+@media(min-width:951px) {
+  .pf-app .r1b-step-workspace, .pf-app .r1b-step-workspace:has(.dd-dashboard) {
+    grid-template-columns:minmax(0,1fr) min(var(--review-panel-width,300px),50%);
+  }
+}
+@media(max-width:950px) { .r1b-tools-width-control { display:none; } }

@@ -1065,6 +1065,11 @@ function stepClass(int $n, int $displayed, array $validated): string
       </div>
       <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
         <h3>Actions et revue</h3>
+        <div class="r1b-tools-width-control">
+          <label for="r1b-tools-width">Largeur du panneau <output id="r1b-tools-width-value" for="r1b-tools-width">300 px</output></label>
+          <input id="r1b-tools-width" type="range" min="240" max="480" step="10" value="300" aria-label="Largeur du panneau Actions et revue">
+          <button type="button" class="btn btn-secondary" id="r1b-tools-width-reset">Réinitialiser la largeur</button>
+        </div>
         <?= $stepEditorActions ?>
         <?php require __DIR__ . '/includes/views/project_notes.php'; ?>
 
@@ -1218,13 +1223,13 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
-<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=2') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=3') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=2') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=unknown-1') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-width-1') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">

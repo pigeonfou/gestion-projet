@@ -337,3 +337,26 @@ function estimationCells(prefix) {
     event.target.dispatchEvent(new Event('input', {bubbles: true}));
   });
 })();
+
+/* Persist the common review-panel width across projects and process steps. */
+(() => {
+  const input = document.getElementById('r1b-tools-width');
+  const output = document.getElementById('r1b-tools-width-value');
+  const workspace = document.querySelector('.r1b-step-workspace');
+  const reset = document.getElementById('r1b-tools-width-reset');
+  if (!input || !output || !workspace || !reset) return;
+  const key = 'oddworks-review-panel-width';
+  function apply(value, save) {
+    const parsed = Number(value);
+    const width = Number.isFinite(parsed) ? Math.min(480, Math.max(240, parsed)) : 300;
+    input.value = String(width);
+    output.value = `${width} px`;
+    workspace.style.setProperty('--review-panel-width', `${width}px`);
+    if (save) { try { localStorage.setItem(key, String(width)); } catch (_) {} }
+  }
+  let saved = null;
+  try { saved = localStorage.getItem(key); } catch (_) {}
+  apply(saved === null ? 300 : saved, false);
+  input.addEventListener('input', () => apply(input.value, true));
+  reset.addEventListener('click', () => apply(300, true));
+})();
