@@ -2,7 +2,7 @@ name: Déployer gestion-projet
 
 on:
   push:
-    branches: [main, NewUxUi]
+    branches: [main, NewUxUi, notification]
   workflow_dispatch:
     inputs:
       branch:
@@ -81,6 +81,7 @@ jobs:
           php "$test_dir/tests/project_notes.php"
           php "$test_dir/tests/cdc_test.php"
           php "$test_dir/tests/decision_dashboard.php"
+          php "$test_dir/tests/report_email.php"
           php "$test_dir/tests/task_filters.php"
           php "$test_dir/tests/ux_relations.php"
           echo "PHP et tests : OK"

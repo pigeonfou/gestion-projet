@@ -13,6 +13,7 @@ require_once __DIR__ . '/includes/r1b_decisions.php';
 require_once __DIR__ . '/includes/decision_history.php';
 require_once __DIR__ . '/includes/project_notes.php';
 require_once __DIR__ . '/includes/decision_dashboard.php';
+require_once __DIR__ . '/includes/report_email.php';
 requerirConnexion();
 seedSettingsIfEmpty();
 runSchemaMigrations();
@@ -651,7 +652,23 @@ function stepClass(int $n, int $displayed, array $validated): string
       <?php $stepEditorActions = ''; ?>
       <div class="r1b-step-workspace">
       <div class="r1b-card r1b-step-content">
+        <div class="r1b-step-title-row">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
+        <?php if($currentStep===3): ?>
+        <form method="post" action="<?=url('rapport_email.php')?>" class="r1b-report-email">
+          <?=csrfField()?><input type="hidden" name="projet_id" value="<?=$id?>">
+          <details><summary>Destinataires</summary><div class="r1b-report-recipients">
+          <?php foreach(reportRecipients(getSetting('report_recipients','')) as $email): ?>
+            <label><input type="checkbox" name="recipients[]" value="<?=e($email)?>" checked> <?=e($email)?></label>
+          <?php endforeach;?>
+          <label for="report-extra-recipient">Autres destinataires</label><input type="email" multiple id="report-extra-recipient" name="recipients[]" class="form-control" placeholder="Adresses séparées par des virgules">
+          <small>Modifications pour ce brouillon uniquement.</small>
+          </div></details>
+          <button type="submit" class="btn btn-primary">Envoyer rapport</button><button type="submit" name="format" value="preview" class="btn btn-secondary">Aperçu</button>
+          <small>Ouvrez le brouillon téléchargé avec Outlook, puis vérifiez les destinataires avant l’envoi.</small>
+        </form>
+        <?php endif; ?>
+        </div>
 
         <?php if($currentStep>=6):?><div class="pf-links"><a href="<?=url('planning.php?projet_id='.$id)?>">Planning des tâches</a><a href="<?=url('documents_externes.php?projet_id='.$id)?>">Dossier & preuves</a><a href="<?=url('qualite_projet.php?projet_id='.$id)?>">Conformité fournisseurs</a><a href="<?=url('production.php?projet_id='.$id)?>">Prototype & production</a></div><?php endif;?>
         <?php if ($currentStep === 1): ?>
@@ -1219,7 +1236,7 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
-<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=9') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=report-1') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=2') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>

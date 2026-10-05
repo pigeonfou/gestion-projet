@@ -62,3 +62,11 @@
 #formComposantsSt .cp-table input[type="number"] { appearance:textfield; }
 #formComposantsSt .cp-table input::-webkit-inner-spin-button, #formComposantsSt .cp-table input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 #formComposantsSt .cp-table .btn-cp-del { width:100%; min-width:0; padding:0; }
+
+.r1b-step-title-row { display:flex; justify-content:space-between; align-items:start; gap:1rem; flex-wrap:wrap; }
+.r1b-report-email { display:flex; align-items:start; flex-wrap:wrap; gap:.5rem; max-width:24rem; }
+.r1b-report-email > small { flex-basis:100%; font-size:.7rem; color:var(--text-secondary); }
+.r1b-report-email details { position:relative; }
+.r1b-report-email summary { cursor:pointer; padding:.45rem; border:1px solid var(--border-default); border-radius:.4rem; }
+.r1b-report-recipients { position:absolute; z-index:5; top:100%; right:0; width:18rem; max-width:70vw; padding:.75rem; background:var(--surface-raised); border:1px solid var(--border-default); border-radius:.4rem; box-shadow:var(--shadow); }
+.r1b-report-recipients label { display:block; overflow-wrap:anywhere; margin-bottom:.4rem; }
