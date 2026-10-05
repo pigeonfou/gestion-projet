@@ -360,3 +360,62 @@ function estimationCells(prefix) {
   input.addEventListener('input', () => apply(input.value, true));
   reset.addEventListener('click', () => apply(300, true));
 })();
+
+/* Reorder project navigation with a handle, pointer or keyboard. */
+(() => {
+  const sidebar = document.querySelector('.r1b-sidebar');
+  const nav = sidebar?.querySelector('.r1b-nav');
+  if (!nav) return;
+  const key = 'oddworks-project-menu-order';
+  const rows = [...sidebar.querySelectorAll('.r1b-nav > a')].map(link => {
+    const url = new URL(link.href);
+    const id = `${url.pathname}:${url.searchParams.get('view') || ''}`;
+    const row = document.createElement('div');
+    row.className = 'r1b-menu-row'; row.dataset.menuId = id;
+    const handle = document.createElement('button');
+    handle.type = 'button'; handle.className = 'r1b-menu-handle'; handle.textContent = '⋮⋮';
+    handle.setAttribute('aria-label', `Déplacer ${link.textContent.trim()}`);
+    handle.title = 'Glisser pour déplacer ; flèches haut/bas au clavier';
+    row.append(link, handle); nav.append(row);
+    return row;
+  });
+  sidebar.querySelectorAll('.r1b-nav').forEach(other => { if (other !== nav) other.hidden = true; });
+  function save() {
+    try { localStorage.setItem(key, JSON.stringify([...nav.children].map(row => row.dataset.menuId))); } catch (_) {}
+  }
+  try {
+    const order = JSON.parse(localStorage.getItem(key) || '[]');
+    if (Array.isArray(order)) {
+      order.forEach(id => { const row = rows.find(row => row.dataset.menuId === id); if (row) nav.append(row); });
+      rows.filter(row => !order.includes(row.dataset.menuId)).forEach(row => nav.append(row));
+    }
+  } catch (_) {}
+  for (const row of rows) {
+    const handle = row.querySelector('button');
+    handle.addEventListener('keydown', event => {
+      if (event.key === 'ArrowUp' && row.previousElementSibling) { event.preventDefault(); nav.insertBefore(row, row.previousElementSibling); }
+      else if (event.key === 'ArrowDown' && row.nextElementSibling) { event.preventDefault(); nav.insertBefore(row.nextElementSibling, row); }
+      else return;
+      handle.focus(); save();
+    });
+    handle.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      event.preventDefault(); handle.setPointerCapture(event.pointerId); row.classList.add('r1b-menu-moving');
+    });
+    handle.addEventListener('pointermove', event => {
+      if (!handle.hasPointerCapture(event.pointerId)) return;
+      const target = [...nav.children].find(other => {
+        const rect = other.getBoundingClientRect();
+        return other !== row && event.clientY >= rect.top && event.clientY <= rect.bottom;
+      });
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        nav.insertBefore(row, event.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
+      }
+    });
+    function finish() { row.classList.remove('r1b-menu-moving'); save(); }
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+    handle.addEventListener('lostpointercapture', finish);
+  }
+})();
