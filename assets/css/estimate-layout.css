@@ -53,11 +53,12 @@
 .r1b-menu-handle:hover, .r1b-menu-handle:focus-visible { background:var(--surface-raised); color:var(--accent); outline:2px solid var(--accent); }
 .r1b-menu-moving { background:var(--surface-raised); outline:1px solid var(--accent); }
 .r1b-menu-moving .r1b-menu-handle { cursor:grabbing; }
-/* Keep monetary values readable; tax controls share the caption line. */
-#formComposantsSt .cp-table .cp-cost-cell { position:relative; }
-#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 100%; width:100%; }
-#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { position:absolute; top:-1.1rem; right:0; width:2rem; height:1rem; font-size:.55rem; padding:0; }
-#formComposantsSt .cp-table td:has(.cp-unit)::before { content:"€/u."; }
-#formComposantsSt .cp-table td:has(.cp-total)::before { content:"Total"; }
+/* Cost and tax controls remain side by side, without overlap. */
+#formComposantsSt .cp-table .cp-row:has(.cp-unit) { grid-template-columns:2rem minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,.5fr) minmax(0,1.7fr) minmax(0,1.7fr) minmax(0,.85fr) minmax(0,.6fr) 1rem; }
+#formComposantsSt .cp-table .cp-cost-cell { display:flex; flex-wrap:nowrap; align-items:center; gap:.15rem; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 0; width:0; min-width:0; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { position:static; flex:0 0 2.3rem; width:2.3rem; height:1.8rem; font-size:.6rem; padding:.1rem; }
+#formComposantsSt .cp-table .cp-cost-cell .cp-taxe { background-image:none; appearance:auto; }
 #formComposantsSt .cp-table input[type="number"] { appearance:textfield; }
 #formComposantsSt .cp-table input::-webkit-inner-spin-button, #formComposantsSt .cp-table input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+#formComposantsSt .cp-table .btn-cp-del { width:100%; min-width:0; padding:0; }
