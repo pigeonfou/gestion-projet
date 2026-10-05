@@ -18,8 +18,14 @@ function ddCostSubtotal(array $group): string {
     return !empty($group['unknown']) ? 'Sous-total connu : '.$text.' · '.$group['unknown'].' coût(s) inconnu(s)' : $text;
 }
 function ddCostSummary(array $d): string {
-    if (!empty($d['costIncompleteCount'])) return ddCostSubtotal($d['totals']);
-    return $d['lotHT'] === null ? ddCostSubtotal($d['totals']) : ddMoney($d['lotHT']);
+    if (empty($d['costIncompleteCount']) && $d['lotHT'] !== null) return ddMoney($d['lotHT']);
+    $qty = ddNumber($d['qty'] ?? null);
+    $totals = $d['totals'];
+    if ($qty !== null && $qty > 0) {
+        $totals['HT'] *= $qty;
+        $totals['TTC'] *= $qty;
+    }
+    return ddCostSubtotal($totals);
 }
 function ddCostPrecision(array $d): string {
     if (empty($d['costIncompleteCount'])) return '';
