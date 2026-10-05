@@ -714,8 +714,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                   if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
                   $sfNum = (int)$mSf[1];
                   $rows = $techBySf[$sfId] ?? [];
-                  $sfCostHT = 0.0; $sfCostTTC = 0.0;
+                  $sfCostHT = 0.0; $sfCostTTC = 0.0; $sfUnknownCosts = 0;
                   foreach ($rows as $costRow) {
+                      if (stTypeHasCost($costRow['type'] ?? 'Matériel') && !empty($costRow['cout_unitaire_inconnu'])) $sfUnknownCosts++;
                       $v = stTypeHasCost($costRow['type'] ?? 'Matériel') ? (float)($costRow['cout_estime'] ?? 0) : 0;
                       if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
                   }
@@ -731,7 +732,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                       <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
                     <?php endif; ?>
                     <span class="st-sf-badge sf-cost-badge">Estimation coût <?= e($sfId) ?> :
-                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?></span>
+                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?><?= $sfUnknownCosts ? ' · sous-total connu · '.$sfUnknownCosts.' coût(s) inconnu(s)' : '' ?></span>
                     </span>
                   </div>
                   <div class="sf-table-wrap">
@@ -771,7 +772,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                           </td>
                           <?php renderEstimationCostCells('st', $tr, stTypeHasCost($ty)); ?>
                           <td><?php renderEstimationVariation('st', $tr); ?></td>
-                          <td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" value="<?= e((string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
+                          <td><input type="text" inputmode="decimal" name="st_delai_jours[]" class="form-control st-delay" value="<?= e(!empty($tr['delai_inconnu']) ? 'inconnue' : (string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
                         <?php endforeach; ?>
@@ -1217,12 +1218,13 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
+<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=1') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=2') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=hierarchy-2') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=unknown-1') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">

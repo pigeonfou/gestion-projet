@@ -215,6 +215,13 @@ function estimationDecimal($value, float $default = 0): float {
     $value = str_replace(',', '.', trim((string)$value));
     return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0 ? (float)$value : $default;
 }
+/** A negative estimate is explicitly unknown, never a zero-cost/zero-day value. */
+function estimateIsUnknown($value): bool {
+    if (!is_scalar($value)) return false;
+    $text = str_replace(',', '.', trim((string)$value));
+    return in_array(strtolower($text), ['inconnue', 'inconnu'], true)
+        || (is_numeric($text) && is_finite((float)$text) && (float)$text < 0);
+}
 function estimationTotal(float $quantity, float $unit): float {
     return is_finite($quantity * $unit) ? round($quantity * $unit, 2) : 0;
 }
@@ -243,8 +250,12 @@ function parseSpecsTechniquesFromPost(array $post): array {
         $type = trim((string)($types[$i] ?? 'Matériel'));
         // Old submissions and old estimates preserve their amount with quantity 1.
         $qty = estimationDecimal($post['st_quantite'][$i] ?? 1, 1);
-        $unit = estimationDecimal($post['st_cout_unitaire'][$i] ?? ($costs[$i] ?? 0));
-        $cost = estimationTotal($qty, $unit);
+        $unitRaw = $post['st_cout_unitaire'][$i] ?? ($costs[$i] ?? 0);
+        $unitUnknown = estimateIsUnknown($unitRaw);
+        $unit = $unitUnknown ? null : estimationDecimal($unitRaw);
+        $cost = $unitUnknown ? null : estimationTotal($qty, $unit);
+        $delayRaw = $post['st_delai_jours'][$i] ?? '';
+        $delayUnknown = estimateIsUnknown($delayRaw);
         $taxe = (($taxes[$i] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
         if (!in_array($type, $allowedTypes, true)) {
             $type = 'Matériel';
@@ -269,9 +280,11 @@ function parseSpecsTechniquesFromPost(array $post): array {
             'type' => $type,
             'quantite' => stTypeHasCost($type) ? $qty : null,
             'cout_unitaire' => stTypeHasCost($type) ? $unit : null,
+            'cout_unitaire_inconnu' => stTypeHasCost($type) && $unitUnknown,
+            'delai_inconnu' => $type !== 'S.T.x.x' && $delayUnknown,
             'variation' => normalizeEstimationVariation($post['st_variation'][$i] ?? ''),
             'cout_estime' => stTypeHasCost($type) ? $cost : 0,
-            'delai_jours' => $type === 'S.T.x.x' ? null : parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
+            'delai_jours' => $type === 'S.T.x.x' ? null : ($delayUnknown ? null : parseDelaiJours($delayRaw)),
             'cout_taxe' => $taxe,
         ];
     }
@@ -291,8 +304,10 @@ function parseSpecsTechniquesFromPost(array $post): array {
                 'type' => $row['type'],
                 'quantite' => $row['quantite'],
                 'cout_unitaire' => $row['cout_unitaire'],
+                'cout_unitaire_inconnu' => $row['cout_unitaire_inconnu'],
+                'delai_inconnu' => $row['delai_inconnu'],
                 'variation' => $row['variation'],
-                'cout_estime' => $row['cout_estime'] ?? 0,
+                'cout_estime' => $row['cout_estime'],
                 'cout_taxe' => $row['cout_taxe'] ?? 'HT',
                 'delai_jours' => $row['delai_jours'] ?? null,
             ];

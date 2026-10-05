@@ -1,0 +1,41 @@
+/* Component research fits its available width; narrow rows wrap instead of scrolling. */
+#formComposantsSt .cp-st-block { container-type: inline-size; }
+#formComposantsSt .sf-table-wrap { overflow: visible; }
+#formComposantsSt .cp-table { width: 100%; table-layout: fixed; }
+#formComposantsSt .cp-table :is(th,td) { overflow-wrap: anywhere; padding: .35rem; }
+#formComposantsSt .cp-table td :is(input.form-control,select.form-control),
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total,.cp-taxe,.cp-total-taxe) {
+  min-width: 0; max-width: 100%; width: 100%;
+}
+#formComposantsSt .cp-table .cp-cost-cell { width: 100%; min-width: 0; flex-wrap: wrap; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex: 1 1 100%; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { flex: 0 0 3.5rem; }
+#formComposantsSt .cp-table :is(th,td):has(>.cp-qty,>.estimation-cost,>.estimation-variation,>input[name$="_delai_jours[]"]) { width: auto; }
+@container (max-width: 1100px) {
+  #formComposantsSt .cp-table, #formComposantsSt .cp-table tbody { display: block; }
+  #formComposantsSt .cp-table thead { display: none; }
+  #formComposantsSt .cp-table .cp-row {
+    position: relative; display: grid; grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: .5rem; margin-bottom: .65rem; padding: .65rem;
+    border: 1px solid var(--border-default); border-radius: .5rem; background: var(--surface-raised);
+  }
+  #formComposantsSt .cp-table .cp-row > td { display: block; width: auto!important; border: 0; padding: 0; min-width: 0; }
+  #formComposantsSt .cp-table .cp-row > td::before {
+    content: attr(data-label); display: block; margin-bottom: .25rem;
+    color: var(--text-secondary); font-size: .7rem; font-weight: 600;
+  }
+  #formComposantsSt .cp-table .cp-row > td:first-child { grid-column: 1 / -1; padding-right: 2rem; }
+  #formComposantsSt .cp-table .cp-row > td:first-child::before { display: none; }
+  #formComposantsSt .cp-table .cp-row > td:has([name="cp_designation[]"]:not([type="hidden"])) { grid-column: span 2; }
+  #formComposantsSt .cp-table .cp-row > td:last-child { position: absolute; right: .65rem; top: .4rem; }
+  #formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex: 1 1 calc(100% - 4rem); width: calc(100% - 4rem); }
+}
+@container (max-width: 600px) {
+  #formComposantsSt .cp-table .cp-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@container (max-width: 340px) {
+  #formComposantsSt .cp-table .cp-row { grid-template-columns: minmax(0,1fr); }
+  #formComposantsSt .cp-table .cp-row > td:has([name="cp_designation[]"]:not([type="hidden"])) { grid-column: auto; }
+}
+/* The word "inconnue" must fit in the estimate delay field. */
+.st-table input[name="st_delai_jours[]"] { width: calc(8ch + 1.1rem); min-width: calc(8ch + 1.1rem); max-width: calc(8ch + 1.1rem); }
