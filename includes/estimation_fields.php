@@ -11,15 +11,16 @@ function renderEstimationVariation(string $prefix, array $data = []): void {
 function renderEstimationCostCells(string $prefix, array $data = [], bool $hasCost = true, string $extraTotal = ''): void {
     $isEstimate = $prefix === 'st';
     $qty = $data['quantite'] ?? ($isEstimate ? 1 : '');
-    $unit = $data['cout_unitaire'] ?? ($isEstimate ? ($data['cout_estime'] ?? 0) : '');
+    $unknown = $isEstimate && !empty($data['cout_unitaire_inconnu']);
+    $unit = $unknown ? 'inconnue' : ($data['cout_unitaire'] ?? ($isEstimate ? ($data['cout_estime'] ?? 0) : ''));
     $tax = ($data[$isEstimate ? 'cout_taxe' : 'cout_unitaire_taxe'] ?? 'HT') === 'TTC' ? 'TTC' : 'HT';
     $total = $hasCost ? estimationTotal(estimationDecimal($qty), estimationDecimal($unit)) : 0;
     $taxName = $prefix . ($isEstimate ? '_cout_taxe' : '_cout_unitaire_taxe');
     ?>
     <td><input type="number" step="any" min="0" name="<?=e($prefix)?>_quantite[]" class="form-control cp-qty" aria-label="Quantité" value="<?=e((string)$qty)?>" <?= $hasCost ? '' : 'hidden readonly' ?>></td>
-    <td><div class="cp-cost-cell estimation-cost" <?= $hasCost ? '' : 'hidden' ?>><input type="number" step="any" min="0" inputmode="decimal" name="<?=e($prefix)?>_cout_unitaire[]" class="form-control cp-unit" aria-label="Coût unitaire" value="<?=e((string)$unit)?>" <?= $hasCost ? '' : 'readonly' ?>>
+    <td><div class="cp-cost-cell estimation-cost" <?= $hasCost ? '' : 'hidden' ?>><input type="<?=$isEstimate ? 'text' : 'number'?>" <?= $isEstimate ? '' : 'step="any" min="0"' ?> inputmode="decimal" name="<?=e($prefix)?>_cout_unitaire[]" class="form-control cp-unit" aria-label="Coût unitaire" value="<?=e((string)$unit)?>" <?= $hasCost ? '' : 'readonly' ?>>
     <select name="<?=e($taxName)?>[]" class="form-control cp-taxe" aria-label="HT/TTC"><option value="HT" <?=$tax==='HT'?'selected':''?>>HT</option><option value="TTC" <?=$tax==='TTC'?'selected':''?>>TTC</option></select></div></td>
-    <td><div class="cp-cost-cell estimation-cost" <?= $hasCost ? '' : 'hidden' ?>><input type="text" class="form-control cp-total" aria-label="Coût total" value="<?=e(number_format($total,2,',','').' €')?>" readonly tabindex="-1"><span class="form-control cp-total-taxe"><?=e($tax)?></span>
-    <?php if($isEstimate): ?><input type="hidden" name="st_cout_estime[]" class="estimation-total-input" value="<?=e((string)$total)?>"><?php else: ?><input type="hidden" name="cp_cout_total_taxe[]" class="cp-total-taxe-input" value="<?=e($tax)?>"><?php endif; ?></div><?= $extraTotal ?></td>
+    <td><div class="cp-cost-cell estimation-cost" <?= $hasCost ? '' : 'hidden' ?>><input type="text" class="form-control cp-total" aria-label="Coût total" value="<?=e($unknown ? 'inconnue' : number_format($total,2,',','').' €')?>" readonly tabindex="-1"><span class="form-control cp-total-taxe"><?=e($tax)?></span>
+    <?php if($isEstimate): ?><input type="hidden" name="st_cout_estime[]" class="estimation-total-input" value="<?=e($unknown ? '' : (string)$total)?>"><?php else: ?><input type="hidden" name="cp_cout_total_taxe[]" class="cp-total-taxe-input" value="<?=e($tax)?>"><?php endif; ?></div><?= $extraTotal ?></td>
     <?php
 }

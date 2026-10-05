@@ -5,27 +5,37 @@ $user = utilisateurCourant();
 $flash = getFlash();
 $useAppShell = $useAppShell ?? false;
 seedSettingsIfEmpty();
-$siteNom = getSetting('site_nom', 'ProjectFlow');
+$siteNom = getSetting('site_nom', 'OddWorks');
+
 ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="<?=e(interfaceTheme())?>">
 <head>
     <meta charset="UTF-8">
+    <script src="<?=url('assets/js/appearance.js?v=1')?>"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - <?= e($siteNom) ?></title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>">
+    <meta name="theme-color" content="#081726">
+    <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
 </head>
-<body>
+<body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
         <div class="header-container">
-            <a href="<?= url('projets.php') ?>" class="logo">
-                <i class="fas fa-project-diagram"></i>
-                <span><?= e($siteNom) ?></span>
-            </a>
+            <div class="logo oddworks-brand" aria-label="<?= e($siteNom) ?>">
+                <img class="oddworks-brand-mark" src="<?= url('assets/img/oddworks-mark.svg') ?>" alt="" width="38" height="38">
+                <?php if ($siteNom === 'OddWorks'): ?>
+                    <span class="oddworks-wordmark"><span>Odd</span><span>Works</span></span>
+                <?php else: ?>
+                    <span><?= e($siteNom) ?></span>
+                <?php endif; ?>
+            </div>
             <?php if ($user): ?>
-            <nav class="nav">
+            <nav class="nav" aria-label="Navigation principale">
                 <a href="<?= url('projets.php') ?>" class="nav-link <?= in_array(($activePage ?? ''), ['accueil','projets'], true) ? 'active' : '' ?>">
                     <i class="fas fa-folder-open"></i> Projets
                 </a>
@@ -42,6 +52,7 @@ $siteNom = getSetting('site_nom', 'ProjectFlow');
                     <i class="fas fa-sitemap"></i> Management
                 </a>
             </nav>
+            <a class="pf-search-launch" href="<?=url('recherche.php')?>" aria-label="Rechercher dans OddWorks"><i class="fas fa-search"></i><span>Rechercher</span><kbd>/</kbd></a>
             <div class="user-menu">
                 <div class="user-dropdown">
                     <button type="button" class="user-dropdown-toggle" id="userMenuBtn" aria-expanded="false">

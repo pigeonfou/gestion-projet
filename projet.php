@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/estimation_fields.php';
 require_once __DIR__ . '/includes/task_workflow.php';
 require_once __DIR__ . '/includes/task_filters.php';
+require_once __DIR__ . '/includes/ux_objects.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
 require_once __DIR__ . '/includes/stock_link.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
@@ -99,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $cid = getOrCreateCahierId($id);
             $techniques = parseSpecsTechniquesFromPost($_POST);
-            saveSpecsTechniques($cid, $techniques);
+            saveSpecsTechniques($cid, $techniques, is_array($_POST['st_deleted_parent_uid'] ?? null) ? $_POST['st_deleted_parent_uid'] : []);
+            $techniques = loadSpecs($cid)['specs_techniques'];
 
             // À l'étape 2, toutes les S.T. (Matériel, Composant, Prestataire, Logiciel, 3D, PCB)
             // sont synchronisées comme tâches.
@@ -312,6 +314,9 @@ $validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true
 if (!is_array($validatedSteps)) $validatedSteps = [];
 $validatedSteps = array_values(array_unique(array_map('intval', $validatedSteps)));
 if (empty($validatedSteps) && $progressStep > 1) $validatedSteps = range(1, $progressStep - 1);
+// Display archival completion without changing the business validation state.
+$displayValidatedSteps = $validatedSteps;
+if (($projet['status'] ?? '') === 'termine') $displayValidatedSteps = range(r1bMinStep(), r1bMaxStep());
 $currentStep = $progressStep;
 if ($stepGet !== null && $stepGet >= r1bMinStep() && $stepGet <= r1bMaxStep()) {
     $currentStep = $stepGet;
@@ -384,19 +389,20 @@ if ($view === 'processus' && $currentStep === 3) {
     $dq->execute([$id]); $lastDecision=$dq->fetch() ?: null;
 }
 
-$pct = (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
+$pct = ($projet['status'] ?? '') === 'termine' ? 100 : (int)round((count($validatedSteps) / r1bMaxStep()) * 100);
 $nbDocs = count($documents);
-$validationsPending = ($currentStep === 3 && empty($projet['go_decision'])) || in_array($currentStep, [7, 8], true) ? 1 : 0;
+$validationsPending = (($projet['status']??'')==='termine' || in_array($progressStep,$validatedSteps,true)) ? 0 : ((($progressStep===3 && empty($projet['go_decision'])) || in_array($progressStep,[7,8],true)) ? 1 : 0);
 
 // Embedded history stays inside its own browsing context so filtering never
 // reloads or discards an unfinished step form. Authentication above still applies.
 $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
-    <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=dimensions-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-12') ?>"></head><body class="history-embedded"><main>
+    <!doctype html><html lang="fr" data-theme="<?=e(interfaceTheme())?>"><head><meta charset="utf-8"><script src="<?=url('assets/js/appearance.js?v=1')?>"></script><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body></html>
     <?php
     exit;
@@ -415,14 +421,15 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 ?>
 
-<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=history-12') ?>">
-<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=5') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
-    <nav class="r1b-nav">
+    <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
+    <nav class="r1b-nav" aria-label="Navigation du projet">
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
-        <i class="fas fa-th-large"></i> <?= e($projet['nom']) ?>
+        <i class="fas fa-th-large"></i> Synthèse du projet
       </a>
       <a href="<?= url('projet.php?id=' . $id . '&view=processus') ?>" class="<?= $view === 'processus' ? 'active' : '' ?>">
         <i class="fas fa-route"></i> Processus R1b
@@ -441,8 +448,23 @@ function stepClass(int $n, int $displayed, array $validated): string
       <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
       <?php if(projectCanManage($db,$id,$user)):?><a href="<?=url('projet_equipe.php?projet_id='.$id)?>">Contributeurs du projet</a><?php endif;?>
     </nav>
+    <nav class="r1b-nav" aria-label="Objets du projet">
+      <a href="<?=url('specifications.php?projet_id='.$id)?>"><i class="fas fa-diagram-project"></i> S.F. / S.T.</a>
+      <a href="<?=url('planning.php?projet_id='.$id)?>"><i class="fas fa-calendar"></i> Planning & Gantt</a>
+      <a href="<?=url('production.php?projet_id='.$id)?>"><i class="fas fa-industry"></i> Production & stock</a>
+    </nav>
     <div class="r1b-sidebar-foot">
-      <a href="<?= url('projets.php') ?>"><i class="fas fa-arrow-left"></i> Tous les projets</a>
+      <?php
+      $activeProjectChoices = $db->query("SELECT id, nom FROM projets WHERE status = 'actif' ORDER BY nom COLLATE NOCASE")->fetchAll();
+      $activeProjectChoices = array_filter($activeProjectChoices, static fn(array $choice): bool => projectCanContribute($db, (int)$choice['id'], $user));
+      ?>
+      <label for="active-project-switch">Projets en cours</label>
+      <select id="active-project-switch" class="form-control" onchange="if(this.value) window.location.assign(this.value)">
+        <option value="" <?= ($projet['status'] ?? '') !== 'actif' ? 'selected' : '' ?>>Sélectionner un projet</option>
+        <?php foreach ($activeProjectChoices as $choice): ?>
+        <option value="<?= e(url('projet.php?id=' . (int)$choice['id'])) ?>" <?= (int)$choice['id'] === $id ? 'selected' : '' ?>><?= e($choice['nom']) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
   </aside>
 
@@ -462,22 +484,22 @@ function stepClass(int $n, int $displayed, array $validated): string
 
       <!-- KPI cards -->
       <div class="dash-kpi-grid">
-        <div class="dash-kpi">
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=processus')?>">
           <p class="dash-kpi-label">Progression</p>
           <p class="dash-kpi-value"><?= $pct ?>%</p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=taches')?>">
           <p class="dash-kpi-label">Tâches en cours</p>
           <p class="dash-kpi-value"><?= $tachesOuvertes ?></p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('projet.php?id='.$id.'&view=processus&step='.$progressStep)?>">
           <p class="dash-kpi-label">Validations en attente</p>
           <p class="dash-kpi-value"><?= $validationsPending ?></p>
-        </div>
-        <div class="dash-kpi">
+        </a>
+        <a class="dash-kpi" href="<?=url('planning.php?projet_id='.$id)?>">
           <p class="dash-kpi-label">Jalons</p>
           <p class="dash-kpi-value"><?= $nbJalons ?></p>
-        </div>
+        </a>
       </div>
 
       <div class="dash-grid">
@@ -488,7 +510,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <div class="dash-steps">
               <?php foreach ($steps as $n => $s): ?>
                 <?php
-                $done = in_array((int)$n, $validatedSteps, true);
+                $done = in_array((int)$n, $displayValidatedSteps, true);
                 $active = !$done && $n === $progressStep;
                 $cls = $done ? 'done' : ($active ? 'active' : '');
                 ?>
@@ -541,21 +563,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
         <!-- Colonne droite : notes + docs -->
         <div class="dash-col-side">
-          <div class="r1b-card">
-            <h3>Notes / décisions</h3>
-            <form method="POST">
-              <input type="hidden" name="action" value="save_notes">
-              <?= csrfField() ?>
-              <input type="hidden" name="redir_view" value="dashboard">
-              <textarea name="step_notes" class="form-control" rows="5" placeholder="Notes, résultats, décisions…"><?= e($projet['step_notes'] ?? '') ?></textarea>
-              <button type="submit" class="btn btn-secondary btn-sm mt-2"><i class="fas fa-save"></i> Enregistrer</button>
-            </form>
-            <?php if (!empty($projet['go_decision'])): ?>
-              <div class="r1b-info-box mt-3">
-                Décision GO/NO GO : <strong><?= e($projet['go_decision']) ?></strong>
-              </div>
-            <?php endif; ?>
-          </div>
+          <div class="r1b-card"><h3>Décisions & notes de pilotage</h3><p class="text-muted text-sm">Consultez les décisions enregistrées et ajoutez vos notes dans l’étape concernée.</p><div class="pf-links"><a href="<?=url('projet.php?id='.$id.'&view=historique')?>">Historique des décisions</a><a href="<?=url('projet.php?id='.$id.'&view=processus&step='.$progressStep)?>">Revue de l’étape actuelle</a></div></div>
 
 
           <div class="r1b-card">
@@ -596,7 +604,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <div class="dash-doc-row">
                     <i class="fas fa-file"></i>
                     <div>
-                      <p class="dash-doc-name"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></p>
+                      <p class="dash-doc-name"><a href="<?=url('documents_externes.php?projet_id='.$id)?>"><?= e($d['nom_fichier'] ?? $d['nom_original'] ?? $d['filename'] ?? 'Fichier') ?></a></p>
                       <p class="text-muted text-xs"><?= e($d['date_upload'] ?? '') ?></p>
                     </div>
                   </div>
@@ -629,9 +637,9 @@ function stepClass(int $n, int $displayed, array $validated): string
       <div class="r1b-stepper-wrap">
         <div class="r1b-stepper">
           <?php $firstStep = true; foreach ($steps as $n => $s): ?>
-            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $validatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
-            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $validatedSteps) ?>" <?= $n === $currentStep ? 'aria-current="step"' : '' ?>>
-              <div class="r1b-step-circle"><?= in_array((int)$n, $validatedSteps, true) ? '✓' : $n ?></div>
+            <?php if (!$firstStep): ?><div class="r1b-step-line <?= in_array((int)($n - 1), $displayValidatedSteps, true) ? 'on' : '' ?>"></div><?php endif; $firstStep = false; ?>
+            <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=' . $n) ?>" class="<?= stepClass($n, $currentStep, $displayValidatedSteps) ?>" <?= $n === $currentStep ? 'aria-current="step"' : '' ?>>
+              <div class="r1b-step-circle"><?= in_array((int)$n, $displayValidatedSteps, true) ? '✓' : $n ?></div>
               <div class="r1b-step-label"><?= e($s['title']) ?></div>
             </a>
           <?php endforeach; ?>
@@ -645,6 +653,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       <div class="r1b-card r1b-step-content">
         <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
 
+        <?php if($currentStep>=6):?><div class="pf-links"><a href="<?=url('planning.php?projet_id='.$id)?>">Planning des tâches</a><a href="<?=url('documents_externes.php?projet_id='.$id)?>">Dossier & preuves</a><a href="<?=url('qualite_projet.php?projet_id='.$id)?>">Conformité fournisseurs</a><a href="<?=url('production.php?projet_id='.$id)?>">Prototype & production</a></div><?php endif;?>
         <?php if ($currentStep === 1): ?>
           <hr class="my-4">
           <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
@@ -698,14 +707,16 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
               <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
+              <div id="st-hierarchy-status" role="status" aria-live="polite"></div>
               <?php foreach ($fonctionsSF as $sf): ?>
                 <?php
                   $sfId = $sf['id'] ?? '';
                   if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
                   $sfNum = (int)$mSf[1];
                   $rows = $techBySf[$sfId] ?? [];
-                  $sfCostHT = 0.0; $sfCostTTC = 0.0;
+                  $sfCostHT = 0.0; $sfCostTTC = 0.0; $sfUnknownCosts = 0;
                   foreach ($rows as $costRow) {
+                      if (stTypeHasCost($costRow['type'] ?? 'Matériel') && !empty($costRow['cout_unitaire_inconnu'])) $sfUnknownCosts++;
                       $v = stTypeHasCost($costRow['type'] ?? 'Matériel') ? (float)($costRow['cout_estime'] ?? 0) : 0;
                       if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
                   }
@@ -721,7 +732,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                       <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
                     <?php endif; ?>
                     <span class="st-sf-badge sf-cost-badge">Estimation coût <?= e($sfId) ?> :
-                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?></span>
+                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?><?= $sfUnknownCosts ? ' · sous-total connu · '.$sfUnknownCosts.' coût(s) inconnu(s)' : '' ?></span>
                     </span>
                   </div>
                   <div class="sf-table-wrap">
@@ -738,13 +749,15 @@ function stepClass(int $n, int $displayed, array $validated): string
                       </thead>
                       <tbody class="st-body">
                         <?php foreach ($rows as $ri => $tr): ?>
-                        <tr class="st-row">
-                          <td><span class="st-id"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></span>
+                        <tr class="st-row" id="<?=e($tr['id']??'')?>">
+                          <td><a class="st-id" href="<?=pfStUrl($id,$tr)?>"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></a>
                             <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
                             <input type="hidden" name="st_uid[]" value="<?= e($tr['uid'] ?? bin2hex(random_bytes(16))) ?>">
                             <input type="hidden" name="st_reference_uid[]" value="<?= e($tr['reference_uid'] ?? '') ?>">
                           </td>
-                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…"></td>
+                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…">
+                            <input type="hidden" name="st_parent_uid[]" value="<?= e($tr['parent_uid'] ?? '') ?>">
+                          </td>
                           <td>
                             <?php $ty = $tr['type'] ?? 'Matériel'; ?>
                             <select name="st_type[]" class="form-control">
@@ -759,7 +772,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                           </td>
                           <?php renderEstimationCostCells('st', $tr, stTypeHasCost($ty)); ?>
                           <td><?php renderEstimationVariation('st', $tr); ?></td>
-                          <td><input type="number" min="0" step="0.01" name="st_delai_jours[]" class="form-control st-delay" value="<?= e((string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
+                          <td><input type="text" inputmode="decimal" name="st_delai_jours[]" class="form-control st-delay" value="<?= e(!empty($tr['delai_inconnu']) ? 'inconnue' : (string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
                           <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
                         </tr>
                         <?php endforeach; ?>
@@ -769,6 +782,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                   <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
                 </div>
               <?php endforeach; ?>
+              <details class="st-structure" open><summary>Structure des S.T.</summary><div id="st-structure-tree"></div></details>
               <?php ob_start(); ?>
               <div class="mt-3">
                 <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
@@ -828,9 +842,9 @@ function stepClass(int $n, int $displayed, array $validated): string
                       default => 'X',
                   };
                 ?>
-                <div class="st-sf-block cp-st-block" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
+                <div class="st-sf-block cp-st-block" id="<?=e($stId)?>" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
                   <div class="st-sf-head">
-                    <span class="st-id"><?= e($stId) ?></span>
+                    <a class="st-id" href="<?=pfStUrl($id,$stRow)?>"><?= e($stId) ?> ↗</a>
                     <span class="st-sf-badge"><?= e($stType) ?></span>
                     <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
                     <?php if (stTypeHasCost($stType)): ?>
@@ -991,7 +1005,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                     ?>
                     <tr>
                       <td><input type="checkbox" name="purchase_create[]" value="<?= e($rowKey) ?>" <?= $existingTask ? 'checked' : '' ?>></td>
-                      <td><strong><?= e($stId) ?></strong><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
+                      <td><a class="pf-object-id" href="<?=url('specification.php?projet_id='.$id.'&st='.rawurlencode($stId))?>"><?= e($stId) ?></a><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
                       <td><?= e($itemId) ?></td>
                       <td><?= e($it['designation'] ?? '—') ?></td>
                       <td><?= e($it['reference'] ?? '—') ?></td>
@@ -1008,7 +1022,7 @@ function stepClass(int $n, int $displayed, array $validated): string
                         </select>
                         <input type="hidden" name="purchase_payload[<?= e($rowKey) ?>]" value="<?= e($payload) ?>">
                       </td>
-                      <td><?= $existingTask ? e(statutLabel($existingTask['statut'] ?? 'a_faire')) : '<span class="text-muted">Non créée</span>' ?></td>
+                      <td><?php if($existingTask):?><a href="<?=url('tache.php?id='.(int)$existingTask['id'])?>"><?=e(statutLabel($existingTask['statut']??'a_faire'))?> ↗</a><?php else:?><span class="text-muted">Non créée</span><?php endif;?></td>
                     </tr>
                   <?php endforeach; ?>
                   </tbody>
@@ -1023,7 +1037,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
             <?php $st = $t['statut'] ?? 'a_faire'; ?>
             <div class="r1b-task-line">
-              <span><?= e($t['titre'] ?? '') ?></span>
+              <a href="<?=url('tache.php?id='.(int)$t['id'])?>"><?= e($t['titre'] ?? '') ?></a>
               <span class="text-muted"><?= e(statutLabel($st)) ?></span>
             </div>
           <?php endforeach; ?>
@@ -1042,7 +1056,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <div class="r1b-info-box mt-2">Un état <strong>Conforme</strong> archive le projet en <strong>validé/vente</strong> (étape 9).</div>
 
         <?php else: ?>
-          <div class="r1b-info-box" style="border-color:#a7f3d0;background:#ecfdf5;color:#065f46;">
+          <div class="r1b-info-box" style="border-color:var(--state-success);background:var(--state-success-bg);color:var(--state-success);">
             <strong>Archivage validé / vente</strong> (étape 9) — suite à une conformité / livraison DG.
             <br><span class="text-sm">Distinct de l’abandon NO GO resté à l’étape 3.</span>
           </div>
@@ -1051,6 +1065,7 @@ function stepClass(int $n, int $displayed, array $validated): string
       </div>
       <aside class="r1b-card r1b-step-tools" aria-label="Actions et revue de l’étape">
         <h3>Actions et revue</h3>
+        <div class="r1b-tools-resize-handle" role="separator" tabindex="0" aria-label="Redimensionner Actions et revue" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="480" aria-valuenow="300" title="Maintenir et tirer pour ajuster la largeur ; flèches gauche/droite au clavier"></div>
         <?= $stepEditorActions ?>
         <?php require __DIR__ . '/includes/views/project_notes.php'; ?>
 
@@ -1204,17 +1219,21 @@ function stepClass(int $n, int $displayed, array $validated): string
   </div><!-- /.r1b-main -->
 </div><!-- /.r1b-layout -->
 
+<link rel="stylesheet" href="<?= url('assets/css/estimate-layout.css?v=9') ?>">
+<link rel="stylesheet" href="<?= url('assets/css/st-hierarchy.css?v=2') ?>">
 <script>window.PROJECTFLOW_USERS = <?= json_encode(array_map(static fn($u) => $u['identifiant'], $utilisateursListe ?? []), JSON_UNESCAPED_UNICODE) ?>;</script>
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-5') ?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=review-edge-4') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
 <footer class="footer">
-  <div class="footer-container"><p>&copy; <?= date('Y') ?> ProjectFlow — Processus R1b</p></div>
+  <div class="footer-container"><p>&copy; <?= date('Y') ?> OddWorks — Processus R1b</p></div>
 </footer>
 <script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<script src="<?= url('assets/js/st-hierarchy.js?v=3') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>
 

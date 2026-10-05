@@ -9,17 +9,37 @@ if (estConnecte()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion - ProjectFlow</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
+    <title>Connexion - OddWorks</title>
+    <meta name="theme-color" content="#081726">
+    <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="login-page">
-    <div class="login-card">
-        <div class="logo-login">
-            <i class="fas fa-project-diagram"></i>
-            <h1>ProjectFlow</h1>
-            <p class="subtitle">Gestion de projets, processus & documentation</p>
-        </div>
+<body class="login-page oddworks-login">
+    <div class="oddworks-login-shell">
+        <section class="oddworks-login-hero" aria-label="OddWorks">
+            <div class="oddworks-login-brand">
+                <img src="<?= url('assets/img/oddworks-mark.svg') ?>" alt="" width="74" height="74">
+                <div>
+                    <div class="oddworks-login-wordmark"><span>Odd</span><span>Works</span></div>
+                    <p>DES IDÉES UN PEU DIFFÉRENTES<br>POUR DES PROJETS BIEN RÉELS</p>
+                </div>
+            </div>
+            <div class="oddworks-login-orbit" aria-hidden="true">
+                <span class="ow-orbit-ring"></span>
+                <span class="ow-orbit-card ow-orbit-card-a"><i class="fas fa-lightbulb"></i></span>
+                <span class="ow-orbit-card ow-orbit-card-b"><i class="fas fa-list-check"></i></span>
+                <span class="ow-orbit-card ow-orbit-card-c"><i class="fas fa-cube"></i></span>
+            </div>
+            <p class="oddworks-login-promise">Un même espace pour relier idées, conception, tâches, coûts, délais, achats et production.</p>
+        </section>
+        <div class="login-card">
+            <div class="logo-login">
+                <img src="<?= url('assets/img/oddworks-mark.svg') ?>" alt="" width="52" height="52">
+                <h1>Bienvenue dans <span class="ow-text-accent">OddWorks</span></h1>
+                <p class="subtitle">Connectez-vous pour reprendre vos projets.</p>
+            </div>
         <?php if (isset($_GET['erreur'])): ?>
             <div class="error-msg">
                 <i class="fas fa-exclamation-circle"></i>
@@ -47,6 +67,7 @@ if (estConnecte()) {
                 <i class="fas fa-sign-in-alt"></i> Se connecter
             </button>
         </form>
+        </div>
     </div>
 </body>
 </html>

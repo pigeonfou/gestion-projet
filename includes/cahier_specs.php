@@ -28,6 +28,15 @@ function emptySpecs(): array {
     ];
 }
 
+/** JSON-backed S.T. migration; preserves every unrelated field and existing reference UID. */
+function migrateStHierarchy(array $data, int $cahierId): array {
+    foreach ($data['specs_techniques'] ?? [] as $i => $st) {
+        $data['specs_techniques'][$i]['uid'] = $st['uid'] ?? substr(hash('sha256', $cahierId . ':' . $st['id']), 0, 32);
+        if (!array_key_exists('parent_uid', $st)) $data['specs_techniques'][$i]['parent_uid'] = null;
+    }
+    return $data;
+}
+
 function loadSpecs(int $cahierId): array {
     ensureCahierSpecsColumn();
     $stmt = getDB()->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
@@ -35,10 +44,16 @@ function loadSpecs(int $cahierId): array {
     $json = $stmt->fetchColumn();
     $data = $json ? json_decode($json, true) : null;
     if (!is_array($data)) $data = [];
-    [$data] = stripObsoleteSpecs($data);
-    foreach ($data['specs_techniques'] ?? [] as $i => $st) {
-        $data['specs_techniques'][$i]['uid'] = $st['uid'] ?? substr(hash('sha256', $cahierId . ':' . $st['id']), 0, 32);
+    // Lazy data migration: persist legacy identities before any display renumbering.
+    // Compare-and-swap prevents a read migration from overwriting a concurrent edit.
+    $migrated = migrateStHierarchy($data, $cahierId);
+    if ($migrated !== $data && is_string($json)) {
+        $update = getDB()->prepare('UPDATE cahiers SET specs_json = ? WHERE id = ? AND specs_json = ?');
+        $update->execute([json_encode($migrated, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cahierId, $json]);
+        if ($update->rowCount() === 0) return loadSpecs($cahierId);
     }
+    $data = $migrated;
+    [$data] = stripObsoleteSpecs($data);
     return array_merge(emptySpecs(), $data);
 }
 
@@ -200,6 +215,13 @@ function estimationDecimal($value, float $default = 0): float {
     $value = str_replace(',', '.', trim((string)$value));
     return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0 ? (float)$value : $default;
 }
+/** A negative estimate is explicitly unknown, never a zero-cost/zero-day value. */
+function estimateIsUnknown($value): bool {
+    if (!is_scalar($value)) return false;
+    $text = str_replace(',', '.', trim((string)$value));
+    return in_array(strtolower($text), ['inconnue', 'inconnu'], true)
+        || (is_numeric($text) && is_finite((float)$text) && (float)$text < 0);
+}
 function estimationTotal(float $quantity, float $unit): float {
     return is_finite($quantity * $unit) ? round($quantity * $unit, 2) : 0;
 }
@@ -228,8 +250,12 @@ function parseSpecsTechniquesFromPost(array $post): array {
         $type = trim((string)($types[$i] ?? 'Matériel'));
         // Old submissions and old estimates preserve their amount with quantity 1.
         $qty = estimationDecimal($post['st_quantite'][$i] ?? 1, 1);
-        $unit = estimationDecimal($post['st_cout_unitaire'][$i] ?? ($costs[$i] ?? 0));
-        $cost = estimationTotal($qty, $unit);
+        $unitRaw = $post['st_cout_unitaire'][$i] ?? ($costs[$i] ?? 0);
+        $unitUnknown = estimateIsUnknown($unitRaw);
+        $unit = $unitUnknown ? null : estimationDecimal($unitRaw);
+        $cost = $unitUnknown ? null : estimationTotal($qty, $unit);
+        $delayRaw = $post['st_delai_jours'][$i] ?? '';
+        $delayUnknown = estimateIsUnknown($delayRaw);
         $taxe = (($taxes[$i] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
         if (!in_array($type, $allowedTypes, true)) {
             $type = 'Matériel';
@@ -247,15 +273,18 @@ function parseSpecsTechniquesFromPost(array $post): array {
         }
         $bySf[$n][] = [
             'uid' => preg_match('/^[a-f0-9]{32}$/', (string)($post['st_uid'][$i] ?? '')) ? $post['st_uid'][$i] : bin2hex(random_bytes(16)),
+            'parent_uid' => trim((string)($post['st_parent_uid'][$i] ?? '')) ?: null,
             'reference_uid' => $type === 'S.T.x.x' ? trim((string)($post['st_reference_uid'][$i] ?? '')) : null,
             'sf' => 'S.F.' . $n,
             'description' => $desc,
             'type' => $type,
             'quantite' => stTypeHasCost($type) ? $qty : null,
             'cout_unitaire' => stTypeHasCost($type) ? $unit : null,
+            'cout_unitaire_inconnu' => stTypeHasCost($type) && $unitUnknown,
+            'delai_inconnu' => $type !== 'S.T.x.x' && $delayUnknown,
             'variation' => normalizeEstimationVariation($post['st_variation'][$i] ?? ''),
             'cout_estime' => stTypeHasCost($type) ? $cost : 0,
-            'delai_jours' => $type === 'S.T.x.x' ? null : parseDelaiJours($post['st_delai_jours'][$i] ?? ''),
+            'delai_jours' => $type === 'S.T.x.x' ? null : ($delayUnknown ? null : parseDelaiJours($delayRaw)),
             'cout_taxe' => $taxe,
         ];
     }
@@ -268,14 +297,17 @@ function parseSpecsTechniquesFromPost(array $post): array {
             $out[] = [
                 'uid' => $row['uid'],
                 'reference_uid' => $row['reference_uid'],
+                'parent_uid' => $row['parent_uid'],
                 'sf' => $row['sf'],
                 'id' => 'S.T.' . $n . '.' . $m,
                 'description' => $row['description'],
                 'type' => $row['type'],
                 'quantite' => $row['quantite'],
                 'cout_unitaire' => $row['cout_unitaire'],
+                'cout_unitaire_inconnu' => $row['cout_unitaire_inconnu'],
+                'delai_inconnu' => $row['delai_inconnu'],
                 'variation' => $row['variation'],
-                'cout_estime' => $row['cout_estime'] ?? 0,
+                'cout_estime' => $row['cout_estime'],
                 'cout_taxe' => $row['cout_taxe'] ?? 'HT',
                 'delai_jours' => $row['delai_jours'] ?? null,
             ];
@@ -309,8 +341,52 @@ function validateStReferences(array $techniques, array $previous): void {
     }
 }
 
-function saveSpecsTechniques(int $cahierId, array $techniques): void {
+/** Independent structural graph. Never follow reference_uid, or alter business fields. */
+function validateStHierarchy(array $techniques, array $previous = [], array $confirmedDeletions = []): array {
+    $byUid = [];
+    foreach ($techniques as $st) {
+        $uid = $st['uid'] ?? '';
+        if (!preg_match('/^[a-f0-9]{32}$/', $uid) || isset($byUid[$uid]))
+            throw new InvalidArgumentException('Identifiant S.T. invalide ou dupliqué.');
+        $byUid[$uid] = $st;
+    }
+    $old = array_column($previous, null, 'uid');
+    foreach ($previous as $st) {
+        $parent = $st['parent_uid'] ?? null;
+        if ($parent && isset($old[$parent]) && !isset($byUid[$parent]) && isset($byUid[$st['uid']])
+            && !in_array($parent, $confirmedDeletions, true))
+            throw new InvalidArgumentException('Cette S.T. possède des enfants. Confirmez sa suppression : les enfants deviendront des S.T. racines.');
+    }
+    foreach ($techniques as &$st) {
+        $parent = $st['parent_uid'] ?? null;
+        if ($parent === '') $parent = null;
+        if ($parent !== null && !isset($byUid[$parent])) {
+            if (isset($old[$parent]) && in_array($parent, $confirmedDeletions, true)) $parent = null;
+            else throw new InvalidArgumentException('Le parent doit être une S.T. du projet courant, présente dans cet enregistrement.');
+        }
+        $st['parent_uid'] = $parent;
+        $byUid[$st['uid']] = $st;
+    }
+    unset($st);
+    // Iterative traversal: no arbitrary depth limit, and each node is visited once.
+    $done = [];
+    foreach ($byUid as $uid => $st) {
+        $path = [];
+        $cursor = $uid;
+        while ($cursor !== null && !isset($done[$cursor])) {
+            if (isset($path[$cursor]))
+                throw new InvalidArgumentException('Cette relation créerait une boucle dans la hiérarchie des S.T.');
+            $path[$cursor] = true;
+            $cursor = $byUid[$cursor]['parent_uid'];
+        }
+        $done += $path;
+    }
+    return array_values($techniques);
+}
+
+function saveSpecsTechniques(int $cahierId, array $techniques, array $confirmedDeletions = []): void {
     ensureCahierSpecsColumn();
+    $previous = loadSpecs($cahierId)['specs_techniques'];
     $db = getDB();
     $stmt = $db->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
     $stmt->execute([$cahierId]);
@@ -319,7 +395,8 @@ function saveSpecsTechniques(int $cahierId, array $techniques): void {
     if (!is_array($data)) {
         $data = [];
     }
-    validateStReferences($techniques, loadSpecs($cahierId)['specs_techniques']);
+    validateStReferences($techniques, $previous);
+    $techniques = validateStHierarchy($techniques, $previous, $confirmedDeletions);
     // Preserve legacy unspecified fields when a form merely resubmits its display defaults.
     $oldById=[]; foreach($data['specs_techniques']??[] as $old) $oldById[$old['id']]=$old;
     foreach($techniques as &$tech) {

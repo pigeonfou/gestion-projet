@@ -96,7 +96,7 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <?php foreach ($list as $f): ?>
           <tr>
-            <td><strong><?= e($f['nom']) ?></strong>
+            <td><a href="<?=url('fournisseur.php?id='.(int)$f['id'])?>"><strong><?= e($f['nom']) ?></strong></a>
               <?php if ($f['email'] || $f['telephone']): ?>
                 <br><span class="text-xs text-muted"><?= e(trim(($f['email'] ?? '') . ' · ' . ($f['telephone'] ?? ''), ' ·')) ?></span>
               <?php endif; ?>

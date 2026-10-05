@@ -36,14 +36,15 @@ function getAllSettings(): array {
 /** Defaults for first install */
 function defaultSettings(): array {
     return [
-        'site_nom' => 'ProjectFlow',
+        'site_nom' => 'OddWorks',
+        'ui_theme' => 'light',
         'search_highlight_color' => '#ffad42',
-        'site_tagline' => 'Gestion de projets, processus & documentation',
+        'site_tagline' => 'Des idées un peu différentes pour des projets bien réels',
         'nextcloud_url' => 'https://nextcloud.procomm.rd',
         'nextcloud_user' => getenv('PROJECTFLOW_NEXTCLOUD_USER') ?: '',
         'nextcloud_password' => getenv('PROJECTFLOW_NEXTCLOUD_PASSWORD') ?: '',
         'nextcloud_webdav' => getenv('PROJECTFLOW_NEXTCLOUD_WEBDAV') ?: '',
-        'nextcloud_root' => 'ProjectFlow',
+        'nextcloud_root' => 'OddWorks',
         'nextcloud_enabled' => '0',
         'items_per_page' => '20',
         'timezone' => 'Europe/Paris',
@@ -61,6 +62,12 @@ function seedSettingsIfEmpty(): void {
             setSetting($k, $v);
         }
     }
+
+    // Migration de marque uniquement pour les anciennes valeurs par défaut.
+    // Les personnalisations utilisateur et le dossier Nextcloud existant sont conservés.
+    $db = getDB();
+    $db->exec("UPDATE parametres SET valeur = 'OddWorks', updated_at = CURRENT_TIMESTAMP WHERE cle = 'site_nom' AND valeur = 'ProjectFlow'");
+    $db->exec("UPDATE parametres SET valeur = 'Des idées un peu différentes pour des projets bien réels', updated_at = CURRENT_TIMESTAMP WHERE cle = 'site_tagline' AND valeur = 'Gestion de projets, processus & documentation'");
 }
 
 function phaseFolderName(string $phase): string {
@@ -86,4 +93,10 @@ function sanitizePathSegment(string $name): string {
 function searchHighlightColor(?string $value = null): string {
     $value = $value ?? getSetting('search_highlight_color', '#ffad42');
     return preg_match('/^#[0-9a-fA-F]{6}$/D', $value ?? '') ? strtolower($value) : '#ffad42';
+}
+
+/** Validated global preference; existing installations keep their light theme. */
+function interfaceTheme(): string {
+    $theme = getSetting('ui_theme', 'light');
+    return in_array($theme, ['light', 'dark', 'system'], true) ? $theme : 'light';
 }

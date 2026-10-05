@@ -1,0 +1,64 @@
+/* Component research fits its available width; narrow rows wrap instead of scrolling. */
+#formComposantsSt .cp-st-block { container-type: inline-size; }
+#formComposantsSt .sf-table-wrap { overflow: visible; }
+#formComposantsSt .cp-table { width: 100%; table-layout: fixed; }
+#formComposantsSt .cp-table :is(th,td) { overflow-wrap: anywhere; padding: .35rem; }
+#formComposantsSt .cp-table td :is(input.form-control,select.form-control),
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total,.cp-taxe,.cp-total-taxe) {
+  min-width: 0; max-width: 100%; width: 100%;
+}
+#formComposantsSt .cp-table .cp-cost-cell { width: 100%; min-width: 0; flex-wrap: wrap; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex: 1 1 100%; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { flex: 0 0 3.5rem; }
+#formComposantsSt .cp-table :is(th,td):has(>.cp-qty,>.estimation-cost,>.estimation-variation,>input[name$="_delai_jours[]"]) { width: auto; }
+
+  #formComposantsSt .cp-table, #formComposantsSt .cp-table tbody { display: block; }
+  #formComposantsSt .cp-table thead { display: none; }
+#formComposantsSt .cp-table .cp-row {
+  display:grid; grid-template-columns:2.4rem minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,.5fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.85fr) minmax(0,.6fr) 1.2rem;
+  gap:.25rem; align-items:start; padding:.35rem; margin-bottom:.4rem;
+  border:1px solid var(--border-default); border-radius:.4rem; background:var(--surface-raised);
+}
+#formComposantsSt .cp-table .cp-row:not(:has(.cp-unit)) { grid-template-columns:2.4rem minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 1.2rem; }
+#formComposantsSt .cp-table .cp-row > td { display:block; width:auto!important; min-width:0; padding:0; border:0; }
+#formComposantsSt .cp-table .cp-row > td::before { content:attr(data-label); display:block; height:1.1rem; font-size:.6rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#formComposantsSt .cp-table .cp-row > td:first-child { align-self:start; padding-top:1.1rem; font-size:.65rem; }
+#formComposantsSt .cp-table .cp-row > td:first-child::before { display:none; }
+#formComposantsSt .cp-table .cp-row > td:last-child { padding-top:1.1rem; }
+#formComposantsSt .cp-table .cp-row > td:last-child::before { display:none; }
+#formComposantsSt .cp-table .cp-row :is(input.form-control,select.form-control) { font-size:.68rem; height:1.8rem; padding:.15rem .2rem; }
+#formComposantsSt .cp-table .cp-cost-cell { flex-wrap:nowrap; gap:.1rem; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 0; width:0; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { flex:0 0 2rem; width:2rem; font-size:.6rem; padding:.1rem; }
+#formComposantsSt .cp-table .cp-id { white-space:nowrap; }
+#formComposantsSt .cp-table .cp-row label { font-size:.6rem; }
+/* The word "inconnue" must fit in the estimate delay field. */
+.st-table input[name="st_delai_jours[]"] { width: calc(8ch + 1.1rem); min-width: calc(8ch + 1.1rem); max-width: calc(8ch + 1.1rem); }
+
+/* One adjustable review panel shared by every process step. */
+.r1b-tools-resize-handle { position:absolute; left:-7px; top:0; bottom:0; width:14px; cursor:ew-resize; touch-action:none; z-index:2; border-radius:6px; }
+.r1b-tools-resize-handle::after { content:""; position:absolute; left:5px; top:35%; height:30%; width:4px; border-radius:4px; background:var(--accent); opacity:.65; }
+.r1b-tools-resize-handle:hover::after, .r1b-tools-resize-handle:focus-visible::after { opacity:1; }
+.r1b-tools-resize-handle:focus-visible { outline:2px solid var(--accent); }
+.r1b-tools-resizing { user-select:none; }
+@media(min-width:951px) {
+  .pf-app .r1b-step-workspace, .pf-app .r1b-step-workspace:has(.dd-dashboard) {
+    grid-template-columns:minmax(0,1fr) min(var(--review-panel-width,300px),50%);
+  }
+}
+@media(max-width:950px) { .r1b-tools-resize-handle { display:none; } }
+.r1b-menu-row { display:flex; align-items:center; min-width:0; }
+.pf-app .r1b-menu-row > a { flex:1; min-width:0; margin-right:0; }
+.r1b-menu-handle { flex:none; padding:.35rem; margin-right:.3rem; background:transparent; border:0; color:var(--text-secondary); cursor:grab; touch-action:none; border-radius:.3rem; }
+.r1b-menu-handle:hover, .r1b-menu-handle:focus-visible { background:var(--surface-raised); color:var(--accent); outline:2px solid var(--accent); }
+.r1b-menu-moving { background:var(--surface-raised); outline:1px solid var(--accent); }
+.r1b-menu-moving .r1b-menu-handle { cursor:grabbing; }
+/* Cost and tax controls remain side by side, without overlap. */
+#formComposantsSt .cp-table .cp-row:has(.cp-unit) { grid-template-columns:2rem minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,.5fr) minmax(0,1.7fr) minmax(0,1.7fr) minmax(0,.85fr) minmax(0,.6fr) 1rem; }
+#formComposantsSt .cp-table .cp-cost-cell { display:flex; flex-wrap:nowrap; align-items:center; gap:.15rem; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1 1 0; width:0; min-width:0; }
+#formComposantsSt .cp-table .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { position:static; flex:0 0 2.3rem; width:2.3rem; height:1.8rem; font-size:.6rem; padding:.1rem; }
+#formComposantsSt .cp-table .cp-cost-cell .cp-taxe { background-image:none; appearance:none; }
+#formComposantsSt .cp-table input[type="number"] { appearance:textfield; }
+#formComposantsSt .cp-table input::-webkit-inner-spin-button, #formComposantsSt .cp-table input::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+#formComposantsSt .cp-table .btn-cp-del { width:100%; min-width:0; padding:0; }

@@ -1,0 +1,519 @@
+/* OddWorks visual system — based on the selected identity board.
+   Business-state colors keep their existing semantic meaning. */
+:root{
+  --ow-navy:#081726;
+  --ow-navy-2:#0d2438;
+  --ow-cyan:#09b9c9;
+  --ow-cyan-deep:#0798aa;
+  --ow-orange:#ff7a21;
+  --ow-violet:#6f4bf2;
+  --ow-yellow:#ffb51f;
+  --ow-mint:#56d8c9;
+  --ow-bg:#dce8ef;
+  --ow-surface:#eaf2f6;
+  --ow-line:#bdcfdb;
+  --ow-ink:#102335;
+  --ow-muted:#607488;
+  --ow-shadow:0 10px 30px rgba(8,23,38,.07);
+  --primary:var(--ow-navy);
+  --primary-light:var(--ow-cyan-deep);
+  --accent:var(--ow-cyan);
+  --bg:var(--ow-bg);
+  --bg-card:var(--ow-surface);
+  --text:var(--ow-ink);
+  --text-muted:var(--ow-muted);
+  --text-light:var(--ow-muted);
+  --border:var(--ow-line);
+  --shadow:var(--ow-shadow);
+  --radius:14px;
+  --pf-selected:#e1f9fb;
+  --header-h:64px;
+}
+body.pf-app{
+  background:
+radial-gradient(circle at 90% 0%,rgba(9,185,201,.07),transparent 26rem),
+    radial-gradient(circle at 15% 100%,rgba(111,75,242,.045),transparent 30rem),
+    var(--ow-bg);
+  color:var(--ow-ink);
+  font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;
+}
+.pf-app .header{
+  height:var(--header-h);
+  background:linear-gradient(112deg,#071522 0%,#0a1e31 62%,#0b2638 100%);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  box-shadow:0 8px 28px rgba(8,23,38,.18);
+}
+.pf-app .header-container{padding:0 22px;gap:20px}
+.oddworks-brand{gap:9px!important;min-width:max-content}
+.oddworks-brand-mark{width:38px;height:38px;filter:drop-shadow(0 5px 10px rgba(0,0,0,.18))}
+.oddworks-wordmark{display:flex;align-items:baseline;font-weight:800;font-size:1.18rem;letter-spacing:-.045em;color:#fff}
+.oddworks-wordmark span:last-child{color:var(--ow-cyan)}
+.pf-app .logo{color:#fff!important}
+.pf-app .logo>i{display:none}
+.pf-app .nav{gap:4px}
+.pf-app .nav-link{color:#b9c7d3;padding:9px 11px;border-radius:9px;font-size:.78rem}
+.pf-app .nav-link i{color:#6de0e4}
+.pf-app .nav-link:hover{background:rgba(255,255,255,.065);color:#fff}
+.pf-app .nav-link.active{background:linear-gradient(135deg,#08b3c5,#0a93aa);color:#fff;box-shadow:0 6px 16px rgba(9,185,201,.22)}
+.pf-app .nav-link.active i{color:#fff}
+.pf-search-launch{color:#b7c8d6!important;background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.12)!important;border-radius:9px!important}
+.pf-search-launch:hover{background:rgba(255,255,255,.1);color:#fff!important}
+.pf-search-launch kbd{background:#102c42!important;border:1px solid rgba(255,255,255,.08);color:#aac1d0}
+.pf-app .user-dropdown-toggle{background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.12)!important;color:#fff!important;border-radius:10px}
+.pf-app .badge-role{background:rgba(9,185,201,.14)!important;color:#7de7ec!important}
+.pf-app .main-content{max-width:1680px;padding:28px 34px}
+.pf-app .page-header,.pf-app .dash-page-head{margin-bottom:22px}
+.pf-app h1,.pf-app .r1b-page-head h2,.pf-app .dash-page-head h2{color:var(--ow-ink)!important;letter-spacing:-.045em;font-weight:800}
+.pf-app .dash-page-head h2{font-size:1.8rem!important}
+.dash-kicker{font-size:.68rem!important;letter-spacing:.16em;font-weight:800;color:var(--ow-cyan-deep);margin-bottom:4px}
+.pf-app :is(.card,.r1b-card,.dash-card,.dash-kpi,.st-sf-block,.r1b-stepper-wrap,.dd-card){
+  border:1px solid var(--ow-line)!important;
+  border-radius:14px!important;
+  background:var(--ow-surface)!important;
+  box-shadow:var(--ow-shadow)!important;
+}
+.pf-app .card-header{padding:16px 20px;border-bottom-color:var(--border-default, #e5edf2)}
+.pf-app .card-body{padding:20px}
+.pf-app :is(.btn,.btn-r1b){border-radius:9px;font-weight:700;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.pf-app :is(.btn,.btn-r1b):hover{transform:translateY(-1px)}
+.pf-app :is(.btn-primary,.btn-r1b-primary){
+  background:linear-gradient(135deg,var(--ow-cyan),var(--ow-cyan-deep))!important;
+  color:#fff!important;
+  border:0!important;
+  box-shadow:0 7px 16px rgba(9,185,201,.19)!important;
+}
+.pf-app :is(.btn-primary,.btn-r1b-primary):hover{background:linear-gradient(135deg,var(--ow-cyan-deep),var(--ow-cyan-deep))!important}
+.pf-app :is(.btn-secondary,.btn-r1b-secondary){background:var(--surface-raised, #f7fafc)!important;border:1px solid var(--ow-line)!important;color:var(--text-primary, #30475b)!important}
+.pf-app .btn-danger{background:#ef5350!important}
+.pf-app :is(input,textarea,select).form-control{
+  border:1px solid var(--border-default, #c9d8e2)!important;
+  border-radius:9px!important;
+  background:var(--surface-raised, #fbfdfe)!important;
+  color:var(--ow-ink)!important;
+}
+.pf-app :is(input,textarea,select).form-control:focus{
+  border-color:var(--ow-cyan)!important;
+  outline:0!important;
+  box-shadow:0 0 0 3px rgba(9,185,201,.14)!important;
+}
+.pf-app :focus-visible{outline:3px solid rgba(9,185,201,.45);outline-offset:2px}
+.pf-app a{color:var(--state-info, #087f98)}
+.pf-app :is(.table,.sf-table) th{background:var(--surface-muted, #f3f7fa)!important;color:var(--text-secondary, #5a6e80)!important;border-color:var(--border-default, #dce6ed)!important}
+.pf-app :is(.table,.sf-table) td{border-color:var(--border-default, #e2eaf0)!important}
+.pf-app :is(.table,.sf-table) tbody tr:hover{background:#f5fcfd!important}
+
+/* Project dashboard */
+.pf-app .dash-wrap{max-width:1320px!important}
+.pf-app .dash-kpi-grid{gap:14px!important}
+.pf-app .dash-kpi{position:relative;overflow:hidden;padding:18px!important}
+.pf-app .dash-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ow-cyan)}
+.pf-app .dash-kpi:nth-child(2):before{background:var(--ow-violet)}
+.pf-app .dash-kpi:nth-child(3):before{background:var(--ow-orange)}
+.pf-app .dash-kpi:nth-child(4):before{background:var(--ow-yellow)}
+.pf-app .dash-kpi-value{font-weight:800!important;font-size:2rem!important}
+.pf-app .dash-kpi-label{font-weight:700!important;color:var(--text-secondary, #627486)!important}
+.pf-app .dash-proj-item{border:1px solid var(--border-default, #e2eaf0)!important;border-radius:12px!important;background:var(--surface-raised, #fff)}
+.pf-app .dash-proj-item:hover{border-color:#90dfe5!important;background:#f4fdfe!important}
+.pf-app .dash-proj-fill{background:linear-gradient(90deg,var(--ow-violet),var(--ow-cyan))!important}
+.pf-app .dash-proj-badge{background:var(--state-info-bg, #e5f9fb)!important;color:var(--state-info, #087b8f)!important}
+
+/* R1b: dark working sidebar, light workspace, cyan selected state. */
+.pf-app .r1b-layout{grid-template-columns:218px minmax(0,1fr)}
+.pf-app .r1b-sidebar{
+  background:linear-gradient(180deg,#0a1b2c 0%,#081726 100%)!important;
+  color:#d9e6ef!important;
+  border-right:0!important;
+  box-shadow:8px 0 28px rgba(8,23,38,.08);
+}
+.pf-app .r1b-sidebar-title{color:#fff!important;border-color:rgba(255,255,255,.08)!important;font-weight:800}
+.pf-app .r1b-nav a{color:#9fb4c3!important;border-left:0!important;border-radius:8px!important;margin:3px 10px!important}
+.pf-app .r1b-nav a:hover{background:rgba(255,255,255,.06)!important;color:#fff!important}
+.pf-app .r1b-nav a.active{
+  color:#fff!important;
+  background:linear-gradient(135deg,#08b6c8,#098ca4)!important;
+  box-shadow:0 7px 16px rgba(9,185,201,.18);
+}
+.pf-app .r1b-sidebar-foot{border-color:rgba(255,255,255,.08)!important}
+.pf-app .r1b-sidebar-foot a{color:#9fb4c3!important}
+.pf-app .r1b-main{background:transparent!important}
+.pf-app .r1b-process-header{background:var(--ow-bg)!important}
+.pf-app .r1b-stepper-wrap{box-shadow:none!important}
+.pf-app .r1b-step-circle{background:var(--surface-muted, #e8eef3)!important;color:var(--text-secondary, #6b7f90)!important}
+.pf-app .r1b-step.active .r1b-step-circle,.pf-app .r1b-step.active.done .r1b-step-circle{
+  background:linear-gradient(135deg,#10c5cf,#0792aa)!important;
+  color:#fff!important;
+  outline:3px solid rgba(9,185,201,.17)!important;
+  box-shadow:none!important;
+}
+.pf-app .r1b-step.done .r1b-step-circle{background:var(--state-success-bg, #e7f7ee)!important;color:var(--state-success, #16815c)!important;border-color:#bfe6d2!important}
+.pf-app .r1b-step.active .r1b-step-label{color:var(--state-info, #07879e)!important}
+.pf-app .r1b-step-line.on{background:#80ccb2!important}
+.pf-app .st-sf-block{border-left:4px solid var(--ow-cyan)!important}
+.pf-app :is(.st-sf-id,.st-id,.cp-id){color:var(--state-info, #087f98)!important}
+.pf-app .st-sf-badge{background:var(--state-info-bg, #e3f8fa)!important;color:var(--state-info, #087b8f)!important}
+
+/* Kanban and decision surfaces */
+.pf-app .r1b-kanban-col{background:#f1f6f9!important;border:1px solid var(--border-default, #d8e4ec)!important}
+.pf-app .r1b-kanban-card{border:1px solid var(--border-default, #dce6ed)!important;border-radius:11px!important;box-shadow:0 4px 12px rgba(8,23,38,.045)!important}
+.pf-app .r1b-kanban-card:hover{border-color:#8edbe2!important;box-shadow:0 8px 20px rgba(9,185,201,.09)!important}
+.pf-app .kanban-col-progress{border-top-color:var(--ow-cyan)!important}
+.pf-app .kanban-col-validation{border-top-color:var(--ow-orange)!important}
+.pf-app .dd-dashboard{--dd-blue:#079caf;--dd-purple:#6f4bf2}
+.pf-app .dd-kpi{background:linear-gradient(140deg,#f2fcfd,var(--surface-raised, #fff))!important;border-color:var(--border-default, #d8e8ed)!important}
+.pf-app .dd-kpi-icon{background:var(--state-info-bg, #def8fa)!important;color:var(--state-info, #07879e)!important}
+.pf-app .dd-summary{background:var(--state-info-bg, #eefbfc)!important;border-color:var(--border-default, #d1eef1)!important}
+.pf-app .dd-nav a{background:var(--state-info-bg, #eef7fa)!important;color:var(--state-info, #087b8f)!important}
+
+/* Dialogs and history */
+.pf-app :is(#notes-dialog,#st-reference-dialog){border-color:var(--border-default, #c9d9e3)!important;border-radius:14px!important;box-shadow:0 30px 80px rgba(8,23,38,.24)}
+.pf-app :is(#notes-dialog,#st-reference-dialog)::backdrop{background:rgba(6,19,31,.62)!important}
+.pf-app .history-toolbar{border-color:var(--border-default, #dae5ec)!important;border-radius:11px!important;box-shadow:0 8px 18px rgba(8,23,38,.06)!important}
+
+/* Footer */
+.pf-app .footer{background:#081726!important;color:#93a8b8!important;border-top:0!important;padding:16px}
+.pf-app .footer p:first-child{color:#d6e2ea}
+.pf-app .footer-sub{display:block!important;color:#6fdde3!important}
+
+/* Appearance variants keep the OddWorks identity while changing accent. */
+body[data-accent="indigo"]{--ow-cyan:#725bf0;--ow-cyan-deep:#6247e5;--pf-selected:#efecff}
+body[data-accent="slate"]{--ow-cyan:#60778a;--ow-cyan-deep:#465d70;--pf-selected:#edf2f5}
+
+/* Login */
+body.oddworks-login{
+  margin:0;
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:28px;
+  color:var(--ow-ink);
+  background:radial-gradient(circle at 14% 18%,rgba(9,185,201,.20),transparent 25rem),
+    radial-gradient(circle at 86% 80%,rgba(111,75,242,.17),transparent 28rem),
+    #071522;
+}
+.oddworks-login-shell{
+  width:min(1060px,100%);
+  min-height:610px;
+  display:grid;
+  grid-template-columns:minmax(0,1.12fr) minmax(360px,.88fr);
+  overflow:hidden;
+  border-radius:24px;
+  background:var(--surface-raised, #fff);
+  box-shadow:0 34px 90px rgba(0,0,0,.34);
+}
+.oddworks-login-hero{
+  position:relative;
+  overflow:hidden;
+  padding:52px;
+  color:#fff;
+  background:linear-gradient(150deg,rgba(6,21,34,.97),rgba(10,42,57,.96)),
+    #081726;
+}
+.oddworks-login-hero:before,.oddworks-login-hero:after{content:"";position:absolute;border-radius:999px;filter:blur(1px);opacity:.8}
+.oddworks-login-hero:before{width:340px;height:340px;right:-145px;top:-105px;background:radial-gradient(circle,rgba(9,185,201,.28),transparent 67%)}
+.oddworks-login-hero:after{width:270px;height:270px;left:-125px;bottom:-115px;background:radial-gradient(circle,rgba(111,75,242,.25),transparent 68%)}
+.oddworks-login-brand{position:relative;z-index:2;display:flex;align-items:center;gap:17px}
+.oddworks-login-brand img{filter:drop-shadow(0 10px 18px rgba(0,0,0,.28))}
+.oddworks-login-wordmark{display:flex;font-size:2.3rem;font-weight:850;letter-spacing:-.06em;line-height:1}
+.oddworks-login-wordmark span:last-child{color:#10c4cf}
+.oddworks-login-brand p{margin:10px 0 0;font-size:.72rem;line-height:1.6;letter-spacing:.1em;color:#d9e5ec;font-weight:750}
+.oddworks-login-orbit{position:relative;z-index:2;height:300px;margin-top:54px}
+.ow-orbit-ring{position:absolute;left:50%;top:50%;width:260px;height:160px;transform:translate(-50%,-50%) rotate(-9deg);border:1px solid rgba(105,221,227,.26);border-radius:50%}
+.ow-orbit-ring:after{content:"";position:absolute;inset:34px;border:1px dashed rgba(255,255,255,.15);border-radius:50%}
+.ow-orbit-card{position:absolute;display:grid;place-items:center;width:76px;height:76px;border-radius:20px;font-size:1.65rem;box-shadow:0 15px 35px rgba(0,0,0,.25);backdrop-filter:blur(8px)}
+.ow-orbit-card-a{left:16%;top:15%;background:linear-gradient(135deg,#ff9b31,#ff7024);color:#fff}
+.ow-orbit-card-b{right:14%;top:34%;background:linear-gradient(135deg,#7656ef,#593bc7);color:#fff}
+.ow-orbit-card-c{left:39%;bottom:3%;background:linear-gradient(135deg,#11c8cf,#0798aa);color:#fff}
+.oddworks-login-promise{position:relative;z-index:2;max-width:450px;color:#aac0cf;font-size:.92rem;line-height:1.7;margin-top:18px}
+.oddworks-login .login-card{align-self:center;max-width:none;width:auto;margin:0;padding:52px 48px;border-radius:0;box-shadow:none}
+.oddworks-login .logo-login{text-align:left;margin-bottom:30px}
+.oddworks-login .logo-login img{display:none}
+.oddworks-login .logo-login h1{text-align:left;font-size:1.65rem;letter-spacing:-.04em;margin-bottom:7px}
+.ow-text-accent{color:#0799ad}
+.oddworks-login .logo-login .subtitle{text-align:left;margin:0;color:var(--text-secondary, #728495)}
+.oddworks-login .form-group label{color:var(--text-primary, #263c4f);font-weight:700}
+.oddworks-login .form-control{border:1px solid #ccd9e2;border-radius:10px;padding:.72rem .8rem}
+.oddworks-login .btn-primary{background:linear-gradient(135deg,#0bc3cf,#078da5);border-radius:10px;border:0;box-shadow:0 9px 18px rgba(9,185,201,.2)}
+
+@media(max-width:1000px){
+  .pf-app .header-container{gap:10px}
+  .oddworks-wordmark{display:none}
+  .pf-app .nav-link span{display:none}
+  .oddworks-login-shell{grid-template-columns:1fr;max-width:520px}
+  .oddworks-login-hero{display:none}
+  .oddworks-login .login-card{border-radius:20px;padding:38px}
+  .oddworks-login .logo-login{text-align:center}
+  .oddworks-login .logo-login img{display:block;margin:0 auto 10px}
+  .oddworks-login .logo-login h1,.oddworks-login .logo-login .subtitle{text-align:center}
+}
+@media(max-width:700px){
+  :root{--header-h:58px}
+  .pf-app .header{height:auto;min-height:58px}
+  .pf-app .header-container{padding:9px 12px}
+  .oddworks-brand-mark{width:34px;height:34px}
+  .pf-app .main-content,.pf-app .r1b-main{padding:16px!important}
+  body.oddworks-login{padding:14px}
+  .oddworks-login .login-card{padding:28px 22px}
+}
+
+/* Complete the identity across secondary screens and embedded views.
+   Screen-only surfaces leave document printing and status colors intact. */
+@media screen {
+  :root {
+    --ow-surface-alt:#dfedf2;
+    --ow-surface-raised:#f5fafc;
+    --ow-panel-head:linear-gradient(110deg,#d2e9ee,#e2e4f4);
+  }
+  .pf-app :is(.card,.r1b-card,.dash-card,.st-sf-block,.dd-card,.cdc-test-section,.pf-create) {
+    background:var(--ow-surface)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.card-header,.pf-sf-title,.st-sf-header,.cdc-test-section>header) {
+    background:var(--ow-panel-head)!important;
+    border-bottom:1px solid var(--ow-line);
+  }
+  .pf-app :is(.card-header,.st-sf-header) {border-radius:13px 13px 0 0}
+  .pf-app :is(.r1b-step-content,.r1b-step-tools,.dash-card,.cdc-test-section)>:is(h2,h3,h4):first-child {
+    padding-bottom:12px;border-bottom:2px solid var(--border-default, #a4cdd6);
+  }
+  .pf-app :is(.pf-create,.r1b-info-box,.pf-empty,.empty-state,.sf-resume) {
+    background:var(--ow-surface-alt)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.dash-proj-item,.r1b-kanban-card,.pf-links a,.dash-step,.modal-content,.user-dropdown-menu) {
+    background:var(--ow-surface-raised)!important;
+    border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.dash-kpi,.pf-metric,.stat-card) {
+    background:linear-gradient(125deg,#102a40,#173c50)!important;
+    border-color:#234b61!important;color:#eaf5fa!important;
+    box-shadow:0 8px 22px #08172618!important;
+  }
+  .pf-app :is(.dash-kpi-value,.pf-metric strong,.stat-value) {color:#fff!important}
+  .pf-app :is(.dash-kpi-label,.pf-metric span,.stat-label) {color:#bad1df!important}
+  .pf-app .dash-kpi:hover,.pf-app a.pf-metric:hover {border-color:var(--ow-cyan)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) {background:transparent!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) th {
+    background:var(--surface-muted, #cfdee8)!important;color:var(--text-primary, #29475b)!important;border-color:var(--border-default, #b8cbd8)!important;
+  }
+  .pf-app :is(.table,.sf-table,.stocks-table) td {border-color:var(--border-default, #c4d5df)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) tbody tr:nth-child(even):not(.stock-low) {
+    background:var(--surface-muted, #dfebf1);
+  }
+  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:var(--surface-interactive)!important}
+  .pf-app :is(input,textarea,select).form-control,
+  .pf-app :is(.st-table,.cp-table,.sf-table) :is(input,select,textarea) {
+    background:var(--ow-surface-raised)!important;border-color:var(--border-default, #aec6d5)!important;
+  }
+  .pf-app :is(input,textarea,select):disabled {background:var(--surface-muted, #dbe5ed)!important}
+  .pf-app :is(.r1b-stepper-wrap,.cdc-stepper,.history-toolbar,.task-filter-toolbar,.cdc-test-toolbar) {
+    background:var(--ow-panel-head)!important;border-color:var(--ow-line)!important;
+  }
+  .pf-app :is(.task-filter-toolbar,.cdc-test-toolbar) {box-shadow:var(--ow-shadow)}
+  .pf-app .cdc-test-toolbar {top:calc(var(--header-h) + 8px)}
+  .pf-app .cdc-test-nav {background:var(--ow-navy-2)!important;border-color:#234b61!important}
+  .pf-app .cdc-test-nav a {color:#c0d6e3!important}
+  .pf-app .cdc-test-nav a:hover {background:#174559!important;color:#fff!important}
+  .pf-app :is(.cdc-section-number,.cdc-test-badge) {background:var(--state-info-bg, #c4e9ed);color:var(--state-info, #075f73)}
+  .pf-app .cdc-test-section>header {padding:12px;border-radius:9px}
+  .pf-app .dd-kpi {background:var(--ow-panel-head)!important}
+  .pf-app .dd-cap-card {background:var(--ow-surface-alt)!important}
+  .pf-app :is(.dd-summary,.dd-gantt,.dd-gantt-wrap) {background:var(--ow-surface-alt)!important}
+  .pf-app .r1b-kanban-col {background:var(--surface-muted, #d6e3eb)!important}
+  .pf-app .kanban-col-validation {border-top-color:var(--ow-orange)!important}
+  .pf-app .kanban-col-done {border-top-color:var(--success)!important}
+  .pf-app :is(#notes-dialog,#st-reference-dialog) {background:var(--ow-surface)!important}
+  .pf-app .history-step-frame {background:var(--ow-surface)!important;border-color:var(--ow-line)}
+  body.pf-app.history-embedded {background:var(--ow-surface)!important}
+  .pf-app.history-embedded .history-toolbar {box-shadow:none!important}
+  .pf-app.history-embedded .decision-history {background:transparent!important}
+  .pf-app :is(.tabs,.tab-nav) {border-color:var(--ow-line)}
+  .pf-app .tab-btn.active {color:var(--state-info, #076e85);border-bottom-color:var(--ow-cyan)}
+  .pf-app .r1b-sidebar-foot select {
+    background:#123047!important;color:#d6e7f0!important;border-color:#35596e!important;
+  }
+  .oddworks-login-shell,.oddworks-login .login-card {background:var(--ow-surface)}
+}
+
+/* Desktop project navigation fills the space below the header. */
+@media screen and (min-width:951px) {
+  .pf-app .r1b-layout {min-height:calc(100dvh - var(--header-h))}
+  .pf-app .r1b-layout > .r1b-sidebar {
+    height:calc(100dvh - var(--header-h));
+    min-height:0;
+    max-height:calc(100dvh - var(--header-h));
+    box-sizing:border-box;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+  }
+  .pf-app .r1b-sidebar > * {flex-shrink:0}
+  .pf-app .r1b-sidebar-foot {margin-top:auto}
+}
+
+/* Semantic palette shared by all components, including embedded history.
+   Printing keeps the light palette independently of the interface preference. */
+:root {
+  --surface-page:#dce8ef;
+  --surface-card:#eaf2f6;
+  --surface-raised:#f5fafc;
+  --surface-muted:#dfedf2;
+  --surface-interactive:#d3edf0;
+  --surface-heading:linear-gradient(110deg,#d2e9ee,#e2e4f4);
+  --text-primary:#102335;
+  --text-secondary:#526b7d;
+  --text-discreet:#607488;
+  --border-default:#bdcfdb;
+  --border-subtle:#c4d5df;
+  --action-primary:#081726;
+  --action-link:#087f98;
+  --state-info:#087b8f;
+  --state-info-bg:#e1f9fb;
+  --state-success:#16815c;
+  --state-success-bg:#e7f7ee;
+  --state-warning:#805715;
+  --state-warning-bg:#fff1d8;
+  --state-danger:#b91c1c;
+  --state-danger-bg:#fee2e2;
+  --ow-bg:var(--surface-page);
+  --ow-surface:var(--surface-card);
+  --ow-surface-alt:var(--surface-muted);
+  --ow-surface-raised:var(--surface-raised);
+  --ow-panel-head:var(--surface-heading);
+  --ow-ink:var(--text-primary);
+  --ow-muted:var(--text-secondary);
+  --ow-line:var(--border-default);
+  --primary:var(--action-primary);
+  --accent:var(--action-link);
+  --success:var(--state-success);
+  --warning:var(--state-warning);
+  --danger:var(--state-danger);
+  --pf-selected:var(--state-info-bg);
+  --pf-success-bg:var(--state-success-bg);
+  --pf-warning-bg:var(--state-warning-bg);
+  --pf-danger-bg:var(--state-danger-bg);
+}
+@media screen {
+  html {background:var(--surface-page);color-scheme:light}
+  html[data-theme="dark"],html[data-color-scheme="dark"] {
+    color-scheme:dark;
+    --surface-page:#071522;
+    --surface-card:#0d2133;
+    --surface-muted:#122a3e;
+    --surface-raised:#162f43;
+    --surface-interactive:#19384e;
+    --surface-heading:linear-gradient(110deg,#122f42,#222e4a);
+    --text-primary:#e7f0f5;
+    --text-secondary:#a5b6c3;
+    --text-discreet:#8ea4b4;
+    --border-default:#294256;
+    --border-subtle:#20384a;
+    --action-primary:#2dd4db;
+    --action-link:#65dce3;
+    --state-info:#65dce3;
+    --state-info-bg:#133a4b;
+    --state-success:#7bdeb0;
+    --state-success-bg:#123b30;
+    --state-warning:#ffd083;
+    --state-warning-bg:#443421;
+    --state-danger:#ffaaaa;
+    --state-danger-bg:#482a33;
+    --ow-violet:#7b5cf5;
+    --ow-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+  .pf-app a {color:var(--action-link)}
+  .pf-app :is(.btn-secondary,.btn-r1b-secondary):hover {background:var(--surface-interactive)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) th {color:var(--text-secondary)!important}
+  .pf-app :is(.table,.sf-table,.stocks-table) tr:hover:not(.stock-low) {background:var(--surface-interactive)!important}
+  .pf-app :is(input,textarea,select):not([type="checkbox"]):not([type="radio"]):not([type="file"]) {
+    background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-default);
+  }
+  .pf-app :is(input,textarea,select):disabled {background:var(--surface-muted)!important;color:var(--text-secondary)!important;opacity:1}
+  .pf-app :is(input,textarea)::placeholder {color:var(--text-secondary);opacity:1}
+  .pf-app :is(input,textarea,select) {accent-color:var(--ow-cyan)}
+  .pf-app :is(input,textarea,select):focus-visible {outline:3px solid var(--ow-cyan);outline-offset:2px}
+  .pf-app :is(.btn,.btn-r1b):disabled {opacity:.55;transform:none;cursor:not-allowed}
+  .pf-app :is(.r1b-step-circle,.dash-step-num) {border:1px solid var(--border-default)}
+  .pf-app .dash-step.active {background:var(--state-info-bg)!important}
+  .pf-app .r1b-step.active .r1b-step-label {color:var(--action-link)!important}
+  .pf-app .dash-proj-item:hover {background:var(--surface-interactive)!important}
+  .pf-app :is(.dd-kpi,.dd-intro,.cdc-test-page) {color:var(--text-primary)!important}
+  .pf-app .r1b-info-box[style*="state-success"] {background:var(--state-success-bg)!important}
+  .pf-app dialog {background:var(--surface-card);color:var(--text-primary);border-color:var(--border-default)}
+  .pf-app .alert-success {background:var(--state-success-bg);color:var(--state-success);border-color:var(--state-success)}
+  .pf-app .alert-warning {background:var(--state-warning-bg);color:var(--state-warning);border-color:var(--state-warning)}
+  .pf-app :is(.alert-danger,.alert-error) {background:var(--state-danger-bg);color:var(--state-danger);border-color:var(--state-danger)}
+  .pf-app .alert-info {background:var(--state-info-bg);color:var(--state-info);border-color:var(--state-info)}
+  body[data-accent="indigo"] {--primary:var(--action-primary);--accent:var(--action-link);--pf-selected:var(--state-info-bg)}
+  body[data-accent="slate"] {--primary:var(--action-primary);--accent:var(--action-link);--pf-selected:var(--state-info-bg)}
+}
+
+@media screen and (prefers-color-scheme:dark) {
+  html[data-theme="system"]:not([data-color-scheme]) {
+    color-scheme:dark;
+    --surface-page:#071522;
+    --surface-card:#0d2133;
+    --surface-muted:#122a3e;
+    --surface-raised:#162f43;
+    --surface-interactive:#19384e;
+    --surface-heading:linear-gradient(110deg,#122f42,#222e4a);
+    --text-primary:#e7f0f5;
+    --text-secondary:#a5b6c3;
+    --text-discreet:#8ea4b4;
+    --border-default:#294256;
+    --border-subtle:#20384a;
+    --action-primary:#2dd4db;
+    --action-link:#65dce3;
+    --state-info:#65dce3;
+    --state-info-bg:#133a4b;
+    --state-success:#7bdeb0;
+    --state-success-bg:#123b30;
+    --state-warning:#ffd083;
+    --state-warning-bg:#443421;
+    --state-danger:#ffaaaa;
+    --state-danger-bg:#482a33;
+    --ow-violet:#7b5cf5;
+    --ow-shadow:0 4px 16px rgba(0,0,0,.12);
+  }
+}
+
+@media screen {
+  .pf-app .btn-success {background:#187652!important;color:#fff!important}
+  .pf-app .btn-danger {background:#b93842!important;color:#fff!important}
+  .pf-app .btn-warning {background:#9b6415!important;color:#fff!important}
+  .pf-app .btn-success:hover {background:#126140!important}
+  .pf-app .btn-danger:hover {background:#9d2834!important}
+  .pf-app .cdc-stepper .step.done span {background:#187652;color:#fff}
+  .pf-app :is(.dd-kpi-icon,.dd-gantt-legend span:nth-child(2)) {color:var(--state-info)}
+  .pf-app .dd-gantt-legend span:nth-child(3) {color:var(--state-warning)}
+  .pf-app .dd-gantt-legend span:nth-child(4) {color:var(--state-success)}
+}
+
+@media screen {
+  .pf-app :is(hr,fieldset) {border-color:var(--border-default)}
+  .pf-app :is(.r1b-step-circle,.dash-step-num) {color:var(--text-primary)}
+  .pf-app .btn-primary:focus-visible {outline-color:var(--text-primary)}
+}
+
+/* Filled actions need a distinct foreground from semantic status text. */
+@media screen {
+  .pf-app {--on-accent:#fff}
+  html[data-color-scheme="dark"] .pf-app {--on-accent:#061b28}
+  html[data-color-scheme="dark"] .pf-app[data-accent="indigo"],
+  html[data-color-scheme="dark"] .pf-app[data-accent="slate"] {--on-accent:#fff}
+  .pf-app :is(.nav-link.active,.r1b-nav a.active,.r1b-step.active .r1b-step-circle) {
+    background:linear-gradient(135deg,var(--ow-cyan),var(--ow-cyan-deep))!important;
+  }
+  .pf-app :is(.btn-primary,.btn-r1b-primary,.nav-link.active,.nav-link.active i,.r1b-nav a.active,.r1b-step.active .r1b-step-circle) {
+    color:var(--on-accent)!important;
+  }
+}
+
+@media screen {
+  .pf-app .r1b-sidebar-foot label {color:#c0d6e3!important}
+  .pf-app {--primary-light:var(--action-link)}
+  .pf-app .cdc-stepper .step.active span {color:var(--on-accent)}
+}
+
+@media screen {
+  .pf-app .dash-kicker {color:var(--action-link)}
+}

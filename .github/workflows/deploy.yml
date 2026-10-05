@@ -2,7 +2,7 @@ name: Déployer gestion-projet
 
 on:
   push:
-    branches: [main]
+    branches: [main, NewUxUi]
   workflow_dispatch:
     inputs:
       branch:
@@ -46,6 +46,8 @@ jobs:
           if [[ -f "$test_dir/tests/couts_delais.php" ]]; then
             php "$test_dir/tests/couts_delais.php"
             php "$test_dir/tests/st_references.php"
+            php "$test_dir/tests/st_hierarchy.php"
+            php "$test_dir/tests/estimate_unknown.php"
           fi
           if [[ -f "$test_dir/tests/nextcloud_sans_curl.php" ]]; then
             php -n "$test_dir/tests/nextcloud_sans_curl.php"
@@ -80,6 +82,7 @@ jobs:
           php "$test_dir/tests/cdc_test.php"
           php "$test_dir/tests/decision_dashboard.php"
           php "$test_dir/tests/task_filters.php"
+          php "$test_dir/tests/ux_relations.php"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash

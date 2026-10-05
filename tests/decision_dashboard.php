@@ -73,3 +73,26 @@ expectDD(ddConsolidate($specs)['riskCounts']['Non renseigné']>0,'Missing risk i
 echo "Temporal isolation and historical snapshots: OK\n";
 
 expectDD($decoded['analysis'] === $baseline, 'Computed decision indicators are frozen alongside sources');
+
+// Capacity confirmation follows only the applicable saved step-2 fields.
+$complete=['id'=>'S.T.1.1','uid'=>'source','sf'=>'S.F.1','description'=>'Carte','type'=>'PCB','quantite'=>1,'cout_unitaire'=>0,'cout_taxe'=>'HT','cout_estime'=>0,'variation'=>'Fort','delai_jours'=>0];
+$capSpecs=['fonctions'=>[['id'=>'S.F.1']], 'specs_techniques'=>[$complete]];
+$cap=ddConsolidate($capSpecs);
+expectDD($cap['capacityComplete'] && $cap['capacityConfirmed']===1,'Filled zero and high risk confirm completeness, not a favorable GO');
+foreach(['description','type','quantite','cout_unitaire','cout_taxe','variation','delai_jours'] as $field) {
+    $capSpecs['specs_techniques'][0]=$complete;
+    $capSpecs['specs_techniques'][0][$field]='';
+    expectDD(!ddConsolidate($capSpecs)['capacityComplete'],'Blank field must prevent confirmation: '.$field);
+}
+foreach(['Logiciel','3D'] as $type) {
+    $internal=$complete; $internal['type']=$type;
+    unset($internal['quantite'],$internal['cout_unitaire'],$internal['cout_taxe']);
+    $capSpecs['specs_techniques']=[$internal];
+    expectDD(ddConsolidate($capSpecs)['capacityComplete'],'Hidden purchase fields do not block '.$type);
+}
+$capSpecs['specs_techniques']=[$complete,['id'=>'S.T.1.2','sf'=>'S.F.1','description'=>'Réutilisation','type'=>'S.T.x.x','reference_uid'=>'source']];
+expectDD(ddConsolidate($capSpecs)['capacityConfirmed']===2,'Valid reference inherits source confirmation');
+$capSpecs['specs_techniques'][0]['variation']='';
+expectDD(ddConsolidate($capSpecs)['capacityConfirmed']===0,'Incomplete source also prevents reference confirmation');
+expectDD(!ddConsolidate([])['capacityComplete'],'No S.T. is not a confirmed capacity');
+echo "Capacity completeness: OK\n";
