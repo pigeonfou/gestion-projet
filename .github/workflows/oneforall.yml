@@ -1,0 +1,20 @@
+name: OneForAll integration checks
+on:
+  push:
+    branches: [AllFortOne]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check native integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import json; d=json.load(open("packaging/oneforall.json")); assert d["version"]==1 and d["id"]=="oddworks"'
+          sudo apt-get update && sudo apt-get install -y php-cli php-sqlite3
+          php tests/oneforall.php
+          while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find . -name '*.php' -print0)

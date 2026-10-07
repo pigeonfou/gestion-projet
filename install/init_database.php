@@ -84,8 +84,10 @@ try {
 
     chmod($dbPath, 0660);
     echo "✓ Base créée : $dbPath\n";
-    echo "✓ Compte admin : admin / mot de passe généré ci-dessous\n";
-    echo "  Mot de passe initial : $adminPassword\n";
+    echo "✓ Compte admin : admin\n";
+    if (getenv('PROJECTFLOW_ADMIN_PASSWORD') === false) {
+        echo "  Mot de passe initial : $adminPassword\n";
+    }
     echo "⚠ Changez le mot de passe dès la première connexion !\n";
     echo "ℹ Base : $dbPath\n";
 } catch (PDOException $e) {
