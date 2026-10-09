@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "oddworks",
+  "integration": "native-isolated",
+  "frontend": "nginx",
+  "hostname": "oddworks.pigeonfou.com"
+}

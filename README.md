@@ -4,8 +4,8 @@ Application web PHP de gestion de projets, tâches, utilisateurs et cahiers des 
 
 ## Prérequis
 
-- Linux (Ubuntu 22.04 / 24.04 recommandé)
-- PHP ≥ 8.1 + extensions `pdo_sqlite` et `mbstring`
+- Linux (Ubuntu 22.04 / 24.04 / 26.04)
+- PHP ≥ 8.1 + extensions `pdo_sqlite`, `mbstring`, `curl`, `xml` et `zip`
 - Apache 2 + `libapache2-mod-php`
 - Git
 
@@ -17,7 +17,7 @@ Le dépôt contient un installateur interactif : `install/install_ubuntu.sh`.
 
 ### Installation recommandée
 
-Depuis une session SSH sur un serveur Ubuntu 22.04 ou 24.04 fraîchement installé :
+Depuis une session SSH sur un serveur Ubuntu 22.04, 24.04 ou 26.04 fraîchement installé :
 
 ```bash
 sudo apt-get update
@@ -46,7 +46,7 @@ sudo bash /tmp/projectflow-install.sh --install
 - installe le projet dans `/var/www/html/gestion-projet` ;
 - crée `/var/lib/projectflow` avec les droits nécessaires ;
 - initialise la base SQLite si elle n'existe pas ;
-- demande éventuellement le mot de passe initial du compte `admin` ;
+- demande et confirme le mot de passe initial du compte `admin` ;
 - applique les migrations du schéma et initialise les paramètres ;
 - configure Apache pour autoriser le `.htaccess` du projet ;
 - interdit l'accès HTTP au répertoire `install/` ;
@@ -75,7 +75,7 @@ Le compte initial est :
 identifiant : admin
 ```
 
-Le mot de passe est soit celui saisi pendant l'installation, soit celui affiché une seule fois par `install/init_database.php` lorsqu'il est généré automatiquement.
+Le mot de passe est celui saisi et confirmé pendant l’installation (12 caractères minimum). Aucun mot de passe de démonstration n’est créé par l’installateur.
 
 ### Pare-feu (optionnel)
 
@@ -93,7 +93,7 @@ La procédure manuelle reste possible si nécessaire :
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y apache2 php php-sqlite3 php-mbstring libapache2-mod-php git
+sudo apt install -y apache2 php php-sqlite3 php-mbstring php-curl php-xml php-zip libapache2-mod-php git
 cd /var/www/html
 sudo git clone --branch main https://github.com/pigeonfou/gestion-projet.git
 sudo chown -R www-data:www-data gestion-projet
@@ -226,3 +226,7 @@ gestion-projet/
 - Suppression des actions destructives en GET
 - Sessions sécurisées et régénérées à la connexion
 - Base SQLite hors du DocumentRoot
+
+## Installation via OneForAll
+
+Voir [le guide OneForAll](docs/ONEFORALL.md). L’instance gérée est séparée de l’installation Apache autonome ; ses données et services portent les chemins OneForAll.
