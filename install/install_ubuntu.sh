@@ -26,8 +26,8 @@ check_os(){
   source /etc/os-release
   [[ "$ID" == "ubuntu" ]] || die "Ce script est prévu pour Ubuntu. Système : $PRETTY_NAME"
   case "$VERSION_ID" in
-    22.04|24.04) ok "Ubuntu $VERSION_ID détecté." ;;
-    *) warn "Ubuntu $VERSION_ID n'est pas une version cible 22.04/24.04."
+    22.04|24.04|26.04) ok "Ubuntu $VERSION_ID détecté." ;;
+    *) warn "Ubuntu $VERSION_ID n'est pas une version cible 22.04/24.04/26.04."
        read -r -p "Continuer malgré tout ? [o/N] " answer
        [[ "$answer" =~ ^[oOyY]$ ]] || exit 0 ;;
   esac
@@ -39,7 +39,7 @@ install_packages(){
   info "Mise à niveau des paquets système..."
   apt-get upgrade -y
   info "Installation d'Apache, PHP, SQLite, Git et outils..."
-  apt-get install -y apache2 git curl ca-certificates php php-cli php-common php-sqlite3 php-mbstring libapache2-mod-php sqlite3
+  apt-get install -y apache2 git curl ca-certificates php php-cli php-common php-sqlite3 php-mbstring php-curl php-xml php-zip libapache2-mod-php sqlite3
   ok "Paquets installés."
   php -v | head -n 1; apache2 -v | head -n 1; git --version
 }
@@ -77,15 +77,12 @@ configure_database(){
     return
   fi
   echo; echo "Création du compte administrateur initial."
-  echo "Laissez vide pour générer automatiquement un mot de passe."
-  read -r -s -p "Mot de passe admin : " ADMIN_PASSWORD; echo
-  if [[ -z "$ADMIN_PASSWORD" ]]; then
-    info "Mot de passe aléatoire généré par le programme d'initialisation."
-    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" php "$APP_DIR/install/init_database.php"
-  else
-    [[ ${#ADMIN_PASSWORD} -ge 12 ]] || die "Le mot de passe doit comporter au moins 12 caractères."
-    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
-  fi
+  read -r -s -p "Mot de passe admin (12 caractères minimum) : " ADMIN_PASSWORD; echo
+  [[ ${#ADMIN_PASSWORD} -ge 12 ]] || die "Le mot de passe doit comporter au moins 12 caractères."
+  read -r -s -p "Confirmer le mot de passe : " ADMIN_CONFIRM; echo
+  [[ "$ADMIN_PASSWORD" == "$ADMIN_CONFIRM" ]] || die "Les mots de passe diffèrent."
+  runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
+  unset ADMIN_CONFIRM
   unset ADMIN_PASSWORD
   chmod 660 "$DB_PATH"; chown www-data:www-data "$DB_PATH"
   ok "Base SQLite initialisée."
