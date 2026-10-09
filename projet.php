@@ -4,6 +4,7 @@ $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/estimation_fields.php';
 require_once __DIR__ . '/includes/task_workflow.php';
+require_once __DIR__ . '/includes/project_trl.php';
 require_once __DIR__ . '/includes/task_filters.php';
 require_once __DIR__ . '/includes/ux_objects.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
@@ -35,6 +36,7 @@ if (!$projet) {
     redirect('projets.php');
 }
 
+if ($view==='trl') requerirAccesProjet($id,false);
 initProjectNotes($db,$id);
 
 $progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
@@ -64,6 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     if ($action !== 'update_task_status') {
         requerirGestionProjet($id);
+    }
+    if ($action === 'save_trl') {
+        try { trlSave($db,$id,$user,$_POST); setFlash('success','Évaluation TRL enregistrée.'); }
+        catch(InvalidArgumentException $error) { setFlash('error',$error->getMessage()); }
+        catch(Throwable $error) { error_log('OddWorks TRL : '.get_class($error)); setFlash('error','Évaluation TRL non enregistrée.'); }
+        redirect('projet.php?id='.$id.'&view=trl');
     }
     if ($action === 'manage_note' || $action === 'save_notes') {
         try {
@@ -423,11 +431,13 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=1')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
     <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
     <nav class="r1b-nav" aria-label="Navigation du projet">
+      <a href="<?=url('projet.php?id='.$id.'&view=trl')?>" class="<?=$view==='trl'?'active':''?>">Maturité technologique · TRL</a>
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
         <i class="fas fa-th-large"></i> Synthèse du projet
       </a>
@@ -470,7 +480,9 @@ function stepClass(int $n, int $displayed, array $validated): string
 
   <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
-    <?php if ($view === 'dashboard'): ?>
+    <?php require __DIR__.'/includes/views/project_trl.php'; ?>
+    <?php if ($view === 'trl'): ?>
+    <?php elseif ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
       <div class="r1b-page-head">
         <div>
