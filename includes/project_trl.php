@@ -15,7 +15,7 @@ function trlLoad(PDO $db, int $id): array {
 }
 function trlLevel($value): ?int {
     if ($value==='' || $value===null) return null;
-    if (!is_scalar($value) || !preg_match('/^[1-9]$/D',(string)$value)) throw new InvalidArgumentException('Chaque niveau TRL doit être compris entre 1 et 9, ou rester non évalué.');
+    if ((!is_string($value) && !is_int($value)) || !preg_match('/^[1-9]$/D',(string)$value)) throw new InvalidArgumentException('Chaque niveau TRL doit être compris entre 1 et 9, ou rester non évalué.');
     return (int)$value;
 }
 function trlSave(PDO $db, int $id, array $actor, array $input): void {
