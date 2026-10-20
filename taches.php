@@ -38,6 +38,10 @@ $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $taches = $stmt->fetchAll();
 
+if (($_SERVER['HTTP_X_PROJECTFLOW_PARTIAL'] ?? '')==='tasks') {
+    header('Content-Type: text/html; charset=utf-8');header('Vary: X-ProjectFlow-Partial');
+    $statusFormAction=url('taches.php');$showProjectLink=true;require __DIR__.'/includes/views/kanban.php';exit;
+}
 require __DIR__ . '/includes/header.php';
 ?>
 <div class="taches-page-wrap">
@@ -57,3 +61,4 @@ require __DIR__ . '/includes/header.php';
   ?>
 </div>
 <?php require __DIR__ . '/includes/footer.php'; ?>
+

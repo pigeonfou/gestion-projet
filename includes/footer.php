@@ -5,7 +5,8 @@
         <p class="footer-sub">Concevoir · Organiser · Réaliser</p>
     </div>
 </footer>
-<script src="<?= url('assets/js/app.js') ?>"></script>
-<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
+<script src="<?= url('assets/js/app.js?v=recode-1') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=recode-1')?>" defer></script>
 </body>
 </html>
+

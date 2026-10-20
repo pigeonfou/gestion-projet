@@ -17,8 +17,9 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <title><?= e($pageTitle ?? 'Gestion de Projet') ?> - <?= e($siteNom) ?></title>
     <meta name="theme-color" content="#081726">
     <link rel="icon" type="image/svg+xml" href="<?= url('assets/img/oddworks-mark.svg') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>">
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=recode-1') ?>">
+    <link rel="stylesheet" href="<?=url('assets/css/components/dashboard.css')?>">
+    <link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=recode-1') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
@@ -94,3 +95,4 @@ $siteNom = getSetting('site_nom', 'OddWorks');
         <?php endif; ?>
         <main>
     <?php endif; ?>
+

@@ -4,6 +4,8 @@
  */
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/schema.php';
+require_once __DIR__ . '/../src/Services/Transaction.php';
+require_once __DIR__ . '/../src/Domain/StructuredIdentity.php';
 
 function ensureCahierSpecsColumn(): void {
     runSchemaMigrations();
@@ -34,6 +36,9 @@ function migrateStHierarchy(array $data, int $cahierId): array {
         $data['specs_techniques'][$i]['uid'] = $st['uid'] ?? substr(hash('sha256', $cahierId . ':' . $st['id']), 0, 32);
         if (!array_key_exists('parent_uid', $st)) $data['specs_techniques'][$i]['parent_uid'] = null;
     }
+    foreach ($data['fonctions'] ?? [] as $i => $sf) {
+        $data['fonctions'][$i]['uid'] = pfIdentity($sf['uid'] ?? null, $cahierId . ':sf:' . $sf['id']);
+    }
     return $data;
 }
 
@@ -42,14 +47,14 @@ function loadSpecs(int $cahierId): array {
     $stmt = getDB()->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
     $stmt->execute([$cahierId]);
     $json = $stmt->fetchColumn();
-    $data = $json ? json_decode($json, true) : null;
+    $data = $json ? json_decode($json, true, 512, JSON_THROW_ON_ERROR) : null;
     if (!is_array($data)) $data = [];
     // Lazy data migration: persist legacy identities before any display renumbering.
     // Compare-and-swap prevents a read migration from overwriting a concurrent edit.
     $migrated = migrateStHierarchy($data, $cahierId);
     if ($migrated !== $data && is_string($json)) {
         $update = getDB()->prepare('UPDATE cahiers SET specs_json = ? WHERE id = ? AND specs_json = ?');
-        $update->execute([json_encode($migrated, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cahierId, $json]);
+        $update->execute([json_encode($migrated, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $cahierId, $json]);
         if ($update->rowCount() === 0) return loadSpecs($cahierId);
     }
     $data = $migrated;
@@ -60,7 +65,7 @@ function loadSpecs(int $cahierId): array {
 function saveSpecs(int $cahierId, array $specs): void {
     ensureCahierSpecsColumn();
     $db = getDB();
-    $json = json_encode($specs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $json = json_encode($specs, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     // date_maj peut manquer sur d'anciennes bases
     $cols = $db->query('PRAGMA table_info(cahiers)')->fetchAll(PDO::FETCH_COLUMN, 1);
     if (in_array('date_maj', $cols, true)) {
@@ -139,6 +144,7 @@ function parseFonctionsFromPost(array $post): array {
         }
         $n++;
         $out[] = [
+            'uid' => pfIdentity($post['sf_uid'][$i] ?? null),
             'id' => 'S.F.' . $n,
             'description' => $desc,
             'indicateur' => $ind,
@@ -166,6 +172,7 @@ function loadJalons(int $cahierId): array {
  * @return int nombre de jalons enregistrés
  */
 function saveJalonsFromPost(int $cahierId, array $post): int {
+    return pfTransaction(getDB(), function () use ($cahierId, $post) {
     ensureJalonsTable();
     $noms = $post['jalon_nom'] ?? [];
     $dates = $post['jalon_date'] ?? [];
@@ -189,6 +196,8 @@ function saveJalonsFromPost(int $cahierId, array $post): int {
         $n++;
     }
     return $n;
+
+    });
 }
 
 
@@ -200,37 +209,7 @@ function saveJalonsFromPost(int $cahierId, array $post): int {
  * @return list<array{sf:string,id:string,description:string,type:string}>
  */
 /** Les achats comportent un coût ; les réalisations internes un délai seul. */
-function stTypeHasCost(string $type): bool {
-    return in_array($type, ['Matériel', 'Composant', 'Prestataire', 'PCB'], true);
-}
-
-/** Canonical qualitative values, with compatibility for older labels. */
-function normalizeEstimationVariation($value): string {
-    return match (is_scalar($value) ? (string)$value : '') {
-        'Faible' => 'Faible', 'Fort', 'Forte' => 'Fort', 'Moyen', 'Moyenne' => 'Moyen', default => '',
-    };
-}
-function estimationDecimal($value, float $default = 0): float {
-    if (!is_scalar($value)) return $default;
-    $value = str_replace(',', '.', trim((string)$value));
-    return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0 ? (float)$value : $default;
-}
-/** A negative estimate is explicitly unknown, never a zero-cost/zero-day value. */
-function estimateIsUnknown($value): bool {
-    if (!is_scalar($value)) return false;
-    $text = str_replace(',', '.', trim((string)$value));
-    return in_array(strtolower($text), ['inconnue', 'inconnu'], true)
-        || (is_numeric($text) && is_finite((float)$text) && (float)$text < 0);
-}
-function estimationTotal(float $quantity, float $unit): float {
-    return is_finite($quantity * $unit) ? round($quantity * $unit, 2) : 0;
-}
-
-function parseDelaiJours($value): ?float {
-    $value = str_replace(',', '.', trim((string)$value));
-    return $value !== '' && is_numeric($value) && is_finite((float)$value) && (float)$value >= 0
-        ? round((float)$value, 2) : null;
-}
+require_once __DIR__.'/../src/Domain/Estimation.php';
 
 function parseSpecsTechniquesFromPost(array $post): array {
     $sfs = $post['st_sf'] ?? [];
@@ -385,22 +364,23 @@ function validateStHierarchy(array $techniques, array $previous = [], array $con
 }
 
 function saveSpecsTechniques(int $cahierId, array $techniques, array $confirmedDeletions = []): void {
+    pfTransaction(getDB(), function () use ($cahierId, $techniques, $confirmedDeletions) {
     ensureCahierSpecsColumn();
     $previous = loadSpecs($cahierId)['specs_techniques'];
     $db = getDB();
     $stmt = $db->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
     $stmt->execute([$cahierId]);
     $raw = $stmt->fetchColumn();
-    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true, 512, JSON_THROW_ON_ERROR) : [];
     if (!is_array($data)) {
         $data = [];
     }
     validateStReferences($techniques, $previous);
     $techniques = validateStHierarchy($techniques, $previous, $confirmedDeletions);
     // Preserve legacy unspecified fields when a form merely resubmits its display defaults.
-    $oldById=[]; foreach($data['specs_techniques']??[] as $old) $oldById[$old['id']]=$old;
+    $oldById=[]; foreach($data['specs_techniques']??[] as $old) $oldById[$old['uid']]=$old;
     foreach($techniques as &$tech) {
-        $old=$oldById[$tech['id']]??null;
+        $old=$oldById[$tech['uid']]??null;
         if(!$old || ($old['type']??'')!==$tech['type']) continue;
         if(!array_key_exists('quantite',$old) && !array_key_exists('cout_unitaire',$old)
             && ($tech['quantite']??null)===1.0 && ($tech['cout_unitaire']??null)===(float)($old['cout_estime']??0)) {
@@ -409,8 +389,11 @@ function saveSpecsTechniques(int $cahierId, array $techniques, array $confirmedD
         if(!array_key_exists('variation',$old) && ($tech['variation']??'')==='') unset($tech['variation']);
     }
     unset($tech);
+    $data = pfRemapSpecifications($db, $cahierId, $data, $techniques);
     $data['specs_techniques'] = array_values($techniques);
     saveSpecs($cahierId, $data);
+
+    });
 }
 
 
@@ -430,6 +413,7 @@ function parseComposantsStFromPost(array $post): array {
     foreach ($stIds as $i => $stId) {
         $stId = trim((string)$stId);
         $type = trim((string)($types[$i] ?? 'Matériel'));
+        $uid = pfIdentity($post['cp_uid'][$i] ?? null);
         if ($stId === '') {
             continue;
         }
@@ -452,6 +436,7 @@ function parseComposantsStFromPost(array $post): array {
                 $bySt[$stId] = ['type' => $type, 'items' => []];
             }
             $bySt[$stId]['items'][] = [
+                'uid' => $uid,
                 'designation' => $des,
                 'reference' => $ref,
                 'fournisseur' => $four,
@@ -478,6 +463,7 @@ function parseComposantsStFromPost(array $post): array {
                 $bySt[$stId] = ['type' => $type, 'items' => []];
             }
             $bySt[$stId]['items'][] = [
+                'uid' => $uid,
                 'affectation' => $aff,
                 'duree' => $duree,
                 'delai_jours' => $delai,
@@ -512,17 +498,24 @@ function parseComposantsStFromPost(array $post): array {
 }
 
 function saveComposantsSt(int $cahierId, array $composants): void {
+    pfTransaction(getDB(), function () use ($cahierId, $composants) {
     ensureCahierSpecsColumn();
     $db = getDB();
     $stmt = $db->prepare('SELECT specs_json FROM cahiers WHERE id = ?');
     $stmt->execute([$cahierId]);
     $raw = $stmt->fetchColumn();
-    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+    $data = is_string($raw) && $raw !== '' ? json_decode($raw, true, 512, JSON_THROW_ON_ERROR) : [];
     if (!is_array($data)) {
         $data = [];
     }
+    $q=$db->prepare('SELECT projet_id FROM cahiers WHERE id=?');$q->execute([$cahierId]);
+    pfBackfillTaskIdentities($db,(int)$q->fetchColumn(),$data);
+    $data = pfValidateComponents($data, $composants);
     $data['composants_st'] = $composants;
+    pfRemapSpecifications($db,$cahierId,$data,$data['specs_techniques'] ?? []);
     saveSpecs($cahierId, $data);
+
+    });
 }
 
 
@@ -565,162 +558,8 @@ function ensureTachesExtendedColumns(): void {
  * @param array<string, list<array>> $composants  id S.T. => items
  * @param list<array> $techniques  specs_techniques (pour libellés)
  */
-function syncTasksFromComposants(int $projetId, array $composants, array $techniques): void {
-    ensureTachesExtendedColumns();
-    $db = getDB();
-    $techById = [];
-    foreach ($techniques as $t) {
-        if (!empty($t['id'])) {
-            $techById[$t['id']] = $t;
-        }
-    }
-    $wanted = [];
-    foreach ($composants as $stId => $items) {
-        if (!is_array($items)) continue;
-        $tech = $techById[$stId] ?? [];
-        $stType = $tech['type'] ?? '';
-        $stDesc = $tech['description'] ?? '';
-        foreach ($items as $it) {
-            $itemId = $it['id'] ?? '';
-            if ($itemId === '') continue;
-            $prefix = explode('.', $itemId)[0] ?? '';
-            $isSoft = in_array($stType, ['Logiciel', '3D', 'PCB'], true)
-                || in_array($prefix, ['L', '3D', 'PCB'], true);
-            if (!$isSoft) continue;
-            $typeLabel = $stType ?: ($prefix === 'L' ? 'Logiciel' : $prefix);
-            $key = 'cp:' . $projetId . ':' . $stId . ':' . $itemId;
-            $aff = trim((string)($it['affectation'] ?? ''));
-            $duree = trim((string)($it['duree'] ?? ''));
-            $var = trim((string)($it['variation'] ?? ''));
-            $titre = '[' . $itemId . '] ' . $stId . ($stDesc !== '' ? ' — ' . $stDesc : '');
-            $description = implode("\n", array_filter([
-                'Type : ' . $typeLabel,
-                isset($it['delai_jours']) ? 'Délai : ' . $it['delai_jours'] . ' j' : ($duree !== '' ? 'Durée : ' . $duree : ''),
-                $var !== '' ? 'Variation : ' . $var : '',
-            ]));
-            $wanted[$key] = [
-                'titre' => $titre,
-                'description' => $description,
-                'assigne_a' => $aff !== '' ? $aff : null,
-            ];
-        }
-    }
-    $stmt = $db->prepare("SELECT id, source_key FROM taches WHERE projet_id = ? AND source_key LIKE 'cp:%'");
-    $stmt->execute([$projetId]);
-    $existing = [];
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $existing[$row['source_key']] = (int)$row['id'];
-    }
-    $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
-    $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE id=?');
-    $del = $db->prepare('DELETE FROM taches WHERE id=?');
-    $db->beginTransaction();
-    try {
-        foreach ($wanted as $key => $payload) {
-            if (isset($existing[$key])) {
-                $upd->execute([$payload['titre'], $payload['description'], $payload['assigne_a'], $existing[$key]]);
-                unset($existing[$key]);
-            } else {
-                $ins->execute([$projetId, $payload['titre'], $payload['description'], 'moyenne', 'a_faire', $payload['assigne_a'], $key, 'a_faire']);
-            }
-        }
-        foreach ($existing as $idLeft) {
-            $del->execute([$idLeft]);
-        }
-        $db->commit();
-    } catch (Throwable $e) {
-        $db->rollBack();
-        throw $e;
-    }
-}
+require_once __DIR__.'/../src/Services/GeneratedTaskSynchronizer.php';
 
-
-/**
- * Synchronise les spécifications techniques Logiciel / 3D / PCB de l'étape 2
- * vers la table taches. Une S.T. correspond à une tâche de projet.
- *
- * Les composants de l'étape 4 utilisent une synchronisation distincte
- * (syncTasksFromComposants) avec des clés source "cp:*".
- */
-function syncTasksFromStructuredSpecs(int $projetId, array $fonctions, array $techniques): void {
-    ensureTachesExtendedColumns();
-    $db = getDB();
-    $wanted = [];
-
-    // Les S.F. ne sont PAS des tâches.
-    // Une S.F. sert à générer/porter ses S.T. dans l'étape 2.
-
-    // Chaque S.T., quel que soit son type (Matériel, Logiciel, 3D, PCB),
-    // devient une tâche dès qu'elle possède une description.
-    foreach ($techniques as $tech) {
-        if (!is_array($tech)) continue;
-        $stId = trim((string)($tech['id'] ?? ''));
-        $desc = trim((string)($tech['description'] ?? ''));
-        $type = trim((string)($tech['type'] ?? 'Matériel'));
-        if ($stId === '' || $desc === '' || !in_array($type, ['Matériel', 'Composant', 'Prestataire', 'Logiciel', '3D', 'PCB'], true)) {
-            continue;
-        }
-
-        $key = 'st:' . $projetId . ':' . $stId;
-        $wanted[$key] = [
-            'titre' => '[' . $stId . '] ' . $desc,
-            'description' => 'Type : ' . $type,
-            'assigne_a' => null,
-        ];
-    }
-
-    // Synchronisation uniquement des tâches automatiques issues des S.T.
-    // Les éventuelles anciennes tâches issues des S.F. sont supprimées.
-    $stmt = $db->prepare(
-        "SELECT id, source_key FROM taches
-         WHERE projet_id = ? AND (source_key LIKE 'sf:%' OR source_key LIKE 'st:%')"
-    );
-    $stmt->execute([$projetId]);
-    $existing = [];
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        $existing[$row['source_key']] = (int)$row['id'];
-    }
-
-    $ins = $db->prepare(
-        'INSERT INTO taches
-         (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status)
-         VALUES (?,?,?,?,?,?,?,?)'
-    );
-    $upd = $db->prepare('UPDATE taches SET titre=?, description=? WHERE id=?');
-    $del = $db->prepare('DELETE FROM taches WHERE id=?');
-
-    $db->beginTransaction();
-    try {
-        foreach ($wanted as $key => $payload) {
-            if (isset($existing[$key])) {
-                $upd->execute([$payload['titre'], $payload['description'], $existing[$key]]);
-                unset($existing[$key]);
-            } else {
-                $ins->execute([
-                    $projetId,
-                    $payload['titre'],
-                    $payload['description'],
-                    'moyenne',
-                    'a_faire',
-                    $payload['assigne_a'],
-                    $key,
-                    'a_faire'
-                ]);
-            }
-        }
-
-        // Supprime les tâches automatiques correspondant aux S.T. supprimées
-        // ainsi que les anciennes tâches automatiques issues des S.F.
-        foreach ($existing as $idLeft) {
-            $del->execute([$idLeft]);
-        }
-        $db->commit();
-    } catch (Throwable $e) {
-        $db->rollBack();
-        throw $e;
-    }
-}
-/** Clés des onglets supprimés (Performance, Environnement, Technique, Support) */
 function obsoleteSpecKeys(): array {
     return [
         'contexte_utilisation', 'contexte_autre', 'contraintes_operationnelles',
@@ -790,3 +629,4 @@ function getOrCreateCahierId(int $projetId): int
     }
     return $cid;
 }
+

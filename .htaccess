@@ -4,3 +4,9 @@ LimitRequestBody 0
 <FilesMatch "\.(sqlite|sqlite3|db)$">
     Require all denied
 </FilesMatch>
+
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)(\.git|\.github|\.tools|config|includes|src|views|migrations|tests|scripts|install)(/|$) - [F,L]
+</IfModule>

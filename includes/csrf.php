@@ -34,7 +34,7 @@ function csrfRequire(): void
         if (function_exists('setFlash')) {
             setFlash('error', 'Jeton de sécurité invalide ou expiré. Réessayez.');
         }
-        $ref = $_SERVER['HTTP_REFERER'] ?? '';
+        $ref = ''; // Never redirect to an untrusted Referer.
         if ($ref !== '') {
             header('Location: ' . $ref);
             exit;
@@ -45,3 +45,4 @@ function csrfRequire(): void
         exit;
     }
 }
+

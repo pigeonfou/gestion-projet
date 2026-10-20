@@ -1,17 +1,15 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params([
-        'httponly' => true,
-        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
-        'samesite' => 'Lax',
-    ]);
-    ini_set('session.use_strict_mode', '1');
-    session_start();
-}
+require_once __DIR__ . '/../src/Security/Session.php';
+pfStartSession();
 require_once __DIR__ . '/../config/db.php';
 
 function estConnecte(): bool {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    static $checked = false;
+    if (!$checked && !empty($_SESSION['user_id'])) {
+        pfRefreshSession(getDB());
+        $checked = true;
+    }
+    return !empty($_SESSION['user_id']);
 }
 
 function requerirConnexion(): void {
@@ -72,3 +70,4 @@ function getFlash(): ?array {
     }
     return null;
 }
+

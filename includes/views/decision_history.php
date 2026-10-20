@@ -40,4 +40,5 @@ $labels=['DONE'=>'Étape validée','REFUSE'=>'Refus','GO'=>'GO','NO_GO'=>'NO GO'
   <?php endif; ?>
   </div>
 </section>
-<script src="<?=url('assets/js/live-filters.js?v=2')?>" defer></script>
+<script src="<?=url('assets/js/live-filters.js?v=recode-1')?>" defer></script>
+

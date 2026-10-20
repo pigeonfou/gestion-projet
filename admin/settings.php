@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'test_nextcloud') {
         // Sauver d'abord les champs Nextcloud du formulaire pour tester les valeurs saisies
         foreach (['nextcloud_url','nextcloud_user','nextcloud_password','nextcloud_webdav','nextcloud_root'] as $k) {
-            if (isset($_POST[$k])) setSetting($k, trim($_POST[$k]));
+            if (is_string($_POST[$k] ?? null) && ($k !== 'nextcloud_password' || $_POST[$k] !== '')) setSetting($k, trim($_POST[$k]));
         }
         $nc = new NextcloudClient();
         $testResult = $nc->testConnection();
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 setSetting($f, searchHighlightColor(is_string($_POST[$f] ?? null) ? $_POST[$f] : ''));
             } elseif ($f === 'nextcloud_enabled' || $f === 'allow_all_mime') {
                 setSetting($f, isset($_POST[$f]) ? '1' : '0');
-            } elseif (isset($_POST[$f])) {
+            } elseif (is_string($_POST[$f] ?? null) && ($f !== 'nextcloud_password' || $_POST[$f] !== '')) {
                 setSetting($f, trim($_POST[$f]));
             }
         }
@@ -134,7 +134,7 @@ require __DIR__ . '/../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Mot de passe / App Password</label>
-                    <input type="password" name="nextcloud_password" class="form-control" value="<?= e($s['nextcloud_password']) ?>" autocomplete="new-password">
+                    <input type="password" name="nextcloud_password" class="form-control" value="" placeholder="Laisser vide pour conserver le secret" autocomplete="new-password">
                 </div>
             </div>
             <div class="form-group">
@@ -170,3 +170,4 @@ document.querySelector('button[value="test_nextcloud"]')?.addEventListener('clic
 </script>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>
+

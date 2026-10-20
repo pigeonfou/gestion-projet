@@ -4,7 +4,7 @@
  */
 require_once __DIR__ . '/../config/db.php';
 
-function runSchemaMigrations(): void
+function pfLegacySchemaMigrations(): void
 {
     static $done = false;
     if ($done) {
@@ -630,5 +630,25 @@ function runSchemaMigrations(): void
         try { $db->exec($sql); } catch (Throwable $e) {}
     }
 
+    $done = true;
+}
+
+
+/** Versioned migrations: a normal request only reads the current version. */
+function runSchemaMigrations(): void {
+    static $done = false;
+    if ($done) return;
+    $db = getDB();
+    $exists = $db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations'")->fetchColumn();
+    if ($exists && (int)$db->query('SELECT COALESCE(MAX(version),0) FROM schema_migrations')->fetchColumn() >= 1) { $done=true; return; }
+    require_once __DIR__.'/../src/Services/Transaction.php';
+    pfTransaction($db, function () use ($db) {
+        $db->exec('CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)');
+        if ((int)$db->query('SELECT COALESCE(MAX(version),0) FROM schema_migrations')->fetchColumn() >= 1) return;
+        pfLegacySchemaMigrations();
+        require_once __DIR__.'/../migrations/001_recode.php';
+        pfRecodeMigration($db);
+        $db->exec('INSERT INTO schema_migrations(version) VALUES(1)');
+    });
     $done = true;
 }

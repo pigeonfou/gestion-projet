@@ -24,9 +24,11 @@ try {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['identifiant'] = $user['identifiant'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['auth_fingerprint'] = hash('sha256', $user['mot_de_passe']);
         redirect('projets.php');
     }
     redirect('login.php?erreur=identifiants');
 } catch (PDOException $e) {
     redirect('login.php?erreur=identifiants');
 }
+

@@ -6,6 +6,7 @@ requerirConnexion();
 $db=getDB();$user=utilisateurCourant();$id=(int)($_GET['projet_id']??$_POST['projet_id']??0);
 $s=$db->prepare('SELECT id,nom FROM projets WHERE id=?');$s->execute([$id]);$project=$s->fetch();
 if(!$project){setFlash('error','Projet introuvable.');redirect('projets.php');}
+requerirAccesProjet($id, false);
 cdcTestEnsure($db);$saved=cdcTestLoad($db,$id);$revision=(int)($saved['revision']??0);
 $data=array_merge(cdcTestDefaults(),$saved?json_decode($saved['payload'],true,512,JSON_THROW_ON_ERROR):[]);$error='';
 if($_SERVER['REQUEST_METHOD']==='POST'){
@@ -43,3 +44,4 @@ $sections=cdcTestSections();require __DIR__.'/includes/header.php';
 </div>
 <script src="<?= url('assets/js/cdc-test.js?v=1') ?>" defer></script>
 <?php require __DIR__.'/includes/footer.php'; ?>
+

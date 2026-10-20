@@ -27,14 +27,13 @@ if ($id <= 0) {
     redirect('projets.php');
 }
 
-$stmt = $db->prepare("SELECT p.*, u.identifiant AS createur FROM projets p JOIN utilisateurs u ON u.id = p.createur_id WHERE p.id = ?");
-$stmt->execute([$id]);
-$projet = $stmt->fetch();
+$projet = pfFindProject($db,$id);
 if (!$projet) {
     setFlash('error', 'Projet introuvable.');
     redirect('projets.php');
 }
 
+requerirAccesProjet($id, false);
 initProjectNotes($db,$id);
 
 $progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
@@ -58,257 +57,10 @@ if ($view === 'processus') {
     $cdcReturnQuery .= '&return_step=' . $currentStep;
 }
 
-// ——— Actions POST ———
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrfRequire();
-    $action = $_POST['action'] ?? '';
-    if ($action !== 'update_task_status') {
-        requerirGestionProjet($id);
-    }
-    if ($action === 'manage_note' || $action === 'save_notes') {
-        try {
-            if ($action === 'manage_note') {
-                changeProjectNote($db,$id,$currentStep,(string)($_POST['note_action']??''),(string)($_POST['note_content']??''),(int)($_POST['note_id']??0),(int)($_POST['note_revision']??0));
-            } elseif (trim((string)($_POST['step_notes']??''))!=='') {
-                changeProjectNote($db,$id,$currentStep,'add',(string)$_POST['step_notes']);
-            }
-            if ($currentStep === 1 && !empty($_POST['save_cadrage_with_notes'])) {
-                $dest=$_POST['cadrage_destination']??null;
-                if(!in_array($dest,['interne','externe'],true))$dest=null;
-                $db->prepare('UPDATE projets SET cadrage_commerciale=?,cadrage_technique=?,cadrage_destination=? WHERE id=?')->execute([!empty($_POST['cadrage_commerciale'])?1:0,!empty($_POST['cadrage_technique'])?1:0,$dest,$id]);
-            }
-            setFlash('success','Notes et informations enregistrées.');
-        } catch(Throwable $e) { setFlash('error',$e->getMessage()); }
-        redirect('projet.php?id='.$id.'&view=processus&step='.$currentStep);
-    }
-    if ($action === 'set_step') {
-        // La navigation ne valide ni ne modifie l'avancement du projet.
-        $n = r1bClampStep((int)($_POST['step'] ?? $progressStep));
-        redirect('projet.php?id=' . $id . '&view=processus&step=' . $n);
-    }
-    if ($action === 'save_cadrage') {
-        $comm = !empty($_POST['cadrage_commerciale']) ? 1 : 0;
-        $tech = !empty($_POST['cadrage_technique']) ? 1 : 0;
-        $dest = $_POST['cadrage_destination'] ?? '';
-        if (!in_array($dest, ['interne', 'externe'], true)) $dest = null;
-        $db->prepare('UPDATE projets SET cadrage_commerciale = ?, cadrage_technique = ?, cadrage_destination = ? WHERE id = ?')
-           ->execute([$comm, $tech, $dest, $id]);
-        setFlash('success', 'Note de cadrage enregistrée.');
-        redirect('projet.php?id=' . $id . '&view=processus&step=1');
-    }
-    if ($action === 'save_specs_techniques') {
-        try {
-            $cid = getOrCreateCahierId($id);
-            $techniques = parseSpecsTechniquesFromPost($_POST);
-            saveSpecsTechniques($cid, $techniques, is_array($_POST['st_deleted_parent_uid'] ?? null) ? $_POST['st_deleted_parent_uid'] : []);
-            $techniques = loadSpecs($cid)['specs_techniques'];
-
-            // À l'étape 2, toutes les S.T. (Matériel, Composant, Prestataire, Logiciel, 3D, PCB)
-            // sont synchronisées comme tâches.
-            $fonctions = loadSpecs($cid)['fonctions'] ?? [];
-            syncTasksFromStructuredSpecs(
-                $id,
-                is_array($fonctions) ? $fonctions : [],
-                $techniques
-            );
-
-            $n = count($techniques);
-            setFlash('success', $n > 0
-                ? ("Spécifications techniques enregistrées ($n ligne(s)).")
-                : 'Aucune ligne avec description : rien à enregistrer. Saisissez une description pour chaque S.T.');
-        } catch (Throwable $e) {
-            setFlash('error', 'Erreur d\'enregistrement des S.T. : ' . $e->getMessage());
-        }
-        redirect('projet.php?id=' . $id . '&view=processus&step=2');
-    }
-    if ($action === 'save_composants_st') {
-        try {
-            $cid = getOrCreateCahierId($id);
-            $composants = parseComposantsStFromPost($_POST);
-            saveComposantsSt($cid, $composants);
-            $techs = loadSpecs($cid)['specs_techniques'] ?? [];
-            syncTasksFromComposants($id, $composants, is_array($techs) ? $techs : []);
-            syncStockUsagesFromComposants($id, $composants);
-            $n = 0;
-            foreach ($composants as $items) { $n += count($items); }
-            setFlash('success', $n > 0
-                ? ("Composants / affectations enregistrés ($n ligne(s)). Tâches Logiciel/3D/PCB synchronisées.")
-                : 'Aucune ligne renseignée à enregistrer.');
-        } catch (Throwable $e) {
-            setFlash('error', 'Erreur d\'enregistrement : ' . $e->getMessage());
-        }
-        redirect('projet.php?id=' . $id . '&view=processus&step=4');
-    }
-    if ($action === 'create_purchase_tasks') {
-        try {
-            ensureTachesExtendedColumns();
-            $selected = $_POST['purchase_create'] ?? [];
-            $assignees = $_POST['purchase_assignee'] ?? [];
-            $payloads = $_POST['purchase_payload'] ?? [];
-            if (!is_array($selected)) $selected = [];
-            if (!is_array($assignees)) $assignees = [];
-            if (!is_array($payloads)) $payloads = [];
-
-            $validUsers = $db->query('SELECT identifiant FROM utilisateurs')->fetchAll(PDO::FETCH_COLUMN);
-            $validUsers = array_flip(array_map('strval', $validUsers));
-            $ins = $db->prepare('INSERT INTO taches (projet_id, titre, description, priorite, statut, assigne_a, source_key, kanban_status) VALUES (?,?,?,?,?,?,?,?)');
-            $upd = $db->prepare('UPDATE taches SET titre=?, description=?, assigne_a=? WHERE projet_id=? AND source_key=?');
-            $find = $db->prepare('SELECT id FROM taches WHERE projet_id=? AND source_key=? LIMIT 1');
-            $created = 0; $updated = 0;
-
-            foreach ($selected as $key) {
-                $key = (string)$key;
-                if (!isset($payloads[$key])) continue;
-                $p = json_decode(base64_decode((string)$payloads[$key], true) ?: '', true);
-                if (!is_array($p)) continue;
-                $stId = trim((string)($p['st_id'] ?? ''));
-                $itemId = trim((string)($p['item_id'] ?? ''));
-                if ($stId === '' || $itemId === '') continue;
-                $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
-                $assignee = trim((string)($assignees[$key] ?? ''));
-                if ($assignee !== '' && !isset($validUsers[$assignee])) $assignee = '';
-
-                $designation = trim((string)($p['designation'] ?? ''));
-                $reference = trim((string)($p['reference'] ?? ''));
-                $fournisseur = trim((string)($p['fournisseur'] ?? ''));
-                $qty = (float)($p['quantite'] ?? 0);
-                $cu = (float)($p['cout_unitaire'] ?? 0);
-                $tax = (($p['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
-                $total = round($qty * $cu, 2);
-                $titre = '[ACHAT ' . $stId . '/' . $itemId . '] ' . ($designation !== '' ? $designation : ($reference !== '' ? $reference : 'Composant / matériel'));
-                $description = implode("\n", array_filter([
-                    'S.T. : ' . $stId,
-                    'Ligne : ' . $itemId,
-                    $reference !== '' ? 'Référence : ' . $reference : '',
-                    $fournisseur !== '' ? 'Fournisseur : ' . $fournisseur : '',
-                    'Quantité : ' . rtrim(rtrim(number_format($qty, 3, '.', ''), '0'), '.'),
-                    'Coût unitaire : ' . number_format($cu, 2, ',', ' ') . ' € ' . $tax,
-                    'Coût total estimé : ' . number_format($total, 2, ',', ' ') . ' € ' . $tax,
-                    isset($p['delai_jours']) ? 'Délai : ' . $p['delai_jours'] . ' j' : '',
-                ]));
-
-                $find->execute([$id, $sourceKey]);
-                if ($find->fetchColumn()) {
-                    $upd->execute([$titre, $description, $assignee !== '' ? $assignee : null, $id, $sourceKey]);
-                    $updated++;
-                } else {
-                    $ins->execute([$id, $titre, $description, 'moyenne', 'a_faire', $assignee !== '' ? $assignee : null, $sourceKey, 'a_faire']);
-                    $created++;
-                }
-            }
-            setFlash('success', "Tâches d'achat : $created créée(s), $updated mise(s) à jour.");
-        } catch (Throwable $e) {
-            setFlash('error', "Erreur lors de la génération des tâches d'achat : " . $e->getMessage());
-        }
-        redirect('projet.php?id=' . $id . '&view=processus&step=5');
-    }
-    if (($_POST['action'] ?? '') === 'update_task_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        csrfRequire();
-        $aliases = ['todo'=>'a_faire','in_progress'=>'en_cours','done'=>'terminee'];
-        $status = (string)($_POST['status'] ?? 'a_faire');
-        $status = $aliases[$status] ?? $status;
-        try {
-            taskSetStatus($db, (int)($_POST['task_id'] ?? 0), $status, $user, $id);
-            setFlash('success', 'Statut de la tâche mis à jour.');
-        } catch (InvalidArgumentException $e) {
-            setFlash('error', $e->getMessage());
-        } catch (Throwable $e) {
-            setFlash('error', 'Statut non enregistré.');
-        }
-        redirect('projet.php?id=' . $id . '&view=taches&'.taskFilterQuery(taskFilterInput($_GET)));
-    }
-    if ($action === 'decide') {
-        $decision = $_POST['decision'] ?? '';
-        $motif = trim((string)($_POST['motif'] ?? $projet['step_notes'] ?? ''));
-        if (!in_array($decision, r1bAllowedDecisions($currentStep), true) || $currentStep > $progressStep) {
-            setFlash('error', 'Décision invalide pour cette étape ou étape non encore atteinte.');
-            redirect('projet.php?id=' . $id . '&view=processus&step=' . $progressStep);
-        }
-        if (strlen($motif) > 10000 || (in_array($decision, ['NO_GO', 'NON_CONFORME', 'REFUSE'], true) && $motif === '')) {
-            setFlash('error', 'Un motif de refus est obligatoire (10 000 octets maximum).');
-            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
-        }
-        try {
-        $db->beginTransaction();
-        if (in_array($decision, ['GO', 'NO_GO', 'CONFORME', 'NON_CONFORME', 'DONE', 'REFUSE'], true)) {
-            if ($decision === 'NO_GO') {
-                // Archivage étape 3 (abandon) — reste à l'étape 3, ne passe PAS à l'étape 8
-                $db->prepare('UPDATE projets SET go_decision = ?, current_step = 3, status = ? WHERE id = ?')
-                   ->execute(['NO_GO', 'archive', $id]);
-                setFlash('success', 'NO GO enregistré — projet archivé comme abandonné (étape 3).');
-            } elseif ($decision === 'GO') {
-                $validated = $validatedSteps; $validated[] = 3;
-                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
-                $db->prepare('UPDATE projets SET go_decision = ?, current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
-                   ->execute(['GO', max($progressStep, 4), 'actif', json_encode($validated), $id]);
-                setFlash('success', 'Décision enregistrée : GO');
-            } elseif ($decision === 'CONFORME') {
-                // Le bouton Conforme est l'acte explicite de validation des étapes 7/8.
-                $validated = $validatedSteps; $validated[] = $currentStep;
-                $validated = array_values(array_unique(array_map('intval', $validated))); sort($validated);
-                $validatedJson = json_encode($validated);
-                $next = max($progressStep, r1bClampStep($currentStep + 1));
-                if ($currentStep >= 8 || $next === 9) {
-                    $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
-                       ->execute(['termine', $validatedJson, $id]);
-                    setFlash('success', 'Conforme — projet archivé en validé/vente (étape 9).');
-                } else {
-                    $db->prepare('UPDATE projets SET current_step = ?, status = ?, validated_steps = ? WHERE id = ?')
-                       ->execute([$next, 'actif', $validatedJson, $id]);
-                    setFlash('success', 'Décision enregistrée : CONFORME');
-                }
-            } elseif ($decision === 'DONE') {
-                $validated = $validatedSteps;
-                $validated[] = $currentStep;
-                $validated = array_values(array_unique(array_map('intval', $validated)));
-                sort($validated);
-                $validatedJson = json_encode($validated);
-                // L'étape 5 (Achats) a été insérée après l'étape 4.
-                // Elle doit être réellement parcourue, y compris pour un projet ancien
-                // dont current_step avait déjà été décalé vers 6+ par la migration.
-                $next = ($currentStep === 4)
-                    ? 5
-                    : max($progressStep, r1bClampStep($currentStep + 1));
-                if ($next === 9) {
-                    $db->prepare('UPDATE projets SET current_step = 9, status = ?, validated_steps = ? WHERE id = ?')
-                       ->execute(['termine', $validatedJson, $id]);
-                    setFlash('success', 'Étape validée — projet archivé en validé/vente (étape 9).');
-                } else {
-                    $db->prepare('UPDATE projets SET current_step = ?, validated_steps = ? WHERE id = ?')->execute([$next, $validatedJson, $id]);
-                    setFlash('success', 'Étape validée.');
-                }
-            } elseif ($decision === 'NON_CONFORME' || $decision === 'REFUSE') {
-                $refus = r1bRefusalState($currentStep, $validatedSteps);
-                $db->prepare("UPDATE projets SET current_step = ?, validated_steps = ?, status = 'actif' WHERE id = ?")
-                    ->execute([$refus['step'], json_encode($refus['validated']), $id]);
-                setFlash('success', 'Refus enregistré. Retour à l’étape ' . $refus['step'] . ' ; les validations à partir de cette étape sont à revoir.');
-            }
-        }
-        $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id,snapshot_json) VALUES(?,?,?,?,?,?)')
-            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet, projectNotes($db,$id)) : null]);
-        $db->commit();
-        } catch (Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
-            error_log('ProjectFlow décision R1b : ' . get_class($e));
-            setFlash('error', 'Décision non enregistrée. Réessayez après vérification du journal serveur.');
-            redirect('projet.php?id=' . $id . '&view=processus&step=' . $currentStep);
-        }
-        // Après une décision/validation, afficher l'étape réellement atteinte.
-        // Sans cela, le paramètre GET "step" du formulaire (ex. step=4)
-        // reste actif pendant cette requête et réaffiche l'ancienne étape.
-        if (in_array($decision, ['GO', 'CONFORME', 'DONE', 'NON_CONFORME', 'REFUSE'], true)) {
-            $stmtNext = $db->prepare('SELECT current_step FROM projets WHERE id = ?');
-            $stmtNext->execute([$id]);
-            $redirectStep = r1bClampStep((int)$stmtNext->fetchColumn());
-            redirect('projet.php?id=' . $id . '&view=processus&step=' . $redirectStep);
-        }
-        redirect('projet.php?id=' . $id . '&view=processus');
-    }
-}
+require __DIR__.'/includes/actions/project.php';
 
 // Reload after possible updates
-$stmt->execute([$id]);
-$projet = $stmt->fetch();
+$projet = pfFindProject($db,$id);
 $progressStep = r1bClampStep((int)($projet['current_step'] ?? 1));
 $validatedSteps = json_decode((string)($projet['validated_steps'] ?? '[]'), true);
 if (!is_array($validatedSteps)) $validatedSteps = [];
@@ -352,7 +104,7 @@ if ($needTasks) {
     $tachesAll->execute([$id]);
     $tachesAll = $tachesAll->fetchAll();
     $taches = $tachesAll;
-    if (!estAdmin()) {
+    if (!projectCanManage($db,$id,$user)) {
         $ident = $user['identifiant'] ?? '';
         $taches = array_values(array_filter($taches, static function ($t) use ($ident) {
             return isset($t['assigne_a']) && (string)$t['assigne_a'] === (string)$ident;
@@ -393,16 +145,26 @@ $pct = ($projet['status'] ?? '') === 'termine' ? 100 : (int)round((count($valida
 $nbDocs = count($documents);
 $validationsPending = (($projet['status']??'')==='termine' || in_array($progressStep,$validatedSteps,true)) ? 0 : ((($progressStep===3 && empty($projet['go_decision'])) || in_array($progressStep,[7,8],true)) ? 1 : 0);
 
+$partial=$_SERVER['HTTP_X_PROJECTFLOW_PARTIAL'] ?? '';
+if (($partial==='tasks' && $view==='taches') || ($partial==='history' && $view==='historique')) {
+    header('Content-Type: text/html; charset=utf-8');
+    header('Vary: X-ProjectFlow-Partial');
+    if ($partial==='history') require __DIR__.'/includes/views/decision_history.php';
+    else { $statusFormAction=url('projet.php?id='.$id.'&view=taches');$showProjectLink=false;require __DIR__.'/includes/views/kanban.php'; }
+    exit;
+}
+
 // Embedded history stays inside its own browsing context so filtering never
 // reloads or discards an unfinished step form. Authentication above still applies.
 $historyEmbedded = $view === 'historique' && ($_GET['embedded'] ?? '') === '1';
 if ($historyEmbedded) {
     ?>
     <!doctype html><html lang="fr" data-theme="<?=e(interfaceTheme())?>"><head><meta charset="utf-8"><script src="<?=url('assets/js/appearance.js?v=1')?>"></script><meta name="viewport" content="width=device-width, initial-scale=1"><title>Historique des décisions</title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>"></head><body class="pf-app history-embedded"><main>
+    <link rel="stylesheet" href="<?= url('assets/css/style.css?v=recode-1') ?>"><link rel="stylesheet" href="<?=url('assets/css/components/dashboard.css')?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=recode-1') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
-    </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
-<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
+    </main><script src="<?= url('assets/js/st-index.js') ?>"></script>
+<script src="<?= url('assets/js/st-references.js?v=recode-1') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=recode-1')?>" defer></script>
 </body></html>
     <?php
     exit;
@@ -676,362 +438,14 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php $stepEditorActions = ob_get_clean(); ?>
 
         <?php elseif ($currentStep === 2): ?>
-          <?php
-            $fonctionsSF = $specs['fonctions'] ?? [];
-            $techniquesAll = $specs['specs_techniques'] ?? [];
-            $techBySf = [];
-            foreach ($techniquesAll as $trow) {
-                $sfKey = $trow['sf'] ?? '';
-                if ($sfKey === '') continue;
-                $techBySf[$sfKey][] = $trow;
-            }
-          ?>
-          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Spécifications techniques</h4>
-          <p class="text-sm text-muted mb-3">Pour chaque spécification fonctionnelle (S.F.) du CDC, ajoutez les spécifications techniques associées (S.T.n.m).</p>
-          <?php if (empty($fonctionsSF)): ?>
-            <div class="r1b-info-box">
-              <p>Aucune spécification fonctionnelle dans le cahier des charges.</p>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
-            </div>
-          <?php else: ?>
-            <script type="application/json" id="st-reference-data"><?= json_encode($techniquesAll, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
-            <dialog id="st-reference-dialog" aria-labelledby="st-reference-title">
-              <h3 id="st-reference-title">Choisir un S.T. existant</h3>
-              <input type="search" id="st-reference-search" class="form-control" placeholder="Rechercher une référence ou une désignation" aria-label="Rechercher un S.T.">
-              <div id="st-reference-list"></div>
-              <button type="button" id="st-reference-cancel" class="btn btn-secondary">Annuler</button>
-              <label>Revenir à un type classique <select id="st-reference-classic" class="form-control"><option value="">— Choisir —</option><?php foreach (['Matériel','Composant','Prestataire','Logiciel','3D','PCB'] as $classic): ?><option><?= e($classic) ?></option><?php endforeach; ?></select></label>
-            </dialog>
-            <form method="POST" id="formSpecsTech" action="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>">
-              <input type="hidden" name="action" value="save_specs_techniques">
-              <?= csrfField() ?>
-              <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
-              <div id="st-hierarchy-status" role="status" aria-live="polite"></div>
-              <?php foreach ($fonctionsSF as $sf): ?>
-                <?php
-                  $sfId = $sf['id'] ?? '';
-                  if (!preg_match('/^S\.F\.(\d+)$/', $sfId, $mSf)) continue;
-                  $sfNum = (int)$mSf[1];
-                  $rows = $techBySf[$sfId] ?? [];
-                  $sfCostHT = 0.0; $sfCostTTC = 0.0; $sfUnknownCosts = 0;
-                  foreach ($rows as $costRow) {
-                      if (stTypeHasCost($costRow['type'] ?? 'Matériel') && !empty($costRow['cout_unitaire_inconnu'])) $sfUnknownCosts++;
-                      $v = stTypeHasCost($costRow['type'] ?? 'Matériel') ? (float)($costRow['cout_estime'] ?? 0) : 0;
-                      if (($costRow['cout_taxe'] ?? 'HT') === 'TTC') $sfCostTTC += $v; else $sfCostHT += $v;
-                  }
-                  if (empty($rows)) {
-                      $rows = [['id' => 'S.T.' . $sfNum . '.1', 'description' => '', 'type' => 'Matériel']];
-                  }
-                ?>
-                <div class="st-sf-block" data-sf="<?= e($sfId) ?>" data-sf-num="<?= $sfNum ?>">
-                  <div class="st-sf-head">
-                    <span class="st-sf-id"><?= e($sfId) ?></span>
-                    <span class="st-sf-desc"><?= e($sf['description'] ?: '(sans description)') ?></span>
-                    <?php if (!empty($sf['indicateur'])): ?>
-                      <span class="st-sf-badge"><?= e($sf['indicateur']) ?></span>
-                    <?php endif; ?>
-                    <span class="st-sf-badge sf-cost-badge">Estimation coût <?= e($sfId) ?> :
-                      <span class="sf-cost-value"><?= number_format($sfCostHT, 2, ',', ' ') ?> € HT<?php if ($sfCostTTC > 0): ?> + <?= number_format($sfCostTTC, 2, ',', ' ') ?> € TTC<?php endif; ?><?= $sfUnknownCosts ? ' · sous-total connu · '.$sfUnknownCosts.' coût(s) inconnu(s)' : '' ?></span>
-                    </span>
-                  </div>
-                  <div class="sf-table-wrap">
-                    <table class="sf-table st-table">
-                      <thead>
-                        <tr>
-                          <th style="width:5.5rem">ID</th>
-                          <th>Description</th>
-                          <th style="width:8.5rem">Type</th>
-                          <th class="estimation-qty-head">Qté</th><th class="estimation-unit-head">Coût unitaire</th><th class="estimation-total-head">Coût total</th><th class="estimation-variation-head">Variation</th>
-                          <th class="estimation-delay-head">Délai estimé (jours)</th>
-                          <th style="width:2.5rem"></th>
-                        </tr>
-                      </thead>
-                      <tbody class="st-body">
-                        <?php foreach ($rows as $ri => $tr): ?>
-                        <tr class="st-row" id="<?=e($tr['id']??'')?>">
-                          <td><a class="st-id" href="<?=pfStUrl($id,$tr)?>"><?= e($tr['id'] ?? ('S.T.' . $sfNum . '.' . ($ri + 1))) ?></a>
-                            <input type="hidden" name="st_sf[]" value="<?= e($sfId) ?>">
-                            <input type="hidden" name="st_uid[]" value="<?= e($tr['uid'] ?? bin2hex(random_bytes(16))) ?>">
-                            <input type="hidden" name="st_reference_uid[]" value="<?= e($tr['reference_uid'] ?? '') ?>">
-                          </td>
-                          <td><input type="text" name="st_description[]" class="form-control" value="<?= e($tr['description'] ?? '') ?>" placeholder="Description technique…">
-                            <input type="hidden" name="st_parent_uid[]" value="<?= e($tr['parent_uid'] ?? '') ?>">
-                          </td>
-                          <td>
-                            <?php $ty = $tr['type'] ?? 'Matériel'; ?>
-                            <select name="st_type[]" class="form-control">
-                              <option value="Matériel" <?= $ty === 'Matériel' ? 'selected' : '' ?>>Matériel</option>
-                              <option value="Composant" <?= $ty === 'Composant' ? 'selected' : '' ?>>Composant</option>
-                              <option value="Prestataire" <?= $ty === 'Prestataire' ? 'selected' : '' ?>>Prestataire</option>
-                              <option value="Logiciel" <?= $ty === 'Logiciel' ? 'selected' : '' ?>>Logiciel</option>
-                              <option value="3D" <?= $ty === '3D' ? 'selected' : '' ?>>3D</option>
-                              <option value="PCB" <?= $ty === 'PCB' ? 'selected' : '' ?>>PCB</option>
-                              <option value="S.T.x.x" <?= $ty === 'S.T.x.x' ? 'selected' : '' ?>>S.T.x.x</option>
-                            </select>
-                          </td>
-                          <?php renderEstimationCostCells('st', $tr, stTypeHasCost($ty)); ?>
-                          <td><?php renderEstimationVariation('st', $tr); ?></td>
-                          <td><input type="text" inputmode="decimal" name="st_delai_jours[]" class="form-control st-delay" value="<?= e(!empty($tr['delai_inconnu']) ? 'inconnue' : (string)($tr['delai_jours'] ?? '')) ?>" aria-label="Délai estimé en jours"></td>
-                          <td><button type="button" class="btn-sf-del btn-st-del" title="Supprimer">&times;</button></td>
-                        </tr>
-                        <?php endforeach; ?>
-                      </tbody>
-                    </table>
-                  </div>
-                  <button type="button" class="btn btn-secondary btn-sm mt-1 btn-st-add"><i class="fas fa-plus"></i> Ajouter une S.T.</button>
-                </div>
-              <?php endforeach; ?>
-              <details class="st-structure" open><summary>Structure des S.T.</summary><div id="st-structure-tree"></div></details>
-              <?php ob_start(); ?>
-              <div class="mt-3">
-                <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
-              </div>
-              <?php $stepEditorActions = ob_get_clean(); ?>
-            </form>
-          <?php endif; ?>
-
+          <?php require __DIR__.'/views/projects/specifications.php'; ?>
         <?php elseif ($currentStep === 3): ?>
           <?php require __DIR__ . '/includes/views/decision_dashboard.php'; ?>
 
         <?php elseif ($currentStep === 4): ?>
-          <?php
-            $techniquesAll = $specs['specs_techniques'] ?? [];
-            $composantsSt = $specs['composants_st'] ?? [];
-            if (!is_array($composantsSt)) $composantsSt = [];
-            $users = $utilisateursListe ?? [];
-          ?>
-          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Composants & affectations</h4>
-          <p class="text-sm text-muted mb-3">Matériel, Composant, Prestataire et PCB : coûts et délais. Logiciel et 3D : délais de réalisation uniquement.</p>
-          <?php if (empty($techniquesAll)): ?>
-            <div class="r1b-info-box">
-              <p>Aucune spécification technique définie.</p>
-              <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-primary btn-sm mt-2">Aller à l'étape 2</a>
-            </div>
-          <?php else: ?>
-            <form method="POST" id="formComposantsSt" action="<?= url('projet.php?id=' . $id . '&view=processus&step=4') ?>">
-              <input type="hidden" name="action" value="save_composants_st">
-              <?= csrfField() ?>
-              <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="projet_id" value="<?= (int)$id ?>">
-              <?php foreach ($techniquesAll as $stRow): ?>
-                <?php
-                  $stId = $stRow['id'] ?? '';
-                  $stType = $stRow['type'] ?? 'Matériel';
-                  if ($stType === 'S.T.x.x') continue;
-                  $stDesc = $stRow['description'] ?? '';
-                  if ($stId === '') continue;
-                  $items = $composantsSt[$stId] ?? [];
-                  $stCostHT = 0.0; $stCostTTC = 0.0;
-                  foreach ($items as $costItem) {
-                      $costValue = (float)($costItem['cout_total'] ?? 0);
-                      if (($costItem['cout_unitaire_taxe'] ?? $costItem['cout_total_taxe'] ?? 'HT') === 'TTC') $stCostTTC += $costValue;
-                      else $stCostHT += $costValue;
-                  }
-                  if (empty($items)) {
-                      $items = [[]]; // ligne vide
-                  }
-                  $prefix = match ($stType) {
-                      'Matériel' => 'M',
-                      'Composant' => 'C',
-                      'Prestataire' => 'P',
-                      'Logiciel' => 'L',
-                      '3D' => '3D',
-                      'PCB' => 'PCB',
-                      default => 'X',
-                  };
-                ?>
-                <div class="st-sf-block cp-st-block" id="<?=e($stId)?>" data-st-id="<?= e($stId) ?>" data-st-type="<?= e($stType) ?>" data-prefix="<?= e($prefix) ?>">
-                  <div class="st-sf-head">
-                    <a class="st-id" href="<?=pfStUrl($id,$stRow)?>"><?= e($stId) ?> ↗</a>
-                    <span class="st-sf-badge"><?= e($stType) ?></span>
-                    <span class="st-sf-desc"><?= e($stDesc ?: '(sans description)') ?></span>
-                    <?php if (stTypeHasCost($stType)): ?>
-                      <span class="st-sf-badge cp-st-cost">Coût <?= e($stId) ?> :
-                        <span class="cp-st-cost-value"><?= number_format($stCostHT, 2, ',', ' ') ?> € HT<?= $stCostTTC > 0 ? ' + ' . number_format($stCostTTC, 2, ',', ' ') . ' € TTC' : '' ?></span>
-                      </span>
-                    <?php endif; ?>
-                  </div>
-                  <div class="sf-table-wrap">
-                    <?php if (stTypeHasCost($stType)): ?>
-                      <table class="sf-table cp-table">
-                        <thead>
-                          <tr>
-                            <th style="width:3.5rem">ID</th>
-                            <th>Désignation</th>
-                            <th>Référence</th>
-                            <th>Fournisseur</th>
-                            <th class="estimation-qty-head">Qté</th>
-                            <th class="estimation-unit-head">Coût unitaire</th>
-                            <th class="estimation-total-head">Coût total</th>
-                            <th class="estimation-variation-head">Variation</th><th class="estimation-delay-head">Délai estimé (jours)</th>
-                            <th style="width:2.2rem"></th>
-                          </tr>
-                        </thead>
-                        <tbody class="cp-body">
-                          <?php foreach ($items as $ii => $it): ?>
-                          <tr class="cp-row">
-                            <td>
-                              <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
-                              <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
-                              <input type="hidden" name="cp_type[]" value="<?= e($stType) ?>">
-                            </td>
-                            <td><input type="text" name="cp_designation[]" class="form-control" value="<?= e($it['designation'] ?? '') ?>"></td>
-                            <td><input type="text" name="cp_reference[]" class="form-control" value="<?= e($it['reference'] ?? '') ?>"></td>
-                            <td><input type="text" name="cp_fournisseur[]" class="form-control" value="<?= e($it['fournisseur'] ?? '') ?>"></td>
-                            <?php ob_start(); ?>
-                              <?php if ($stType === 'PCB'): ?>
-                              <label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option><?php foreach ($users as $u): ?><option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option><?php endforeach; ?></select>
-                              <?php else: ?><input type="hidden" name="cp_affectation[]" value="<?= e($it['affectation'] ?? '') ?>"><?php endif; ?>
-                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
-                            <?php $extraTotal = ob_get_clean(); renderEstimationCostCells('cp', $it, true, $extraTotal); ?>
-                            <td><?php renderEstimationVariation('cp', $it); ?></td>
-                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
-                            <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
-                          </tr>
-                          <?php endforeach; ?>
-                        </tbody>
-                      </table>
-                    <?php else: ?>
-                      <table class="sf-table cp-table">
-                        <thead>
-                          <tr>
-                            <th style="width:4rem">ID</th>
-                            <th>Affectation</th>
-
-                            <th class="estimation-variation-head">Variation</th>
-                            <th class="estimation-delay-head">Délai estimé (jours)</th>
-                            <th style="width:2.2rem"></th>
-                          </tr>
-                        </thead>
-                        <tbody class="cp-body">
-                          <?php foreach ($items as $ii => $it): ?>
-                          <tr class="cp-row">
-                            <td>
-                              <span class="cp-id"><?= e($it['id'] ?? ($prefix . '.' . ($ii + 1))) ?></span>
-                              <input type="hidden" name="cp_st_id[]" value="<?= e($stId) ?>">
-                              <input type="hidden" name="cp_type[]" value="<?= e($stType) ?>">
-                              <input type="hidden" name="cp_designation[]" value="">
-                              <input type="hidden" name="cp_reference[]" value="">
-                              <input type="hidden" name="cp_fournisseur[]" value="">
-                              <input type="hidden" name="cp_quantite[]" value="">
-                              <input type="hidden" name="cp_cout_unitaire[]" value="">
-                              <input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">
-                              <input type="hidden" name="cp_cout_total_taxe[]" value="HT">
-                            </td>
-                            <td>
-                              <select name="cp_affectation[]" class="form-control">
-                                <option value="">—</option>
-                                <?php foreach ($users as $u): ?>
-                                  <option value="<?= e($u['identifiant']) ?>" <?= (($it['affectation'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option>
-                                <?php endforeach; ?>
-                              </select>
-                            </td>
-                            <td>
-                              <input type="hidden" name="cp_duree[]" value="<?= e($it['duree'] ?? '') ?>">
-                              <?php renderEstimationVariation('cp', $it); ?>
-                            </td>
-                            <td><input type="number" min="0" step="0.01" name="cp_delai_jours[]" class="form-control" value="<?= e((string)($it['delai_jours'] ?? '')) ?>" aria-label="Délai en jours"><?php if (!isset($it['delai_jours']) && !empty($it['duree'])): ?><span class="text-xs text-muted">Durée précédente : <?= e($it['duree']) ?></span><?php endif; ?></td>
-                            <td><button type="button" class="btn-sf-del btn-cp-del" title="Supprimer">&times;</button></td>
-                          </tr>
-                          <?php endforeach; ?>
-                        </tbody>
-                      </table>
-                    <?php endif; ?>
-                  </div>
-                  <button type="button" class="btn btn-secondary btn-sm mt-1 btn-cp-add"><i class="fas fa-plus"></i> Ajouter une ligne</button>
-                </div>
-              <?php endforeach; ?>
-              <?php ob_start(); ?>
-              <div class="mt-3">
-                <button type="submit" form="formComposantsSt" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
-                <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.T. (étape 2)</a>
-              </div>
-              <?php $stepEditorActions = ob_get_clean(); ?>
-            </form>
-          <?php endif; ?>
-
+          <?php require __DIR__.'/views/projects/components.php'; ?>
         <?php elseif ($currentStep === 5): ?>
-          <?php
-            $purchaseRows = [];
-            $composantsAchat = $specs['composants_st'] ?? [];
-            $techAchat = $specs['specs_techniques'] ?? [];
-            $techAchatById = [];
-            foreach ($techAchat as $ta) if (!empty($ta['id'])) $techAchatById[$ta['id']] = $ta;
-            foreach ($composantsAchat as $stId => $items) {
-                if (!stTypeHasCost($techAchatById[$stId]['type'] ?? '') || !is_array($items)) continue;
-                foreach ($items as $it) {
-                    if (!is_array($it)) continue;
-                    $itemId = trim((string)($it['id'] ?? ''));
-                    if ($itemId === '') continue;
-                    $purchaseRows[] = ['st_id' => $stId, 'st_description' => $techAchatById[$stId]['description'] ?? '', 'item' => $it];
-                }
-            }
-            $purchaseTasks = [];
-            foreach ($tachesAll as $pt) {
-                $sk = (string)($pt['source_key'] ?? '');
-                if (str_starts_with($sk, 'achat:' . $id . ':')) $purchaseTasks[$sk] = $pt;
-            }
-          ?>
-          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">Liste des achats issus de l'étape 4</h4>
-          <p class="text-sm text-muted mb-3">Sélectionnez les composants ou matériels à commander, affectez un utilisateur puis générez les tâches d'achat. Une tâche existante est mise à jour plutôt que dupliquée.</p>
-          <?php if (empty($purchaseRows)): ?>
-            <div class="r1b-info-box">Aucune ligne Matériel, Composant, Prestataire ou PCB renseignée à l'étape 4. Enregistrez d'abord les composants et matériels à acheter.</div>
-          <?php else: ?>
-            <form method="POST" action="<?= url('projet.php?id=' . $id . '&view=processus&step=5') ?>">
-              <?= csrfField() ?>
-              <input type="hidden" name="action" value="create_purchase_tasks">
-              <div class="sf-table-wrap">
-                <table class="sf-table r1b-purchase-table">
-                  <thead><tr>
-                    <th style="width:2.5rem">Créer</th><th>S.T.</th><th>ID</th><th>Désignation</th><th>Référence</th><th>Fournisseur</th><th>Qté</th><th>Coût estimé</th><th class="estimation-delay-head">Délai estimé (jours)</th><th>Affecter à</th><th>État tâche</th>
-                  </tr></thead>
-                  <tbody>
-                  <?php foreach ($purchaseRows as $pr): ?>
-                    <?php
-                      $it = $pr['item']; $stId = $pr['st_id']; $itemId = (string)$it['id'];
-                      $rowKey = preg_replace('/[^A-Za-z0-9_.-]/', '_', $stId . '__' . $itemId);
-                      $sourceKey = 'achat:' . $id . ':' . $stId . ':' . $itemId;
-                      $existingTask = $purchaseTasks[$sourceKey] ?? null;
-                      $tax = (($it['cout_unitaire_taxe'] ?? 'HT') === 'TTC') ? 'TTC' : 'HT';
-                      $total = (float)($it['quantite'] ?? 0) * (float)($it['cout_unitaire'] ?? 0);
-                      $payload = base64_encode(json_encode([
-                        'st_id'=>$stId,'item_id'=>$itemId,'designation'=>$it['designation'] ?? '',
-                        'reference'=>$it['reference'] ?? '','fournisseur'=>$it['fournisseur'] ?? '',
-                        'quantite'=>$it['quantite'] ?? 0,'cout_unitaire'=>$it['cout_unitaire'] ?? 0,
-                        'cout_unitaire_taxe'=>$tax,'delai_jours'=>$it['delai_jours'] ?? null
-                      ], JSON_UNESCAPED_UNICODE));
-                    ?>
-                    <tr>
-                      <td><input type="checkbox" name="purchase_create[]" value="<?= e($rowKey) ?>" <?= $existingTask ? 'checked' : '' ?>></td>
-                      <td><a class="pf-object-id" href="<?=url('specification.php?projet_id='.$id.'&st='.rawurlencode($stId))?>"><?= e($stId) ?></a><div class="text-xs text-muted"><?= e($pr['st_description']) ?></div></td>
-                      <td><?= e($itemId) ?></td>
-                      <td><?= e($it['designation'] ?? '—') ?></td>
-                      <td><?= e($it['reference'] ?? '—') ?></td>
-                      <td><?= e($it['fournisseur'] ?? '—') ?></td>
-                      <td class="estimate-quantity"><?= e((string)($it['quantite'] ?? '0')) ?></td>
-                      <td class="estimate-money"><?= number_format($total, 2, ',', ' ') ?> € <?= e($tax) ?></td>
-                      <td class="estimate-delay"><?= e(isset($it['delai_jours']) ? (string)$it['delai_jours'] : '—') ?></td>
-                      <td>
-                        <select name="purchase_assignee[<?= e($rowKey) ?>]" class="form-control">
-                          <option value="">— Non affectée —</option>
-                          <?php foreach ($utilisateursListe as $u): ?>
-                            <option value="<?= e($u['identifiant']) ?>" <?= (($existingTask['assigne_a'] ?? '') === $u['identifiant']) ? 'selected' : '' ?>><?= e($u['identifiant']) ?></option>
-                          <?php endforeach; ?>
-                        </select>
-                        <input type="hidden" name="purchase_payload[<?= e($rowKey) ?>]" value="<?= e($payload) ?>">
-                      </td>
-                      <td><?php if($existingTask):?><a href="<?=url('tache.php?id='.(int)$existingTask['id'])?>"><?=e(statutLabel($existingTask['statut']??'a_faire'))?> ↗</a><?php else:?><span class="text-muted">Non créée</span><?php endif;?></td>
-                    </tr>
-                  <?php endforeach; ?>
-                  </tbody>
-                </table>
-              </div>
-              <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-shopping-cart"></i> Générer / mettre à jour les tâches d'achat</button>
-            </form>
-          <?php endif; ?>
-
+          <?php require __DIR__.'/views/projects/purchases.php'; ?>
         <?php elseif ($currentStep === 6): ?>
           <p class="text-sm text-muted mb-2">Fabrication et prototypage.</p>
           <?php foreach (($tachesAll ?? $taches) as $t): ?>
@@ -1078,7 +492,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="GO">
               <label>Justification / réserves du GO <textarea name="motif" class="form-control" maxlength="5000" placeholder="Justification de la décision et réserves éventuelles"></textarea></label>
               <button type="submit" class="btn btn-success">GO</button>
@@ -1086,7 +500,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="NO_GO">
               <label>Motif du NO GO <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">NO GO → Abandon</button>
@@ -1095,14 +509,14 @@ function stepClass(int $n, int $displayed, array $validated): string
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="CONFORME">
               <button type="submit" class="btn btn-success">✓ Conforme → Livraison DG</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="NON_CONFORME">
               <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
@@ -1111,14 +525,14 @@ function stepClass(int $n, int $displayed, array $validated): string
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="CONFORME">
               <button type="submit" class="btn btn-success">✓ Conforme → Archivage validé/vente</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="NON_CONFORME">
               <label>Motif de non-conformité <textarea name="motif" class="form-control" required maxlength="5000"></textarea></label>
               <button type="submit" class="btn btn-danger">Non conforme</button>
@@ -1127,14 +541,14 @@ function stepClass(int $n, int $displayed, array $validated): string
             <form method="POST" action="<?= $decideAction ?>" style="display:inline">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="DONE">
               <button type="submit" class="btn btn-primary">Valider l'étape</button>
             </form>
             <form method="POST" action="<?= $decideAction ?>" class="mt-2">
               <?= csrfField() ?>
               <input type="hidden" name="id" value="<?= (int)$id ?>">
-              <input type="hidden" name="action" value="decide">
+              <input type="hidden" name="action" value="decide"><input type="hidden" name="project_revision" value="<?=e(pfProjectRevision($projet))?>">
               <input type="hidden" name="decision" value="REFUSE">
               <label for="motif-refus">Motif du refus / corrections attendues</label>
               <textarea id="motif-refus" name="motif" class="form-control" required maxlength="5000"></textarea>
@@ -1190,6 +604,7 @@ function stepClass(int $n, int $displayed, array $validated): string
         </div>
         <?php if ($ncEnabled): ?>
           <form action="<?= url('actions/upload.php') ?>" method="POST" enctype="multipart/form-data" class="flex gap-2 items-center">
+            <?= csrfField() ?>
             <input type="hidden" name="projet_id" value="<?= $id ?>">
             <input type="hidden" name="phase" value="<?= e($phase) ?>">
             <input type="file" name="fichier" required class="form-control" style="max-width:220px">
@@ -1225,15 +640,17 @@ function stepClass(int $n, int $displayed, array $validated): string
 <template id="estimation-st-cells"><?php renderEstimationCostCells('st'); ?><td><?php renderEstimationVariation('st'); ?></td></template>
 <template id="estimation-cp-cells"><?php renderEstimationCostCells('cp'); ?><td><?php renderEstimationVariation('cp'); ?></td></template>
 <template id="estimation-cp-variation"><?php renderEstimationVariation('cp'); ?></template>
-<script src="<?= url('assets/js/projet-r1b.js?v=review-edge-4') ?>"></script>
-<script src="<?= url('assets/js/app.js') ?>"></script>
+<script>window.ProjectFlow=window.ProjectFlow||{};window.ProjectFlow.costTypes=<?=json_encode(array_values(array_filter(['Matériel','Composant','Prestataire','Logiciel','3D','PCB'],'stTypeHasCost')))?>;</script>
+<script src="<?=url('assets/js/estimation.js')?>"></script>
+<script src="<?= url('assets/js/projet-r1b.js?v=recode-1') ?>"></script>
+<script src="<?= url('assets/js/app.js?v=recode-1') ?>"></script>
 </main>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> OddWorks — Processus R1b</p></div>
 </footer>
-<script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
-<script src="<?= url('assets/js/st-hierarchy.js?v=3') ?>"></script>
-<script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
+<script src="<?= url('assets/js/st-index.js') ?>"></script>
+<script src="<?= url('assets/js/st-references.js?v=recode-1') ?>"></script>
+<script src="<?= url('assets/js/st-hierarchy.js?v=recode-1') ?>"></script>
+<script src="<?=url('assets/js/projectflow-ui.js?v=recode-1')?>" defer></script>
 </body>
 </html>
-

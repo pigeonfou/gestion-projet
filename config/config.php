@@ -7,6 +7,7 @@
 // Laissez vide '' si le projet est à la racine du DocumentRoot
 // Mettez '/gestion-projet' si le projet est dans un sous-dossier
 define('BASE_PATH', '/gestion-projet');
+define('PROJECTFLOW_ROOT', dirname(__DIR__));
 
 // Chemin absolu vers la base de données
 define('DB_PATH', getenv('PROJECTFLOW_DB_PATH') ?: '/var/lib/projectflow/database.sqlite');
@@ -26,3 +27,4 @@ function redirect(string $path): void {
     header('Location: ' . url($path));
     exit;
 }
+

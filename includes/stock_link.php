@@ -6,6 +6,7 @@ function syncStockUsagesFromComposants(int $projetId, array $composants): void
 {
     runSchemaMigrations();
     $db = getDB();
+    pfTransaction($db, function () use ($db,$projetId,$composants) {
     // Nettoyer usages auto précédents de ce projet
     $db->prepare("DELETE FROM stock_usages WHERE projet_id = ? AND source_key LIKE 'auto:%'")->execute([$projetId]);
 
@@ -29,4 +30,5 @@ function syncStockUsagesFromComposants(int $projetId, array $composants): void
             $ins->execute([$aid, $projetId, $qty, $note !== '' ? $note : null, $key]);
         }
     }
+    });
 }

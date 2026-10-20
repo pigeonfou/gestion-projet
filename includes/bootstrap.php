@@ -1,7 +1,7 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../src/Security/Session.php';
+pfStartSession();
+require_once __DIR__ . '/../src/Services/Transaction.php';
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/auth.php';
@@ -11,5 +11,8 @@ require_once __DIR__ . '/settings_helper.php';
 try {
     runSchemaMigrations();
 } catch (Throwable $e) {
-    // DB absente au premier install
+    error_log('ProjectFlow migration: ' . $e->getMessage());
+    http_response_code(503);
+    exit('Initialisation de la base impossible. Consultez le journal serveur.');
 }
+

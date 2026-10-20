@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__.'/cahier_specs.php';
 require_once __DIR__.'/decision_dashboard.php';
+require_once __DIR__.'/../src/Repositories/ProjectRepository.php';
 function pfLoadProject(int $pid): array {
- requerirAccesProjet($pid,false);$q=getDB()->prepare('SELECT p.*,u.identifiant createur FROM projets p JOIN utilisateurs u ON u.id=p.createur_id WHERE p.id=?');$q->execute([$pid]);$p=$q->fetch();if(!$p){setFlash('error','Projet introuvable.');redirect('projets.php');}return $p;
+ requerirAccesProjet($pid,false);$p=pfFindProject(getDB(),$pid);if(!$p){setFlash('error','Projet introuvable.');redirect('projets.php');}return $p;
 }
 function pfSpecs(int $pid): array {
  $q=getDB()->prepare('SELECT id FROM cahiers WHERE projet_id=? ORDER BY id LIMIT 1');$q->execute([$pid]);$cid=(int)$q->fetchColumn();return $cid?loadSpecs($cid):emptySpecs();
@@ -24,3 +25,4 @@ function pfStateBadge(string $state): string {
  [$label,$tone]=$states[$state]??[$state,'neutral'];
  return '<span class="pf-tag pf-tone-'.$tone.'">'.e($label).'</span>';
 }
+

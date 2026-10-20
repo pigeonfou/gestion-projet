@@ -2,6 +2,7 @@
 $pageTitle = 'Cahier des charges';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/csrf.php';
 requerirAdmin(); // Accès réservé aux administrateurs
 
 $db = getDB();
@@ -37,6 +38,7 @@ $cahier_id = (int)$cahier['id'];
 
 // ===== Traitements POST =====
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrfRequire();
     $section = $_POST['section'] ?? '';
 
     try {
@@ -185,7 +187,7 @@ require __DIR__ . '/includes/header.php';
 <div id="tab-general" class="tab-content <?= $tab === 'general' ? 'active' : '' ?>">
     <div class="card">
         <div class="card-body">
-            <form method="POST">
+            <form method="POST"><?= csrfField() ?>
                 <input type="hidden" name="section" value="general">
                 <input type="hidden" name="tab" value="general">
                 <div class="form-row">
@@ -239,7 +241,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card mb-2">
         <div class="card-header"><h3>Ajouter une fonction</h3></div>
         <div class="card-body">
-            <form method="POST" class="form-row" style="align-items:end;">
+            <form method="POST" class="form-row" style="align-items:end;"><?= csrfField() ?>
                 <input type="hidden" name="section" value="fonction_add">
                 <input type="hidden" name="tab" value="fonctions">
                 <div class="form-group" style="flex:1;">
@@ -280,7 +282,7 @@ require __DIR__ . '/includes/header.php';
                                     </span>
                                 </td>
                                 <td>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer cette fonction ?');">
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer cette fonction ?');"><?= csrfField() ?>
                                         <input type="hidden" name="section" value="fonction_del">
                                         <input type="hidden" name="tab" value="fonctions">
                                         <input type="hidden" name="id" value="<?= (int)$f['id'] ?>">
@@ -302,7 +304,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card mb-2">
         <div class="card-header"><h3>Ajouter du matériel</h3></div>
         <div class="card-body">
-            <form method="POST" class="flex gap-1 items-center">
+            <form method="POST" class="flex gap-1 items-center"><?= csrfField() ?>
                 <input type="hidden" name="section" value="materiel_add">
                 <input type="hidden" name="tab" value="materiel">
                 <input type="text" name="description" class="form-control" placeholder="Description du matériel..." required style="flex:1;">
@@ -319,7 +321,7 @@ require __DIR__ . '/includes/header.php';
                     <?php foreach ($materiels as $m): ?>
                     <li style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);">
                         <span><?= e($m['description']) ?></span>
-                        <form method="POST" onsubmit="return confirm('Supprimer ?');">
+                        <form method="POST" onsubmit="return confirm('Supprimer ?');"><?= csrfField() ?>
                             <input type="hidden" name="section" value="materiel_del">
                             <input type="hidden" name="tab" value="materiel">
                             <input type="hidden" name="id" value="<?= (int)$m['id'] ?>">
@@ -338,7 +340,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card mb-2">
         <div class="card-header"><h3>Ajouter un élément d'environnement</h3></div>
         <div class="card-body">
-            <form method="POST" class="flex gap-1 items-center">
+            <form method="POST" class="flex gap-1 items-center"><?= csrfField() ?>
                 <input type="hidden" name="section" value="env_add">
                 <input type="hidden" name="tab" value="environnement">
                 <input type="text" name="element" class="form-control" placeholder="Contrainte technique, outil, serveur..." required style="flex:1;">
@@ -355,7 +357,7 @@ require __DIR__ . '/includes/header.php';
                     <?php foreach ($environnements as $e): ?>
                     <li style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);">
                         <span><?= e($e['element']) ?></span>
-                        <form method="POST" onsubmit="return confirm('Supprimer ?');">
+                        <form method="POST" onsubmit="return confirm('Supprimer ?');"><?= csrfField() ?>
                             <input type="hidden" name="section" value="env_del">
                             <input type="hidden" name="tab" value="environnement">
                             <input type="hidden" name="id" value="<?= (int)$e['id'] ?>">
@@ -374,7 +376,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card mb-2">
         <div class="card-header"><h3>Ajouter un livrable</h3></div>
         <div class="card-body">
-            <form method="POST" class="form-row" style="align-items:end;">
+            <form method="POST" class="form-row" style="align-items:end;"><?= csrfField() ?>
                 <input type="hidden" name="section" value="livrable_add">
                 <input type="hidden" name="tab" value="livrables">
                 <div class="form-group" style="flex:2;">
@@ -405,7 +407,7 @@ require __DIR__ . '/includes/header.php';
                                 <td><?= e($l['description']) ?></td>
                                 <td><?= $l['date_livraison'] ? date('d/m/Y', strtotime($l['date_livraison'])) : '—' ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ?');">
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ?');"><?= csrfField() ?>
                                         <input type="hidden" name="section" value="livrable_del">
                                         <input type="hidden" name="tab" value="livrables">
                                         <input type="hidden" name="id" value="<?= (int)$l['id'] ?>">
@@ -427,7 +429,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card mb-2">
         <div class="card-header"><h3>Ajouter un jalon</h3></div>
         <div class="card-body">
-            <form method="POST" class="form-row" style="align-items:end;">
+            <form method="POST" class="form-row" style="align-items:end;"><?= csrfField() ?>
                 <input type="hidden" name="section" value="jalon_add">
                 <input type="hidden" name="tab" value="jalons">
                 <div class="form-group" style="flex:2;">
@@ -458,7 +460,7 @@ require __DIR__ . '/includes/header.php';
                                 <td><strong><?= e($j['nom']) ?></strong></td>
                                 <td><?= $j['date_prevue'] ? date('d/m/Y', strtotime($j['date_prevue'])) : '—' ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ?');">
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer ?');"><?= csrfField() ?>
                                         <input type="hidden" name="section" value="jalon_del">
                                         <input type="hidden" name="tab" value="jalons">
                                         <input type="hidden" name="id" value="<?= (int)$j['id'] ?>">
@@ -485,3 +487,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
+

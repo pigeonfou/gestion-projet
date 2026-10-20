@@ -270,7 +270,7 @@ $renderProjetCard = static function (array $p, array $steps, array $user) use ($
 
 require __DIR__ . '/includes/header.php';
 ?>
-<link rel="stylesheet" href="<?=url('assets/css/projects-dashboard.css?v=night-4')?>">
+<link rel="stylesheet" href="<?=url('assets/css/projects-dashboard.css?v=recode-1')?>">
 
 <div class="dash-wrap">
   <div class="dash-page-head">
@@ -395,4 +395,5 @@ require __DIR__ . '/includes/header.php';
 </div>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
+
 

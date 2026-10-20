@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
     }
 
     try {
+        $db->beginTransaction();
         if ($id > 0) {
             // La quantité n'est plus modifiable directement : elle provient du journal.
             $db->prepare('UPDATE stock_articles SET reference=?, designation=?, type=?, description=?, quantite_min=?, unite=?, valeur_unitaire=?, taxe=?, documentation=?, emplacement=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
@@ -74,9 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
             }
         }
 
+        $db->commit();
         setFlash('success', 'Article enregistré.');
         redirect('stock_article.php?id=' . $id);
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
         if (str_contains($e->getMessage(), 'UNIQUE')) {
             setFlash('error', 'Cette référence existe déjà.');
         } else {
@@ -97,7 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'add_u
         requerirGestionProjet($projetId);
         try {
             $db->beginTransaction();
-            $currentStock = stockQuantity($id);
+            $lab = stockDefaultLocationId();
+            $currentStock = stockQuantity($id, $lab);
             if (!empty($_POST['decrementer']) && $currentStock < $qty) {
                 throw new RuntimeException('Stock insuffisant (stock calculé : ' . rtrim(rtrim(number_format($currentStock, 3, '.', ''), '0'), '.') . ').');
             }
@@ -163,217 +167,4 @@ if ($article) {
 }
 
 require __DIR__ . '/includes/header.php';
-$a = $article ?: [
-    'reference' => '', 'designation' => '', 'type' => 'piece', 'description' => '',
-    'quantite_stock' => 0, 'quantite_min' => 0, 'unite' => 'u', 'valeur_unitaire' => 0,
-    'taxe' => 'HT', 'documentation' => '', 'emplacement' => '', 'notes' => '',
-];
-?>
-<?php if($id>0):?><div class="pf-links"><a href="<?=url('fournisseur.php?article_id='.$id)?>">Fournisseurs de cet article</a><a href="<?=url('stock_pilotage.php?tab=lots&article_id='.$id)?>">Lots & réceptions</a><a href="<?=url('stock_mouvements.php?article_id='.$id)?>">Mouvements</a></div><?php endif;?>
-<div class="page-header">
-  <div>
-    <h1><i class="fas fa-cube"></i> <?= e($pageTitle) ?></h1>
-    <p class="text-muted text-sm mt-1"><a href="<?= url('stocks.php') ?>">← Stocks & Matériel</a></p>
-  </div>
-</div>
-
-<form method="POST" class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
-  <?= csrfField() ?>
-  <input type="hidden" name="action" value="save_article">
-  <input type="hidden" name="id" value="<?= (int)$id ?>">
-
-  <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-    <div class="form-group">
-      <label>Référence *</label>
-      <input type="text" name="reference" class="form-control" required value="<?= e($a['reference']) ?>">
-    </div>
-    <div class="form-group">
-      <label>Type *</label>
-      <select name="type" class="form-control">
-        <option value="piece" <?= $a['type'] === 'piece' ? 'selected' : '' ?>>Pièce détachée</option>
-        <option value="equipement" <?= $a['type'] === 'equipement' ? 'selected' : '' ?>>Équipement</option>
-      </select>
-    </div>
-    <div class="form-group" style="grid-column:1/-1;">
-      <label>Désignation *</label>
-      <input type="text" name="designation" class="form-control" required value="<?= e($a['designation']) ?>">
-    </div>
-    <div class="form-group" style="grid-column:1/-1;">
-      <label>Description</label>
-      <textarea name="description" class="form-control" rows="2"><?= e($a['description']) ?></textarea>
-    </div>
-    <div class="form-group">
-      <label>Stock physique calculé</label>
-      <input type="text" class="form-control" readonly value="<?= e(rtrim(rtrim(number_format((float)$a['quantite_stock'], 3, '.', ''), '0'), '.')) ?> <?= e($a['unite'] ?: 'u') ?>">
-      <small class="text-muted">Le stock est désormais piloté par les mouvements, pas par une saisie directe.</small>
-    </div>
-    <div class="form-group">
-      <label>Seuil minimum (alerte)</label>
-      <input type="number" step="any" name="quantite_min" class="form-control" value="<?= e((string)$a['quantite_min']) ?>">
-    </div>
-    <div class="form-group">
-      <label>Unité</label>
-      <input type="text" name="unite" class="form-control" value="<?= e($a['unite'] ?: 'u') ?>" placeholder="u, m, kg…">
-    </div>
-    <div class="form-group">
-      <label>Emplacement</label>
-      <input type="text" name="emplacement" class="form-control" value="<?= e($a['emplacement']) ?>" placeholder="Rayon / tiroir…">
-    </div>
-    <div class="form-group">
-      <label>Valeur unitaire</label>
-      <div style="display:flex;gap:.5rem;">
-        <input type="number" step="any" name="valeur_unitaire" class="form-control" value="<?= e((string)$a['valeur_unitaire']) ?>">
-        <select name="taxe" class="form-control" style="max-width:5rem;">
-          <option value="HT" <?= ($a['taxe'] ?? 'HT') === 'HT' ? 'selected' : '' ?>>HT</option>
-          <option value="TTC" <?= ($a['taxe'] ?? '') === 'TTC' ? 'selected' : '' ?>>TTC</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group" style="grid-column:1/-1;">
-      <label>Documentation (liens, n° doc, notes techniques)</label>
-      <textarea name="documentation" class="form-control" rows="2" placeholder="URL datasheet, n° plan, fichier Nextcloud…"><?= e($a['documentation']) ?></textarea>
-    </div>
-    <div class="form-group" style="grid-column:1/-1;">
-      <label>Notes internes</label>
-      <textarea name="notes" class="form-control" rows="2"><?= e($a['notes']) ?></textarea>
-    </div>
-  </div>
-
-  <h3 style="margin:1.25rem 0 .75rem;font-size:1rem;">Fournisseurs</h3>
-  <div id="fournRows">
-    <?php
-      $rows = $liensFourn ?: [['fournisseur_id' => '', 'reference_fournisseur' => '', 'prix' => '', 'delai_jours' => '', 'preferentiel' => 0]];
-      foreach ($rows as $lf):
-    ?>
-    <div class="fourn-row" style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr auto auto;gap:.5rem;margin-bottom:.5rem;align-items:center;">
-      <select name="fourn_id[]" class="form-control">
-        <option value="">— Fournisseur —</option>
-        <?php foreach ($fournisseursAll as $f): ?>
-          <option value="<?= (int)$f['id'] ?>" <?= ((int)($lf['fournisseur_id'] ?? 0) === (int)$f['id']) ? 'selected' : '' ?>><?= e($f['nom']) ?></option>
-        <?php endforeach; ?>
-      </select>
-      <input type="text" name="fourn_ref[]" class="form-control" placeholder="Réf. fournisseur" value="<?= e($lf['reference_fournisseur'] ?? '') ?>">
-      <input type="number" step="any" name="fourn_prix[]" class="form-control" placeholder="Prix" value="<?= e((string)($lf['prix'] ?? '')) ?>">
-      <input type="number" name="fourn_delai[]" class="form-control" placeholder="Délai j" value="<?= e((string)($lf['delai_jours'] ?? '')) ?>">
-      <input type="hidden" name="fourn_pref[]" value="0" class="pref-hidden">
-      <label class="text-sm"><input type="checkbox" class="pref-check" value="1" <?= !empty($lf['preferentiel']) ? 'checked' : '' ?> onchange="this.previousElementSibling.value=this.checked?'1':'0'"> Préféré</label>
-      <button type="button" class="btn-sf-del" onclick="this.closest('.fourn-row').remove()" title="Retirer">&times;</button>
-    </div>
-    <?php endforeach; ?>
-  </div>
-  <button type="button" class="btn btn-secondary btn-sm" id="addFourn"><i class="fas fa-plus"></i> Ajouter un fournisseur</button>
-  <p class="text-muted text-xs mt-1">Gérer le catalogue : <a href="<?= url('stock_fournisseurs.php') ?>">Fournisseurs</a></p>
-
-  <div style="margin-top:1.25rem;">
-    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
-    <a href="<?= url('stocks.php') ?>" class="btn btn-secondary">Annuler</a>
-  </div>
-</form>
-
-<?php if ($article): ?>
-<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
-  <h3 style="margin:0 0 1rem;font-size:1rem;">Stock physique par emplacement</h3>
-  <?php if (empty(array_filter($locationsStock, static fn($l) => abs((float)$l['quantite']) > 0.000001))): ?>
-    <p class="text-muted text-sm">Aucun stock affecté à un emplacement.</p>
-  <?php else: ?>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;">
-      <?php foreach ($locationsStock as $loc): if (abs((float)$loc['quantite']) < 0.000001) continue; ?>
-        <div style="padding:.75rem;border:1px solid var(--border-color,#ddd);border-radius:.5rem;">
-          <strong><?= e($loc['nom']) ?></strong><br>
-          <span class="text-muted text-xs"><?= e($loc['chemin']) ?></span><br>
-          <span><?= e(rtrim(rtrim(number_format((float)$loc['quantite'],3,'.',''),'0'),'.')) ?> <?= e($article['unite'] ?: 'u') ?></span>
-        </div>
-      <?php endforeach; ?>
-    </div>
-  <?php endif; ?>
-</div>
-
-<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
-  <h3 style="margin:0 0 1rem;font-size:1rem;">Journal des mouvements</h3>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Qté</th><th>Source</th><th>Destination</th><th>Projet</th><th>Note</th></tr></thead><tbody>
-  <?php foreach($mouvements as $m): ?>
-    <tr><td class="text-sm"><?= e($m['created_at']) ?></td><td><?= e(str_replace('_',' ',$m['type'])) ?></td><td><?= e((string)$m['quantite']) ?></td><td><?= e($m['source_nom'] ?: '—') ?></td><td><?= e($m['destination_nom'] ?: '—') ?></td><td><?= e($m['projet_id'] ? (string)$m['projet_id'] : '—') ?></td><td><?= e($m['note'] ?: '') ?></td></tr>
-  <?php endforeach; ?>
-  <?php if(!$mouvements): ?><tr><td colspan="7" class="text-muted">Aucun mouvement.</td></tr><?php endif; ?>
-  </tbody></table></div>
-</div>
-
-<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
-  <h3 style="margin:0 0 1rem;font-size:1rem;">Projets associés à cette référence</h3>
-  <?php if ($projetsMouvements): ?>
-    <p class="text-sm">Projets présents dans le journal des mouvements :</p>
-    <ul><?php foreach ($projetsMouvements as $pr): ?>
-      <li><a href="<?= url('projet.php?id=' . (int)$pr['id']) ?>"><?= e($pr['nom']) ?></a></li>
-    <?php endforeach; ?></ul>
-  <?php endif; ?>
-  <h4 style="font-size:.9rem;">Besoins et usages déclarés</h4>
-  <?php if (empty($usages)): ?>
-    <p class="text-muted text-sm">Aucun usage enregistré.</p>
-  <?php else: ?>
-    <table class="table">
-      <thead><tr><th>Projet</th><th>Qté</th><th>Date</th><th>Note</th></tr></thead>
-      <tbody>
-        <?php foreach ($usages as $u): ?>
-          <tr>
-            <td><a href="<?= url('projet.php?id=' . (int)$u['projet_id']) ?>"><?= e($u['projet_nom']) ?></a></td>
-            <td><?= e((string)$u['quantite']) ?></td>
-            <td class="text-sm text-muted"><?= e($u['date_usage'] ?? '') ?></td>
-            <td class="text-sm"><?= e($u['note'] ?? '') ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  <?php endif; ?>
-
-  <h4 style="margin:1.25rem 0 .5rem;font-size:.9rem;">Enregistrer un usage projet</h4>
-  <form method="POST" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:flex-end;">
-    <?= csrfField() ?>
-    <input type="hidden" name="action" value="add_usage">
-    <input type="hidden" name="id" value="<?= (int)$id ?>">
-    <div class="form-group">
-      <label>Projet</label>
-      <select name="projet_id" class="form-control" required>
-        <option value="">—</option>
-        <?php foreach ($projets as $pr): ?>
-          <option value="<?= (int)$pr['id'] ?>"><?= e($pr['nom']) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Quantité</label>
-      <input type="number" step="any" name="quantite" class="form-control" value="1" style="width:6rem;">
-    </div>
-    <div class="form-group">
-      <label>Note</label>
-      <input type="text" name="note" class="form-control" placeholder="Optionnel">
-    </div>
-    <label class="text-sm"><input type="checkbox" name="decrementer" value="1" checked> Décrémenter le stock</label>
-    <button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
-  </form>
-</div>
-<?php endif; ?>
-
-<script>
-(function(){
-  const box = document.getElementById('fournRows');
-  const addBtn = document.getElementById('addFourn');
-  if (!box || !addBtn) return;
-  const opts = <?= json_encode(array_map(static fn($f) => ['id' => (int)$f['id'], 'nom' => $f['nom']], $fournisseursAll), JSON_UNESCAPED_UNICODE) ?>;
-  addBtn.addEventListener('click', () => {
-    let o = '<option value="">— Fournisseur —</option>';
-    opts.forEach(f => { o += '<option value="'+f.id+'">'+f.nom.replace(/</g,'&lt;')+'</option>'; });
-    const div = document.createElement('div');
-    div.className = 'fourn-row';
-    div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr auto auto;gap:.5rem;margin-bottom:.5rem;align-items:center;';
-    div.innerHTML = '<select name="fourn_id[]" class="form-control">'+o+'</select>' +
-      '<input type="text" name="fourn_ref[]" class="form-control" placeholder="Réf. fournisseur">' +
-      '<input type="number" step="any" name="fourn_prix[]" class="form-control" placeholder="Prix">' +
-      '<input type="number" name="fourn_delai[]" class="form-control" placeholder="Délai j">' +
-      '<input type="hidden" name="fourn_pref[]" value="0"><label class="text-sm"><input type="checkbox" value="1" onchange="this.previousElementSibling.value=this.checked?\'1\':\'0\'"> Préféré</label>' +
-      '<button type="button" class="btn-sf-del" onclick="this.closest(\'.fourn-row\').remove()">&times;</button>';
-    box.appendChild(div);
-  });
-})();
-</script>
-<?php if($id>0):$uq=$db->prepare('SELECT s.*,p.nom projet FROM stock_usages s JOIN projets p ON p.id=s.projet_id WHERE s.article_id=? ORDER BY p.nom');$uq->execute([$id]);?><section class="card card-body" style="margin-top:20px"><h2>Origines dans les projets</h2><?php foreach($uq->fetchAll() as $usage):?><div class="dash-task-row"><a href="<?=url('projet.php?id='.(int)$usage['projet_id'])?>"><?=e($usage['projet'])?></a><?php if(preg_match('/^auto:\d+:(S\.T\.\d+\.\d+):/',$usage['source_key']??'',$m)):?><a class="pf-object-id" href="<?=url('specification.php?projet_id='.(int)$usage['projet_id'].'&st='.rawurlencode($m[1]))?>"><?=e($m[1])?></a><?php endif;?><span><?=e((string)$usage['quantite'])?> u · besoin défini</span></div><?php endforeach;?></section><?php endif;?>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+require __DIR__.'/views/stock/article.php';

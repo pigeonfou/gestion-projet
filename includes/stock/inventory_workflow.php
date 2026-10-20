@@ -8,7 +8,10 @@ function inventoryOpen(PDO $db,string $code,?int $location,string $notes): int {
         $sql='SELECT id FROM stock_emplacements WHERE actif=1'.($location?' AND id='.(int)$location:'');$places=$db->query($sql)->fetchAll(PDO::FETCH_COLUMN);
         $articles=$db->query('SELECT id FROM stock_articles')->fetchAll(PDO::FETCH_COLUMN);
         $insert=$db->prepare('INSERT INTO stock_inventaire_lignes(inventaire_id,article_id,quantite_theorique,emplacement_id) VALUES(?,?,?,?)');
-        foreach($places as $place)foreach($articles as $article){$qty=productionQuantity($db,(int)$article,(int)$place);$insert->execute([$id,$article,$qty,$place]);}
+        $totals=[];
+        $rows=$db->query('SELECT article_id,location,SUM(delta) quantity FROM (SELECT article_id,emplacement_destination_id location,quantite delta FROM stock_mouvements WHERE emplacement_destination_id IS NOT NULL UNION ALL SELECT article_id,emplacement_source_id location,-quantite delta FROM stock_mouvements WHERE emplacement_source_id IS NOT NULL) GROUP BY article_id,location')->fetchAll(PDO::FETCH_ASSOC);
+        foreach($rows as $row)$totals[$row['article_id']][$row['location']]=(float)$row['quantity'];
+        foreach($places as $place)foreach($articles as $article)$insert->execute([$id,$article,$totals[$article][$place]??0,$place]);
         $db->commit();return $id;
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
@@ -44,3 +47,4 @@ function inventoryValidate(PDO $db,int $id,int $userId):void {
         $db->prepare("UPDATE stock_inventaires SET statut='valide',valide_par=?,date_validation=CURRENT_TIMESTAMP WHERE id=?")->execute([$userId,$id]);$db->commit();
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
+

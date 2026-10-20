@@ -2,6 +2,7 @@
 $pageTitle = 'Gestion des utilisateurs';
 $activePage = 'utilisateurs';
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__.'/../src/Services/AccountService.php';
 requerirAdmin();
 
 $db = getDB();
@@ -38,29 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        if ($editId > 0) {
-            if ($mot_de_passe !== '') {
-                $hash = password_hash($mot_de_passe, PASSWORD_DEFAULT);
-                $stmt = $db->prepare('UPDATE utilisateurs SET identifiant=?, mot_de_passe=?, role=?, nom_affiche=?, fonction=?, competences=? WHERE id=?');
-                $stmt->execute([$identifiant, $hash, $role, $nomAffiche, $fonction, $competences, $editId]);
-            } else {
-                $stmt = $db->prepare('UPDATE utilisateurs SET identifiant=?, role=?, nom_affiche=?, fonction=?, competences=? WHERE id=?');
-                $stmt->execute([$identifiant, $role, $nomAffiche, $fonction, $competences, $editId]);
-            }
-            setFlash('success', 'Utilisateur mis à jour.');
-        } else {
-            if ($mot_de_passe === '') {
-                setFlash('error', 'Mot de passe obligatoire pour un nouvel utilisateur.');
-                redirect('admin/utilisateurs.php?action=creer');
-            }
-            $hash = password_hash($mot_de_passe, PASSWORD_DEFAULT);
-            $stmt = $db->prepare('INSERT INTO utilisateurs (identifiant, mot_de_passe, role, nom_affiche, fonction, competences) VALUES (?,?,?,?,?,?)');
-            $stmt->execute([$identifiant, $hash, $role, $nomAffiche, $fonction, $competences]);
-            setFlash('success', 'Utilisateur créé.');
-        }
+        pfSaveAccount($db,$editId,['identifiant'=>$identifiant,'mot_de_passe'=>$mot_de_passe,'role'=>$role,'nom_affiche'=>$nomAffiche,'fonction'=>$fonction,'competences'=>$competences]);
+        setFlash('success',$editId?'Utilisateur mis à jour.':'Utilisateur créé.');
         redirect('admin/utilisateurs.php');
-    } catch (PDOException $e) {
-        setFlash('error', str_contains($e->getMessage(), 'UNIQUE') ? 'Cet identifiant existe déjà.' : 'Erreur lors de l\'enregistrement.');
+    } catch (Throwable $e) {
+        setFlash('error', $e instanceof InvalidArgumentException ? $e->getMessage() : 'Erreur lors de l\'enregistrement.');
         redirect('admin/utilisateurs.php');
     }
 }
@@ -112,7 +95,7 @@ if ($action === 'creer' || $action === 'modifier') {
                 </div>
                 <div class="form-group">
                     <label for="mot_de_passe">Mot de passe <?= $u ? '(laisser vide pour ne pas changer)' : '*' ?></label>
-                    <input type="password" id="mot_de_passe" name="mot_de_passe" class="form-control" <?= $u ? '' : 'required' ?> minlength="6">
+                    <input type="password" id="mot_de_passe" name="mot_de_passe" class="form-control" <?= $u ? '' : 'required' ?> minlength="12" maxlength="72">
                 </div>
                 <div class="form-group">
                     <label for="role">Rôle *</label>
@@ -179,3 +162,4 @@ require __DIR__ . '/../includes/header.php';
     </div>
 </div>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
+

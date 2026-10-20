@@ -10,9 +10,14 @@ class NextcloudClient {
     public function __construct(?string $webdav = null, ?string $user = null, ?string $password = null) {
         require_once __DIR__ . '/settings_helper.php';
         seedSettingsIfEmpty();
-        $this->baseUrl = rtrim($webdav ?? getSetting('nextcloud_webdav', ''), '/');
-        $this->user = $user ?? getSetting('nextcloud_user', '');
-        $this->password = $password ?? getSetting('nextcloud_password', '');
+        $this->baseUrl = rtrim($webdav ?? (getenv('PROJECTFLOW_NEXTCLOUD_WEBDAV') ?: getSetting('nextcloud_webdav', '')), '/');
+        $this->user = $user ?? (getenv('PROJECTFLOW_NEXTCLOUD_USER') ?: getSetting('nextcloud_user', ''));
+        $this->password = $password ?? (getenv('PROJECTFLOW_NEXTCLOUD_PASSWORD') ?: getSetting('nextcloud_password', ''));
+        if ($this->baseUrl !== '') {
+            $parts=parse_url($this->baseUrl);
+            if (!$parts || ($parts['scheme'] ?? '')!=='https' || empty($parts['host']) || isset($parts['user']) || isset($parts['pass'])) throw new InvalidArgumentException('URL WebDAV HTTPS sans identifiants intégrés requise.');
+        }
+
     }
 
     public function isConfigured(): bool {
@@ -37,6 +42,7 @@ class NextcloudClient {
             CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => $headers,
         ]);
+        if ($method === 'HEAD') curl_setopt($ch, CURLOPT_NOBODY, true);
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         }
@@ -180,6 +186,11 @@ class NextcloudClient {
     }
 
     /** Liste fichiers d'un dossier (PROPFIND basique) */
+    public function statFile(string $remotePath): array {
+        $r=$this->request('HEAD',$remotePath);
+        return ['ok'=>$r['code']>=200 && $r['code']<300,'status'=>$r['code']];
+    }
+
     public function listFolder(string $remotePath): array {
         $r = $this->request('PROPFIND', $remotePath, null, [
             'Depth: 1',

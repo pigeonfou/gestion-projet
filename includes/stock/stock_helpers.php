@@ -8,15 +8,8 @@
  */
 require_once __DIR__ . '/../bootstrap.php';
 
-function stockEnsureSchema(): void {
-    runSchemaMigrations();
-}
 
 /** @return array<int,array{id:int,name:string,level:int}> */
-function stockLocationTree(): array {
-    $db = getDB();
-    return $db->query("SELECT id, nom AS name, niveau AS level FROM stock_emplacements ORDER BY chemin, nom")->fetchAll(PDO::FETCH_ASSOC) ?: [];
-}
 
 function stockDefaultLocationId(): ?int {
     $id = getDB()->query("SELECT id FROM stock_emplacements WHERE code = 'LABO' LIMIT 1")->fetchColumn();
@@ -74,24 +67,13 @@ function stockMovement(
     ?string $note = null,
     ?int $userId = null
 ): int {
-    if ($quantity <= 0) {
-        throw new InvalidArgumentException('La quantité doit être supérieure à zéro.');
-    }
-    $allowed = ['reception','consommation','affectation_projet','retour_projet','transfert','correction_inventaire','rebut','demontage','recuperation','reservation','liberation_reservation'];
-    if (!in_array($type, $allowed, true)) {
-        throw new InvalidArgumentException('Type de mouvement invalide.');
-    }
-    if ($type === 'transfert' && (!$sourceLocationId || !$destinationLocationId)) {
-        throw new InvalidArgumentException('Un transfert nécessite un emplacement source et destination.');
-    }
     $db = getDB();
-    $st = $db->prepare("INSERT INTO stock_mouvements
-        (article_id,type,quantite,emplacement_source_id,emplacement_destination_id,projet_id,fournisseur_id,lot_id,reference_externe,note,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-    $st->execute([$articleId,$type,$quantity,$sourceLocationId,$destinationLocationId,$projetId,$fournisseurId,$lotId,$reference,$note,$userId]);
-    $id = (int)$db->lastInsertId();
-    stockSyncLegacyQuantity($articleId);
-    return $id;
+    require_once __DIR__.'/../../src/Services/StockMovementService.php';
+    return pfTransaction($db, function () use ($db,$articleId,$type,$quantity,$sourceLocationId,$destinationLocationId,$projetId,$fournisseurId,$lotId,$reference,$note,$userId) {
+        $id=pfRecordStockMovement($db,$articleId,$type,$quantity,$sourceLocationId,$destinationLocationId,$projetId,$fournisseurId,$lotId,$reference,$note,$userId);
+        stockSyncLegacyQuantity($articleId);
+        return $id;
+    });
 }
 
 /** Retourne les quantités par emplacement pour une référence. */
@@ -107,3 +89,4 @@ function stockByLocation(int $articleId): array {
     $st->execute([$articleId,$articleId]);
     return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
+

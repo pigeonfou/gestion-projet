@@ -2,6 +2,7 @@
 $pageTitle = 'Création groupée d’une équipe';
 $activePage = 'utilisateurs';
 require_once __DIR__ . '/../includes/bootstrap.php';
+require_once __DIR__.'/../src/Services/AccountService.php';
 requerirAdmin();
 $db = getDB();
 $erreur = '';
@@ -23,17 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fonction = trim((string)($row['fonction'] ?? ''));
             $competences = trim((string)($row['competences'] ?? ''));
             $password = (string)($row['mot_de_passe'] ?? '');
-            if (!preg_match('/^[A-Za-z0-9_.-]{1,50}$/D', $login)) {
-                throw new InvalidArgumentException('Identifiant invalide : lettres ASCII, chiffres, point, tiret et soulignement uniquement.');
-            }
+            pfValidateAccount($login,$password,true,$nom,$fonction,$competences);
             if (isset($seen[strtolower($login)])) throw new InvalidArgumentException('Identifiant répété dans l’équipe.');
             $seen[strtolower($login)] = true;
-            if (strlen($nom) > 200 || strlen($fonction) > 300 || strlen($competences) > 2000) {
-                throw new InvalidArgumentException('Profil trop long.');
-            }
-            if (strlen($password) < 12 || strlen($password) > 72) {
-                throw new InvalidArgumentException('Chaque membre renseigné doit avoir un mot de passe de 12 à 72 octets.');
-            }
             $validated[] = [$login, password_hash($password, PASSWORD_DEFAULT), $nom, $fonction, $competences];
         }
         if (!$validated) throw new InvalidArgumentException('Renseignez au moins un membre.');
@@ -83,3 +76,4 @@ require __DIR__ . '/../includes/header.php';
     </form>
 </div></div>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
+
