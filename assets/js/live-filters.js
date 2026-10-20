@@ -63,13 +63,14 @@
       target.setAttribute('aria-busy', 'true');
       feedback.textContent = 'Mise à jour…';
       try {
-        const response = await fetch(url, {signal: controller.signal, credentials: 'same-origin'});
+        const response = await fetch(url, {signal: controller.signal, credentials: 'same-origin', headers: {'X-ProjectFlow-Partial': resultKey}});
         if (!response.ok) throw new Error('request');
         const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
         const next = doc.querySelector(selector);
         if (!next || !doc.querySelector('form[data-live-filters]')) throw new Error('session');
         if (current !== generation) return;
         target.replaceChildren(...next.childNodes);
+        document.dispatchEvent(new CustomEvent('pf-content-updated',{detail:{root:target}}));
         highlight();
         history.replaceState(null, '', url);
         feedback.textContent = '';
@@ -101,3 +102,4 @@
     });
   });
 })();
+

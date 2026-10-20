@@ -7,8 +7,8 @@
 .dash-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.75rem; }
 .dash-kpi { background: var(--surface-raised, #fff); border: 1px solid var(--border-default, #e2e8f0); border-radius: 12px; padding: 1.25rem; }
 .dash-kpi-label { font-size: .875rem; color: var(--text-secondary, #64748b); margin: 0; }
-.dash-kpi-value { font-size: 1.875rem; font-weight: 700; margin-top: .5rem; color: var(--text-primary, #0f172a); }
-.dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+
+
 .dash-card { background: var(--surface-raised, #fff); border: 1px solid var(--border-default, #e2e8f0); border-radius: 12px; padding: 1.25rem; }
 .dash-card h3 { font-size: 1.05rem; font-weight: 600; margin: 0 0 1rem; color: var(--text-primary, #0f172a); }
 .dash-proj-list { display: flex; flex-direction: column; gap: .75rem; }
@@ -67,3 +67,4 @@
 @media (max-width: 480px) {
   .dash-kpi-grid { grid-template-columns: 1fr 1fr; }
 }
+

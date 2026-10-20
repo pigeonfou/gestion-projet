@@ -5,7 +5,7 @@
   const tree = document.getElementById('st-structure-tree');
   const status = document.getElementById('st-hierarchy-status');
   const saved = JSON.parse(document.getElementById('st-reference-data')?.textContent || '[]');
-  const rows = () => [...form.querySelectorAll('.st-row')];
+  const rows = () => window.ProjectFlow.stIndex(form).rows;
   const field = (row, name) => row.querySelector(`[name="${name}[]"]`);
   const uid = row => field(row, 'st_uid').value;
   const label = row => `${row.querySelector('.st-id').textContent} — ${field(row, 'st_description').value.trim() || '(sans description)'}`;
@@ -44,6 +44,11 @@
     const select = make('select', '', 'form-control st-parent-select');
     caption.append(select); control.append(caption, make('div', '', 'st-parent-meta'));
     input.parentElement.append(control);
+  }
+  let refreshFrame = 0;
+  function scheduleRefresh() {
+    if(refreshFrame) return;
+    refreshFrame = requestAnimationFrame(() => {refreshFrame=0;refresh();});
   }
   function refresh() {
     const all = rows(); all.forEach(ensure);
@@ -170,7 +175,7 @@
     form.requestSubmit(submitter);
     submitting = false;
   });
-  form.addEventListener('input', event => {if (event.target.matches('[name="st_description[]"]')) refresh();});
+  form.addEventListener('input', event => {if (event.target.matches('[name="st_description[]"]')) scheduleRefresh();});
   form.addEventListener('click', event => {
     const a = event.target.closest('[data-st-target]');
     if (!a) return;
@@ -184,3 +189,4 @@
   document.addEventListener('st-rows-changed', refresh);
   refresh();
 })();
+

@@ -4,7 +4,7 @@ function estimateIsUnknown(value) {
 }
 /* One calculation for both estimate and supplier rows. */
 function recalcEstimationRow(row, hasCost = true) {
-  const decimal = value => Math.max(0, parseFloat(String(value || '').replace(',', '.')) || 0);
+  const decimal = window.ProjectFlow.estimationDecimal;
   const qty = row.querySelector('.cp-qty');
   const unit = row.querySelector('.cp-unit');
   if (!qty || !unit) return 0;
@@ -13,7 +13,7 @@ function recalcEstimationRow(row, hasCost = true) {
   row.querySelectorAll('.estimation-cost').forEach(cell => { cell.hidden = !hasCost; });
   const unknown = hasCost && unit.name === 'st_cout_unitaire[]' && estimateIsUnknown(unit.value);
   row.dataset.costUnknown = unknown ? 'true' : 'false';
-  const total = unknown ? null : (hasCost ? decimal(qty.value) * decimal(unit.value) : 0);
+  const total = unknown ? null : (hasCost ? window.ProjectFlow.estimationTotal(decimal(qty.value), decimal(unit.value)) : 0);
   const output = row.querySelector('.cp-total');
   if (output) output.value = unknown ? 'inconnue' : total.toFixed(2).replace('.', ',') + ' €';
   const saved = row.querySelector('.estimation-total-input');
@@ -48,14 +48,11 @@ function estimationCells(prefix) {
     const sfNum = block.getAttribute('data-sf-num');
     const sfId = block.getAttribute('data-sf');
 
-    function parseStCost(value) {
-      return parseFloat(String(value || '').replace(',', '.')) || 0;
-    }
 
     function recalcSfCost() {
       let ht = 0, ttc = 0, unknown = 0;
       body.querySelectorAll('.st-row').forEach(row => {
-        const hasCost = ['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(row.querySelector('[name="st_type[]"]').value);
+        const hasCost = window.ProjectFlow.costTypes.includes(row.querySelector('[name="st_type[]"]').value);
         const cost = recalcEstimationRow(row, hasCost);
         if (cost === null) { unknown++; return; }
         const tax = row.querySelector('.cp-taxe')?.value || 'HT';
@@ -195,6 +192,8 @@ function estimationCells(prefix) {
                 el.value = '';
               }
             });
+            const uid = row.querySelector('[name="cp_uid[]"]');
+            if (uid) uid.value = '';
             const tot = row.querySelector('.cp-total');
             if (tot) tot.value = '';
             renumber(block);
@@ -216,9 +215,9 @@ function estimationCells(prefix) {
 
     body.querySelectorAll('.cp-row').forEach(row => {
       bindRow(row);
-      if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) recalc(row);
+      if (window.ProjectFlow.costTypes.includes(type)) recalc(row);
     });
-    if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
+    if (window.ProjectFlow.costTypes.includes(type)) {
       body.addEventListener('input', e => {
         const row = e.target.closest('.cp-row');
         if (row && (e.target.matches('.cp-qty') || e.target.matches('.cp-unit'))) recalc(row);
@@ -236,11 +235,11 @@ function estimationCells(prefix) {
         const i = body.querySelectorAll('.cp-row').length;
         const tr = document.createElement('tr');
         tr.className = 'cp-row';
-        if (['Matériel', 'Composant', 'Prestataire', 'PCB'].includes(type)) {
+        if (window.ProjectFlow.costTypes.includes(type)) {
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="' + type + '">' +
+            '<input type="hidden" name="cp_uid[]" value=""><input type="hidden" name="cp_type[]" value="' + type + '">' +
             '<input type="hidden" name="cp_duree[]" value="">' +
             (type === 'PCB' ? '<label>Affectation PCB</label><select name="cp_affectation[]" class="form-control"><option value="">—</option>' + (window.PROJECTFLOW_USERS || []).map(u => '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>').join('') + '</select>' : '<input type="hidden" name="cp_affectation[]" value="">') + '</td>' +
             '<td><input type="text" name="cp_designation[]" class="form-control" value=""></td>' +
@@ -252,11 +251,11 @@ function estimationCells(prefix) {
         } else {
           const userOpts = window.PROJECTFLOW_USERS || [];
           let opts = '<option value="">—</option>';
-          (userOpts || []).forEach(u => { opts += '<option value="' + u.replace(/"/g, '&quot;') + '">' + u + '</option>'; });
+          (userOpts || []).forEach(u => { opts += '<option value="' + u.replace(/"/g, '&quot;') + '">' + u.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'; });
           tr.innerHTML =
             '<td><span class="cp-id">' + prefix + '.' + (i+1) + '</span>' +
             '<input type="hidden" name="cp_st_id[]" value="' + stId + '">' +
-            '<input type="hidden" name="cp_type[]" value="' + type + '">' +
+            '<input type="hidden" name="cp_uid[]" value=""><input type="hidden" name="cp_type[]" value="' + type + '">' +
             '<input type="hidden" name="cp_designation[]" value=""><input type="hidden" name="cp_reference[]" value="">' +
             '<input type="hidden" name="cp_fournisseur[]" value=""><input type="hidden" name="cp_quantite[]" value="">' +
             '<input type="hidden" name="cp_cout_unitaire[]" value=""><input type="hidden" name="cp_cout_unitaire_taxe[]" value="HT">' +
@@ -326,6 +325,7 @@ function estimationCells(prefix) {
   observer.observe(scroll.querySelector('.r1b-step-workspace'));
   update();
 })();
+
 
 /* Keep explicit unknown estimates readable after editing, including dynamic rows. */
 (() => {
@@ -454,3 +454,4 @@ function estimationCells(prefix) {
     handle.addEventListener('lostpointercapture', finish);
   }
 })();
+

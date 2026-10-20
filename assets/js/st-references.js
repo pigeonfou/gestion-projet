@@ -10,7 +10,7 @@
   let current = null;
   let previous = null;
   let applying = false;
-  const rows = () => [...form.querySelectorAll('.st-row')];
+  const rows = () => window.ProjectFlow.stIndex(form).rows;
   const input = (row, name) => row.querySelector(`[name="${name}[]"]`);
   function uid(row) { return input(row, 'st_uid').value; }
   function refresh() {
@@ -18,7 +18,7 @@
       const select = input(row, 'st_type');
       const ref = input(row, 'st_reference_uid').value;
       const option = select.querySelector('[value="S.T.x.x"]');
-      const target = rows().find(candidate => uid(candidate) === ref);
+      const target = window.ProjectFlow.stIndex(form).byUid.get(ref);
       const label = select.value !== 'S.T.x.x' ? 'S.T.x.x' :
         target ? target.querySelector('.st-id').textContent : 'S.T. supprimé / référence invalide';
       if (option.textContent !== label) option.textContent = label;
@@ -33,7 +33,7 @@
     });
   }
   function wouldCycle(candidate) {
-    const byUid = new Map(rows().map(row => [uid(row), row]));
+    const byUid = window.ProjectFlow.stIndex(form).byUid;
     const seen = new Set([uid(current)]);
     let cursor = candidate.uid;
     while (cursor) {
@@ -49,7 +49,7 @@
     list.replaceChildren();
     const query = search.value.trim().toLocaleLowerCase();
     saved.forEach(st => {
-      const row = rows().find(row => uid(row) === st.uid);
+      const row = window.ProjectFlow.stIndex(form).byUid.get(st.uid);
       if (!row || st.uid === uid(current) || wouldCycle(st)) return;
       const label = row.querySelector('.st-id').textContent + ' — ' + input(row, 'st_description').value;
       if (!(label + ' ' + st.type + ' ' + st.sf).toLocaleLowerCase().includes(query)) return;
@@ -111,6 +111,7 @@
   });
   document.getElementById('st-reference-cancel').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', cancel);
-  new MutationObserver(refresh).observe(form, { childList:true, subtree:true });
+  document.addEventListener('st-rows-changed', refresh);
   refresh();
 })();
+

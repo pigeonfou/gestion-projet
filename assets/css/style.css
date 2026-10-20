@@ -521,14 +521,7 @@ tr:hover td { background:var(--surface-raised, #f8fafc); }
 
 
 /* Kanban tâches (global + projet) — style Processus-R1b */
-.r1b-kanban,
-.r1b-kanban.r1b-kanban-4 {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  width: 100%;
-  align-items: start;
-}
+
 .r1b-kanban-col {
   background: var(--surface-muted, #f1f5f9);
   border-radius: 12px;
@@ -714,3 +707,4 @@ label { color: var(--text-primary, #0f172a); font-weight: 600; }
 .footer, .footer-sub { color: var(--text-secondary, #334155); }
 a { color: var(--state-info, #1d4ed8); }
 a:hover { color: var(--state-info, #1e3a8a); }
+

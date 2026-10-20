@@ -1,3 +1,5 @@
+(() => {
+'use strict';
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const tabId = btn.dataset.tab;
@@ -8,12 +10,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         if (content) content.classList.add('active');
     });
 });
-document.querySelectorAll('[data-confirm]').forEach(el => {
-    el.addEventListener('click', e => {
-        if (!confirm(el.dataset.confirm || 'Confirmer la suppression ?')) e.preventDefault();
-    });
+document.addEventListener('click', event => {
+    const el=event.target.closest('[data-confirm]');
+    if(el && !confirm(el.dataset.confirm || 'Confirmer la suppression ?')) event.preventDefault();
 });
-document.querySelectorAll('.alert').forEach(alert => {
+document.querySelectorAll('.alert-success').forEach(alert => {
     setTimeout(() => { alert.style.opacity='0'; alert.style.transition='opacity .4s'; setTimeout(()=>alert.remove(),400); }, 5000);
 });
 
@@ -26,5 +27,8 @@ if (userBtn && userMenu) {
         userMenu.classList.toggle('show');
         userBtn.setAttribute('aria-expanded', userMenu.classList.contains('show'));
     });
-    document.addEventListener('click', () => userMenu.classList.remove('show'));
+    document.addEventListener('click', () => { userMenu.classList.remove('show'); userBtn.setAttribute('aria-expanded','false'); });
 }
+
+
+})();
