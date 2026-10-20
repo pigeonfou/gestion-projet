@@ -85,10 +85,15 @@ try {
     chmod($dbPath, 0660);
     echo "✓ Base créée : $dbPath\n";
     echo "✓ Compte admin : admin / mot de passe généré ci-dessous\n";
-    echo "  Mot de passe initial : $adminPassword\n";
+    if (getenv('PROJECTFLOW_ADMIN_PASSWORD') === false || getenv('PROJECTFLOW_ADMIN_PASSWORD') === '') {
+        $terminal=@fopen('/dev/tty','w');
+        if ($terminal) { fwrite($terminal,"Mot de passe initial : $adminPassword\n");fclose($terminal); }
+        else { fwrite(STDERR,"Compte créé. Définissez PROJECTFLOW_ADMIN_PASSWORD lors d’une installation non interactive.\n"); }
+    }
     echo "⚠ Changez le mot de passe dès la première connexion !\n";
     echo "ℹ Base : $dbPath\n";
 } catch (PDOException $e) {
     echo "Erreur : " . $e->getMessage() . "\n";
     exit(1);
 }
+

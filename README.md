@@ -5,9 +5,12 @@ Application web PHP de gestion de projets, tâches, utilisateurs et cahiers des 
 ## Prérequis
 
 - Linux (Ubuntu 22.04 / 24.04 recommandé)
-- PHP ≥ 8.1 + extensions `pdo_sqlite` et `mbstring`
+- PHP ≥ 8.1 + extensions `pdo_sqlite`, `sqlite3`, `mbstring` et `curl`
 - Apache 2 + `libapache2-mod-php`
 - Git
+- Node.js et Python 3 pour les vérifications avant déploiement
+
+La branche `recode` et ses procédures de test, migration, sauvegarde et reprise documentaire sont décrites dans [docs/recode.md](docs/recode.md).
 
 ---
 

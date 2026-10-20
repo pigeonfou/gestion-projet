@@ -39,7 +39,7 @@ install_packages(){
   info "Mise à niveau des paquets système..."
   apt-get upgrade -y
   info "Installation d'Apache, PHP, SQLite, Git et outils..."
-  apt-get install -y apache2 git curl ca-certificates php php-cli php-common php-sqlite3 php-mbstring libapache2-mod-php sqlite3
+  apt-get install -y apache2 git curl ca-certificates php php-cli php-common php-sqlite3 php-curl php-mbstring python3 nodejs php-mbstring libapache2-mod-php sqlite3
   ok "Paquets installés."
   php -v | head -n 1; apache2 -v | head -n 1; git --version
 }
@@ -80,8 +80,10 @@ configure_database(){
   echo "Laissez vide pour générer automatiquement un mot de passe."
   read -r -s -p "Mot de passe admin : " ADMIN_PASSWORD; echo
   if [[ -z "$ADMIN_PASSWORD" ]]; then
-    info "Mot de passe aléatoire généré par le programme d'initialisation."
-    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" php "$APP_DIR/install/init_database.php"
+    ADMIN_PASSWORD=$(php -r 'echo bin2hex(random_bytes(16));')
+    printf 'Mot de passe initial : %s\n' "$ADMIN_PASSWORD" >/dev/tty
+    info "Mot de passe initial affiché sur le terminal, exclu du journal."
+    runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
   else
     [[ ${#ADMIN_PASSWORD} -ge 12 ]] || die "Le mot de passe doit comporter au moins 12 caractères."
     runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB_PATH" PROJECTFLOW_ADMIN_PASSWORD="$ADMIN_PASSWORD" php "$APP_DIR/install/init_database.php"
@@ -221,3 +223,4 @@ case "${1:-}" in
     ;;
   *) menu ;;
 esac
+

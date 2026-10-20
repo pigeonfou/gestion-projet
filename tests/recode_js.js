@@ -1,0 +1,11 @@
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const context={window:{}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/js/estimation.js'),'utf8'),context);
+const {estimationDecimal:decimal,estimationTotal:total}=context.window.ProjectFlow;
+assert.equal(decimal('2,5'),2.5);assert.equal(decimal('2abc'),0);assert.equal(decimal('INF'),0);assert.equal(decimal('-1'),0);
+assert.equal(total(3,10.125),30.38);assert.equal(total(2.5,12.34),30.85);
+assert.equal(total(Infinity,10),0);
+console.log('JS estimation: invalid values, decimals and PHP rounding fixtures OK');

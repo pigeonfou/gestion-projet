@@ -21,3 +21,4 @@
 | A16 | Transverse | Qualité fournisseurs partagée | Gaëlle | Fonction exploitable avec données persistantes et droits contrôlés | Contributionprojet pouvait éditer fiche fournisseur globale | Contributionprojet pouvait éditer fiche fournisseur globale | Fichespartagées réservées gestionnaire; contribution limitée auxréférences projet | d338c0d | Gaëlle consulteISOglobal sansformulaire; référenceR4éditable etpersistante. Refus POSTforgé non exécuté en E2E | Corrigée; UI retestée, garde serveur revue |
 
 La restriction B01 concerne le lecteur documentaire dans le navigateur de l’agent ; aucune tentative de contournement. L’écriture et la récupération en mémoire avec SHA-256 réussissent.
+

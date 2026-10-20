@@ -209,3 +209,4 @@ La restriction B01 concerne le lecteur documentaire dans le navigateur de l’ag
 - L’autonomie inclut les modifications, commits, déploiements et tests autorisés. Le changement de session peut encore nécessiter le formulaire sécurisé ou une intervention utilisateur ; aucune protection d’authentification n’a été désactivée.
 
 Aucune régression bloquante n’est connue dans les parcours exécutés. Cette conclusion ne remplace ni un audit de sécurité complet, ni une couverture exhaustive de chaque fonction existante, ni une validation d’ingénierie et de fabrication réelle.
+

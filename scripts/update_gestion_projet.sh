@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -Eeuo pipefail
 
 PROJECT_DIR="/var/www/html/gestion-projet"
 DB_FILE="/var/lib/projectflow/database.sqlite"
@@ -32,7 +32,7 @@ echo "[1/7] Sauvegarde de la base de données..."
 mkdir -p "$BACKUP_DIR"
 
 BACKUP_FILE="$BACKUP_DIR/database.sqlite.$(date +%Y%m%d-%H%M%S)"
-cp -a "$DB_FILE" "$BACKUP_FILE"
+php "$PROJECT_DIR/scripts/backup_database.php" "$DB_FILE" "$BACKUP_FILE"
 
 echo "      Sauvegarde : $BACKUP_FILE"
 echo
@@ -49,6 +49,13 @@ if ! sudo -u www-data git show-ref --verify --quiet "refs/remotes/origin/$BRANCH
     exit 1
 fi
 echo
+
+candidate_dir=$(mktemp -d)
+trap 'rm -rf "$candidate_dir"' EXIT
+sudo -u www-data git archive "origin/$BRANCH" | tar -x -C "$candidate_dir"
+php "$candidate_dir/scripts/test.php"
+python3 "$candidate_dir/tests/recode_http.py"
+apachectl configtest
 
 echo "[4/7] Passage sur la branche $BRANCH..."
 if sudo -u www-data git show-ref --verify --quiet "refs/heads/$BRANCH"; then
@@ -83,3 +90,4 @@ echo
 echo "Base sauvegardée :"
 echo "$BACKUP_FILE"
 echo
+

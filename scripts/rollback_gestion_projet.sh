@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -Eeuo pipefail
 
 PROJECT_DIR="/var/www/html/gestion-projet"
 DB_FILE="/var/lib/projectflow/database.sqlite"
@@ -167,7 +167,7 @@ echo "[5/8] Sauvegarde de la base de données..."
 mkdir -p "$BACKUP_DIR"
 
 BACKUP_FILE="$BACKUP_DIR/database.sqlite.rollback-$(date +%Y%m%d-%H%M%S)"
-cp -a "$DB_FILE" "$BACKUP_FILE"
+php "$PROJECT_DIR/scripts/backup_database.php" "$DB_FILE" "$BACKUP_FILE"
 
 echo "      Base sauvegardée : $BACKUP_FILE"
 echo
@@ -178,6 +178,17 @@ sudo -u www-data git branch "$SNAPSHOT_BRANCH" "$CURRENT_COMMIT"
 
 echo "      Branche de sauvegarde : $SNAPSHOT_BRANCH"
 echo
+
+candidate_dir=$(mktemp -d)
+trap 'rm -rf "$candidate_dir"' EXIT
+sudo -u www-data git archive "$TARGET_COMMIT" | tar -x -C "$candidate_dir"
+if [[ ! -f "$candidate_dir/migrations/001_recode.php" ]] && [[ -f "$PROJECT_DIR/migrations/001_recode.php" ]]; then
+    echo "ERREUR : retour vers un code antérieur aux identités stables. Restaurez une sauvegarde compatible avec arrêt des écritures."
+    exit 1
+fi
+php "$candidate_dir/scripts/test.php"
+python3 "$candidate_dir/tests/recode_http.py"
+apachectl configtest
 
 echo "[7/8] Retour vers la version sélectionnée..."
 sudo -u www-data git reset --hard "$TARGET_COMMIT"
@@ -210,3 +221,4 @@ echo
 echo "Point de retour Git : $SNAPSHOT_BRANCH"
 echo "Sauvegarde de la base : $BACKUP_FILE"
 echo
+

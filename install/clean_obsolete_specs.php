@@ -1,4 +1,5 @@
 <?php
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit('Utilitaire CLI uniquement.'); }
 /**
  * Nettoyage des champs obsolètes du CDC structuré
  * (onglets Performance, Environnement, Technique, Support — supprimés).
@@ -40,3 +41,4 @@ echo '<p>Cahiers modifiés : <strong>' . (int)$updated . '</strong></p>';
 echo '<p>Les clés des anciens onglets 3–6 ont été retirées de <code>specs_json</code>.</p>';
 echo '<p><a href="../projets.php">Retour aux projets</a></p>';
 echo '</body></html>';
+

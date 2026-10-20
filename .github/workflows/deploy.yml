@@ -2,7 +2,7 @@ name: Déployer gestion-projet
 
 on:
   push:
-    branches: [main, NewUxUi]
+    branches: [main, NewUxUi, recode]
   workflow_dispatch:
     inputs:
       branch:
@@ -21,11 +21,12 @@ concurrency:
 jobs:
   deploy:
     runs-on: self-hosted
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       DEPLOY_BRANCH: ${{ inputs.branch || github.ref_name }}
     steps:
       - name: Vérifications avant déploiement
+        id: preflight
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -33,6 +34,7 @@ jobs:
           cd /var/www/html/gestion-projet
           git fetch origin "+refs/heads/$DEPLOY_BRANCH:refs/remotes/origin/$DEPLOY_BRANCH"
           candidate=$(git rev-parse "refs/remotes/origin/$DEPLOY_BRANCH")
+          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_EVENT_NAME" == push && "$candidate" != "$GITHUB_SHA" ]]; then
             echo "La branche a changé depuis cette exécution."
             exit 1
@@ -40,54 +42,14 @@ jobs:
           test_dir=$(mktemp -d)
           trap 'rm -rf "$test_dir"' EXIT
           git archive "$candidate" | tar -x -C "$test_dir"
-          while IFS= read -r -d '' file; do
-            php -l "$file" >/dev/null
-          done < <(find "$test_dir" -type f -name '*.php' -print0)
-          if [[ -f "$test_dir/tests/couts_delais.php" ]]; then
-            php "$test_dir/tests/couts_delais.php"
-            php "$test_dir/tests/st_references.php"
-            php "$test_dir/tests/st_hierarchy.php"
-            php "$test_dir/tests/estimate_unknown.php"
-          fi
-          if [[ -f "$test_dir/tests/nextcloud_sans_curl.php" ]]; then
-            php -n "$test_dir/tests/nextcloud_sans_curl.php"
-          fi
-          php -n "$test_dir/tests/document_upload_stream.php"
-          php -r 'echo "cURL CLI : ", function_exists("curl_init") ? "disponible" : "absent", PHP_EOL;'
-          if [[ -f "$test_dir/tests/r1b_decisions.php" ]]; then
-            php "$test_dir/tests/r1b_decisions.php"
-          fi
-          if [[ -f "$test_dir/tests/task_workflow.php" ]]; then
-            php "$test_dir/tests/task_workflow.php"
-          fi
-          if [[ -f "$test_dir/tests/quality.php" ]]; then
-            php "$test_dir/tests/quality.php"
-          fi
-          if [[ -f "$test_dir/tests/stock_lots.php" ]]; then
-            php "$test_dir/tests/stock_lots.php"
-          fi
-          if [[ -f "$test_dir/tests/stock_production.php" ]]; then
-            php "$test_dir/tests/stock_production.php"
-          fi
-          if [[ -f "$test_dir/tests/stock_inventory.php" ]]; then
-            php "$test_dir/tests/stock_inventory.php"
-          fi
-          if [[ -f "$test_dir/tests/stock_reservations.php" ]]; then
-            php "$test_dir/tests/stock_reservations.php"
-          fi
-          php "$test_dir/tests/management_workflow.php"
-          php "$test_dir/tests/project_members.php"
-          php "$test_dir/tests/decision_history.php"
-          php "$test_dir/tests/project_notes.php"
-          php "$test_dir/tests/cdc_test.php"
-          php "$test_dir/tests/decision_dashboard.php"
-          php "$test_dir/tests/task_filters.php"
-          php "$test_dir/tests/ux_relations.php"
+          php "$test_dir/scripts/test.php"
+          python3 "$test_dir/tests/recode_http.py"
           echo "PHP et tests : OK"
       - name: Déployer
         shell: bash
         run: |
           sudo -n /usr/local/sbin/gestion-projet-deploy deploy "$DEPLOY_BRANCH"
+          test "$(git -C /var/www/html/gestion-projet rev-parse HEAD)" = "${{ steps.preflight.outputs.candidate }}"
       - name: État final
         if: always()
         shell: bash
@@ -96,3 +58,4 @@ jobs:
           git branch --show-current
           git log -1 --oneline
           git status --short
+

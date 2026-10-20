@@ -1,0 +1,18 @@
+name: Validate ProjectFlow
+on:
+  pull_request:
+  push:
+    branches: [main, NewUxUi, recode]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test runtimes
+        run: sudo apt-get update && sudo apt-get install -y php-cli php-sqlite3 php-mbstring php-curl python3 nodejs
+      - name: Syntax and regression suites
+        run: php scripts/test.php
+      - name: HTTP integration on disposable SQLite
+        run: python3 tests/recode_http.py
