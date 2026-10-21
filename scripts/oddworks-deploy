@@ -94,7 +94,7 @@ systemctl is-active --quiet "$service"
 test "$(readlink -f "$app/current")" = "$release"
 curl --fail --silent --show-error --max-time 20 --retry 3 --retry-delay 2 \
   -H 'Host: www.pigeonfou.com' http://127.0.0.1:18080/oddworks/login.php \
-  | grep -q 'Bienvenue dans OddWorks'
+  | grep -F '<title>Connexion - OddWorks</title>' >/dev/null
 printf '%s\n' "$sha" > "$state/installed-commit"
 echo "OddWorks installé : $sha"
 echo "Sauvegarde SQLite : $backup/database.sqlite"

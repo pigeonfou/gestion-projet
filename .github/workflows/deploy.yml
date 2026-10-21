@@ -50,7 +50,7 @@ jobs:
           readlink -f /opt/oneforall/apps/oddworks/current
           curl --fail --silent --show-error --max-time 20 \
             -H 'Host: www.pigeonfou.com' \
-            http://127.0.0.1:18080/oddworks/login.php | grep -q 'Bienvenue dans OddWorks'
+            http://127.0.0.1:18080/oddworks/login.php | grep -F '<title>Connexion - OddWorks</title>' >/dev/null
           echo 'Runner oddworks-28 et page de connexion locale : OK'
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy == true)
@@ -68,5 +68,5 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --location --max-time 30 \
             --retry 3 --retry-delay 2 \
-            https://www.pigeonfou.com/oddworks/login.php | grep -q 'Bienvenue dans OddWorks'
+            https://www.pigeonfou.com/oddworks/login.php | grep -F '<title>Connexion - OddWorks</title>' >/dev/null
           echo 'Page publique de connexion : OK. Les parcours authentifiés restent à vérifier dans le navigateur.'
