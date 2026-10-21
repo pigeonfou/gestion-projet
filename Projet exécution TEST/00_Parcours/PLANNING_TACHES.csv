@@ -1,0 +1,9 @@
+Repere;Titre_principal;Debut_prevu;Echeance_initiale;Dependance;Date_metier_realisation
+T01;[S.T.1.1] Adaptateur de laboratoire 12 V;2026-11-03;2026-11-04;-;2026-11-04
+T02;[S.T.1.2] LED verte 3 mm;2026-11-03;2026-11-06;-;2026-11-09
+T03;[S.T.1.3] Résistances de limitation;2026-11-03;2026-11-05;-;2026-11-05
+T04;[S.T.1.4] Diode de protection;2026-11-03;2026-11-05;-;2026-11-05
+T05;[S.T.1.5] Carte nue 40 x 25 mm;2026-11-04;2026-11-09;-;2026-11-12
+T06;[S.T.1.6] Contrôle électrique sous-traité;2026-11-12;2026-11-13;T05;2026-11-17
+T07;[S.T.2.1] Boîtier PETG et couvercle;2026-11-04;2026-11-06;-;2026-11-06
+T08;[S.T.3.1] Outil PC de recette C++;2026-11-04;2026-11-05;-;2026-11-05

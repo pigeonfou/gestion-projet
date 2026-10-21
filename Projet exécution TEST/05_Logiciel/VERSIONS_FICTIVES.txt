@@ -1,0 +1,19 @@
+LUMI-12 / LOGICIEL DE RECETTE / IDENTIFIANTS GIT FICTIFS
+
+A / a17c4d8e91f23567b0c9d4e6f8123456789abcde
+Date metier : 05/11/2026
+Fichier : controle_A.cpp
+Defaut volontaire : decide seulement sur les deux LED ; ignore le courant.
+
+B / b28d5e9f02a34678c1d0e5f70923456789abcdef
+Date metier : 16/11/2026
+Fichier : controle_B.cpp
+Correction DM01 : verifie LED, 10.8 <= V <= 13.2 et 0 <= I <= 25 mA.
+
+Ces chaines de 40 caracteres ne sont pas des commits reels, ni des commits
+du depot OddWorks. Ne pas fabriquer un lien GitHub vers elles.
+Le programme est un outil PC de controle de mesures saisies, pas un firmware.
+Compilation : g++ -std=c++17 -Wall -Wextra -pedantic controle_B.cpp -o controle_B
+Exemple : ./controle_B 13.2 21.8 1 1
+Codes retour : 0 conforme ; 1 non conforme ; 2 entree invalide.
+Ne pas utiliser pour qualifier un equipement reel.

@@ -1,0 +1,219 @@
+{
+  "fiction": true,
+  "scenario_dates": "2026-11-02 to 2026-11-18",
+  "eagle": [
+    {
+      "revision": "A",
+      "parts": 6,
+      "nets": 5,
+      "netlist_matches_board": true,
+      "all_signal_contacts_connected": true,
+      "resistor_ohms": 470,
+      "native_erc_drc": false
+    },
+    {
+      "revision": "B",
+      "parts": 6,
+      "nets": 5,
+      "netlist_matches_board": true,
+      "all_signal_contacts_connected": true,
+      "resistor_ohms": 1000,
+      "native_erc_drc": false
+    }
+  ],
+  "step": [
+    {
+      "file": "04_Mecanique/LUMI12_Assemblage.step",
+      "valid": true,
+      "solids": 3,
+      "bounds_mm": [
+        52.0,
+        37.0,
+        20.0
+      ],
+      "volume_mm3": 14740.08
+    },
+    {
+      "file": "04_Mecanique/LUMI12_Carte_Reference.step",
+      "valid": true,
+      "solids": 1,
+      "bounds_mm": [
+        40.0,
+        25.0,
+        1.6
+      ],
+      "volume_mm3": 1575.672
+    },
+    {
+      "file": "04_Mecanique/LUMI12_Couvercle.step",
+      "valid": true,
+      "solids": 1,
+      "bounds_mm": [
+        52.0,
+        37.0,
+        2.0
+      ],
+      "volume_mm3": 3811.683
+    },
+    {
+      "file": "04_Mecanique/LUMI12_Fond.step",
+      "valid": true,
+      "solids": 1,
+      "bounds_mm": [
+        52.0,
+        37.0,
+        18.0
+      ],
+      "volume_mm3": 9352.726
+    }
+  ],
+  "software": [
+    {
+      "revision": "A",
+      "arguments": [
+        "13.2",
+        "45.4",
+        "1",
+        "1"
+      ],
+      "expected_exit": 0,
+      "exit": 0,
+      "stdout": "VERSION FICTIVE A (regle incomplete volontaire) | CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "13.2",
+        "45.4",
+        "1",
+        "1"
+      ],
+      "expected_exit": 1,
+      "exit": 1,
+      "stdout": "VERSION FICTIVE B | NON_CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "13.2",
+        "21.8",
+        "1",
+        "1"
+      ],
+      "expected_exit": 0,
+      "exit": 0,
+      "stdout": "VERSION FICTIVE B | CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "13.2",
+        "25",
+        "1",
+        "1"
+      ],
+      "expected_exit": 0,
+      "exit": 0,
+      "stdout": "VERSION FICTIVE B | CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "13.2",
+        "25.1",
+        "1",
+        "1"
+      ],
+      "expected_exit": 1,
+      "exit": 1,
+      "stdout": "VERSION FICTIVE B | NON_CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "12",
+        "21",
+        "0",
+        "1"
+      ],
+      "expected_exit": 1,
+      "exit": 1,
+      "stdout": "VERSION FICTIVE B | NON_CONFORME",
+      "stderr": ""
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "nan",
+        "21",
+        "1",
+        "1"
+      ],
+      "expected_exit": 2,
+      "exit": 2,
+      "stdout": "",
+      "stderr": "Entree invalide"
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "12x",
+        "21",
+        "1",
+        "1"
+      ],
+      "expected_exit": 2,
+      "exit": 2,
+      "stdout": "",
+      "stderr": "Entree invalide"
+    },
+    {
+      "revision": "B",
+      "arguments": [
+        "12",
+        "-1",
+        "1",
+        "1"
+      ],
+      "expected_exit": 1,
+      "exit": 1,
+      "stdout": "VERSION FICTIVE B | NON_CONFORME",
+      "stderr": ""
+    }
+  ],
+  "pdf_count": 25,
+  "pdf_pages": {
+    "00_Parcours/00_GUIDE_EXECUTION_LUMI12.pdf": 19,
+    "01_Besoin_et_validations/02_CDC_R01_BROUILLON.pdf": 2,
+    "01_Besoin_et_validations/04_CDC_R10_VALIDE.pdf": 2,
+    "01_Besoin_et_validations/01_CR_Lancement.pdf": 1,
+    "01_Besoin_et_validations/03_AVIS_Refus_CDC_R01.pdf": 1,
+    "01_Besoin_et_validations/07_CR_GO_Reserve.pdf": 1,
+    "01_Besoin_et_validations/05_MAIL_Retard_et_Substitution.pdf": 1,
+    "01_Besoin_et_validations/06_ACCORD_Surcout.pdf": 1,
+    "01_Besoin_et_validations/08_CR_Incident_Electrique.pdf": 1,
+    "01_Besoin_et_validations/09_CR_Cloture.pdf": 1,
+    "02_Fournisseurs/01_DATASHEET_LED3_G_F2.pdf": 1,
+    "02_Fournisseurs/02_DATASHEET_Diode_DIO_S_F.pdf": 1,
+    "02_Fournisseurs/03_DATASHEET_Resistances.pdf": 1,
+    "02_Fournisseurs/04_DATASHEET_Adaptateur_ADP12_F.pdf": 1,
+    "02_Fournisseurs/05_SDS_PETG_FICTIVE.pdf": 2,
+    "02_Fournisseurs/06_ISO9001_FICTIF.pdf": 1,
+    "02_Fournisseurs/07_ISO14001_EXPIRE_FICTIF.pdf": 1,
+    "02_Fournisseurs/08_ISO14001_RENOUVELE_FICTIF.pdf": 1,
+    "06_Essais_et_livraison/01_DM01_Modification.pdf": 1,
+    "06_Essais_et_livraison/02_RAPPORT_Essais_R01_NONCONFORME.pdf": 1,
+    "06_Essais_et_livraison/03_RAPPORT_Essais_R02_CONFORME.pdf": 1,
+    "06_Essais_et_livraison/04_PV_Livraison.pdf": 1,
+    "06_Essais_et_livraison/05_SYNTHESE_Qualite.pdf": 1,
+    "99_Correction/99_CORRIGE_LUMI12.pdf": 5,
+    "03_Electronique/00_NOTICE_CAO_et_Assemblage.pdf": 3
+  },
+  "native_editor_import_tested": false,
+  "manufacturing_qualified": false
+}

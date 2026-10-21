@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE eagle SYSTEM "eagle.dtd">
+<eagle version="9.6.2">
+  <drawing>
+    <settings>
+      <setting alwaysvectorfont="yes" />
+      <setting verticaltext="up" />
+    </settings>
+    <grid distance="1.27" unitdist="mm" unit="mm" style="lines" multiple="1" display="no" altdistance=".127" altunitdist="mm" altunit="mm" />
+    <layers>
+      <layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes" />
+      <layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="yes" />
+      <layer number="17" name="Pads" color="2" fill="1" visible="yes" active="yes" />
+      <layer number="18" name="Vias" color="2" fill="1" visible="yes" active="yes" />
+      <layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="yes" />
+      <layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="yes" />
+      <layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="25" name="tNames" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="26" name="bNames" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="27" name="tValues" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="28" name="bValues" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="29" name="tStop" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="30" name="bStop" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="44" name="Drills" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="45" name="Holes" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="46" name="Milling" color="3" fill="1" visible="yes" active="yes" />
+      <layer number="51" name="tDocu" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="52" name="bDocu" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="91" name="Nets" color="2" fill="1" visible="yes" active="yes" />
+      <layer number="92" name="Busses" color="1" fill="1" visible="yes" active="yes" />
+      <layer number="93" name="Pins" color="2" fill="1" visible="yes" active="yes" />
+      <layer number="94" name="Symbols" color="4" fill="1" visible="yes" active="yes" />
+      <layer number="95" name="Names" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="96" name="Values" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="97" name="Info" color="7" fill="1" visible="yes" active="yes" />
+      <layer number="98" name="Guide" color="6" fill="1" visible="yes" active="yes" />
+    </layers>
+    <board>
+      <plain>
+        <wire x1="0" y1="0" x2="40" y2="0" width="0.15" layer="20" />
+        <wire x1="40" y1="0" x2="40" y2="25" width="0.15" layer="20" />
+        <wire x1="40" y1="25" x2="0" y2="25" width="0.15" layer="20" />
+        <wire x1="0" y1="25" x2="0" y2="0" width="0.15" layer="20" />
+        <hole x="3" y="3" drill="2.2" />
+        <hole x="37" y="3" drill="2.2" />
+        <hole x="37" y="22" drill="2.2" />
+        <hole x="3" y="22" drill="2.2" />
+        <text x="18" y="2" size="1" layer="21">L12 A FICTIF</text>
+      </plain>
+      <libraries>
+        <library name="LUMI12_FICTIF">
+          <packages>
+            <package name="AXIAL">
+              <description>Empreinte synthetique de recette - FICTIF - non qualifiee pour fabrication.</description>
+              <pad name="A" x="-3.81" y="0" drill="1" diameter="1.8" shape="octagon" />
+              <pad name="K" x="3.81" y="0" drill="1" diameter="1.8" shape="octagon" />
+              <wire x1="-2" y1="-1" x2="2" y2="-1" width="0.15" layer="21" />
+              <wire x1="2" y1="-1" x2="2" y2="1" width="0.15" layer="21" />
+              <wire x1="2" y1="1" x2="-2" y2="1" width="0.15" layer="21" />
+              <wire x1="-2" y1="1" x2="-2" y2="-1" width="0.15" layer="21" />
+              <text x="-2" y="2.3" size="0.8" layer="25">&gt;NAME</text>
+              <text x="-2" y="-2.8" size="0.65" layer="27">&gt;VALUE</text>
+            </package>
+            <package name="LED3">
+              <description>Empreinte synthetique de recette - FICTIF - non qualifiee pour fabrication.</description>
+              <pad name="A" x="-1.27" y="0" drill="1" diameter="1.8" shape="octagon" />
+              <pad name="K" x="1.27" y="0" drill="1" diameter="1.8" shape="octagon" />
+              <circle x="0" y="0" radius="1.5" width="0.15" layer="21" />
+              <text x="-2" y="2.3" size="0.8" layer="25">&gt;NAME</text>
+              <text x="-2" y="-2.8" size="0.65" layer="27">&gt;VALUE</text>
+            </package>
+            <package name="BORNIER5">
+              <description>Empreinte synthetique de recette - FICTIF - non qualifiee pour fabrication.</description>
+              <pad name="1" x="0" y="0" drill="1" diameter="2.5" shape="octagon" />
+              <pad name="2" x="0" y="5.08" drill="1" diameter="2.5" shape="octagon" />
+              <wire x1="-2" y1="-2" x2="3" y2="-2" width="0.15" layer="21" />
+              <wire x1="3" y1="-2" x2="3" y2="7.08" width="0.15" layer="21" />
+              <wire x1="3" y1="7.08" x2="-2" y2="7.08" width="0.15" layer="21" />
+              <wire x1="-2" y1="7.08" x2="-2" y2="-2" width="0.15" layer="21" />
+              <text x="-2" y="2.3" size="0.8" layer="25">&gt;NAME</text>
+              <text x="-2" y="-2.8" size="0.65" layer="27">&gt;VALUE</text>
+            </package>
+          </packages>
+        </library>
+      </libraries>
+      <attributes />
+      <variantdefs />
+      <classes>
+        <class number="0" name="default" width="0.5" drill="0.8" />
+      </classes>
+      <designrules name="RECETTE_NON_QUALIFIEE">
+        <description language="en">Synthetic training board. Native ERC/DRC and manufacturing qualification not performed.</description>
+        <param name="layerSetup" value="(1*16)" />
+        <param name="mdWireWire" value="8mil" />
+        <param name="mdWirePad" value="8mil" />
+        <param name="mdPadPad" value="8mil" />
+        <param name="msWidth" value="10mil" />
+        <param name="msDrill" value="0.8mm" />
+      </designrules>
+      <elements>
+        <element name="J1" library="LUMI12_FICTIF" package="BORNIER5" value="12V" x="4" y="10" smashed="no" />
+        <element name="D1" library="LUMI12_FICTIF" package="AXIAL" value="DIO-S-F" x="11" y="10" smashed="no" />
+        <element name="R1" library="LUMI12_FICTIF" package="AXIAL" value="470" x="20" y="17" smashed="no" />
+        <element name="R2" library="LUMI12_FICTIF" package="AXIAL" value="470" x="20" y="7" smashed="no" />
+        <element name="LED1" library="LUMI12_FICTIF" package="LED3" value="LED3-G-F2" x="15" y="12.5" smashed="no" />
+        <element name="LED2" library="LUMI12_FICTIF" package="LED3" value="LED3-G-F2" x="25" y="12.5" smashed="no" />
+      </elements>
+      <signals>
+        <signal name="+12_RAW">
+          <contactref element="J1" pad="1" />
+          <contactref element="D1" pad="A" />
+          <wire x1="4" y1="10" x2="7.19" y2="10" width="0.5" layer="1" />
+        </signal>
+        <signal name="+12_PROT">
+          <contactref element="D1" pad="K" />
+          <contactref element="R1" pad="A" />
+          <contactref element="R2" pad="A" />
+          <wire x1="14.81" y1="10" x2="18" y2="10" width="0.5" layer="1" />
+          <wire x1="18" y1="10" x2="18" y2="17" width="0.5" layer="1" />
+          <wire x1="18" y1="17" x2="16.19" y2="17" width="0.5" layer="1" />
+          <wire x1="18" y1="10" x2="18" y2="7" width="0.5" layer="1" />
+          <wire x1="18" y1="7" x2="16.19" y2="7" width="0.5" layer="1" />
+        </signal>
+        <signal name="LED1_A">
+          <contactref element="R1" pad="K" />
+          <contactref element="LED1" pad="A" />
+          <wire x1="23.81" y1="17" x2="23.81" y2="19" width="0.5" layer="1" />
+          <wire x1="23.81" y1="19" x2="12" y2="19" width="0.5" layer="1" />
+          <wire x1="12" y1="19" x2="12" y2="12.5" width="0.5" layer="1" />
+          <wire x1="12" y1="12.5" x2="13.73" y2="12.5" width="0.5" layer="1" />
+        </signal>
+        <signal name="LED2_A">
+          <contactref element="R2" pad="K" />
+          <contactref element="LED2" pad="A" />
+          <wire x1="23.81" y1="7" x2="24.5" y2="7" width="0.5" layer="1" />
+          <wire x1="24.5" y1="7" x2="24.5" y2="11" width="0.5" layer="1" />
+          <wire x1="24.5" y1="11" x2="23.73" y2="11" width="0.5" layer="1" />
+          <wire x1="23.73" y1="11" x2="23.73" y2="12.5" width="0.5" layer="1" />
+        </signal>
+        <signal name="GND">
+          <contactref element="J1" pad="2" />
+          <contactref element="LED1" pad="K" />
+          <contactref element="LED2" pad="K" />
+          <wire x1="4" y1="15.08" x2="4" y2="21" width="0.5" layer="16" />
+          <wire x1="4" y1="21" x2="16.27" y2="21" width="0.5" layer="16" />
+          <wire x1="16.27" y1="21" x2="34" y2="21" width="0.5" layer="16" />
+          <wire x1="34" y1="21" x2="34" y2="12.5" width="0.5" layer="16" />
+          <wire x1="34" y1="12.5" x2="26.27" y2="12.5" width="0.5" layer="16" />
+          <wire x1="16.27" y1="12.5" x2="16.27" y2="21" width="0.5" layer="16" />
+        </signal>
+      </signals>
+      <errors />
+    </board>
+  </drawing>
+</eagle>
