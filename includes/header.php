@@ -23,7 +23,7 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
 </head>
-<body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
+<body class="pf-app <?= !empty($cdcEmbedded) ? 'cdc-embedded' : '' ?>" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
         <div class="header-container">
             <div class="logo oddworks-brand" aria-label="<?= e($siteNom) ?>">
