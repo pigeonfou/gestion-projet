@@ -431,7 +431,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
-<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=3')?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=4')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
