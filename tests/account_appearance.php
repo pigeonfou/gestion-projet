@@ -38,4 +38,11 @@ foreach (array_keys($presets) as $slug) {
 $path = getenv('PROJECTFLOW_DB_PATH');
 unset($db);
 foreach ([$path, $path . '-journal', $path . '-wal', $path . '-shm'] as $file) if (is_file($file)) unlink($file);
+$spaceDashboard = file_get_contents(__DIR__ . '/../projets.php');
+checkAppearance(str_contains($spaceDashboard, 'space-command-center') && str_contains($spaceDashboard, 'space-control-deck'), 'Space has a dedicated mission-control dashboard.');
+checkAppearance(str_contains($css, 'space-blueprint-dark.svg') && str_contains($css, '.space-flightpath') && str_contains($css, '.space-review-panel'), 'Space blueprint, R1B route and decision rail are styled.');
+foreach (['space-blueprint-light.svg', 'space-blueprint-dark.svg', 'space-orbital-insignia.svg'] as $asset) {
+    checkAppearance(is_file(__DIR__ . '/../assets/img/' . $asset), 'Space graphic asset missing: ' . $asset . '.');
+}
+
 echo "Account appearance presets, persistence, isolation and CSS coverage: OK\n";
