@@ -61,7 +61,18 @@ jobs:
       - name: Déployer le commit exact avec sauvegarde SQLite
         env:
           TARGET_SHA: ${{ github.sha }}
-        run: sudo -n /usr/local/sbin/oddworks-deploy "$TARGET_SHA"
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper=$(mktemp)
+          trap 'rm -f "$helper"' EXIT
+          curl --fail --silent --show-error --location --max-time 30 \
+            "https://raw.githubusercontent.com/pigeonfou/gestion-projet/${TARGET_SHA}/scripts/oddworks-deploy" -o "$helper"
+          if ! cmp -s "$helper" /usr/local/sbin/oddworks-deploy; then
+            echo "::error::Le script administrateur oddworks-deploy doit être actualisé sur le serveur avant le déploiement. Le code actif reste inchangé."
+            exit 1
+          fi
+          sudo -n /usr/local/sbin/oddworks-deploy "$TARGET_SHA"
       - name: Vérifier la page publique via Cloudflare
         shell: bash
         run: |
