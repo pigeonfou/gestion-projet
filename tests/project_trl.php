@@ -5,8 +5,8 @@ $db->exec("CREATE TABLE utilisateurs(id INTEGER PRIMARY KEY,identifiant TEXT);CR
 $owner=['id'=>1,'role'=>'utilisateur'];$admin=['id'=>3,'role'=>'admin'];
 function trlCheck(bool $ok,string $msg):void {if(!$ok)throw new LogicException($msg);}
 function trlReject(callable $fn):void {$rejected=false;try{$fn();}catch(InvalidArgumentException $e){$rejected=true;}trlCheck($rejected,'Invalid or forbidden evaluation accepted');}
-trlCheck(count(trlLevels())===9 && trlLoad($db,1)['actuel']===null,'Complete scale and no fabricated maturity');
-foreach(['0','10','3.5','03',[],true] as $bad)trlReject(fn()=>trlLevel($bad));
+trlCheck(array_keys(trlLevels())===[3,4,5,6,7] && trlLoad($db,1)['actuel']===null,'AID/DGA subset and no fabricated maturity');
+foreach(['0','1','2','8','9',1,2,8,9,'10','3.5','03',[],true] as $bad)trlReject(fn()=>trlLevel($bad));
 trlReject(fn()=>trlSave($db,1,['id'=>2,'role'=>'utilisateur'],['revision'=>0]));
 trlReject(fn()=>trlSave($db,1,$owner,['revision'=>0,'actuel'=>6,'preuves'=>'']));
 trlSave($db,1,$owner,['revision'=>'0','entree'=>'3','actuel'=>'4','cible'=>'7','preuves'=>'Prototype essayé en laboratoire']);
@@ -19,4 +19,32 @@ trlCheck(trlLoad($db,1)['actuel']===3 && (int)$db->query('SELECT COUNT(*) FROM p
 $prior=trlLoad($db,1);$db->exec("CREATE TRIGGER reject_trl_history BEFORE INSERT ON projet_trl_historique BEGIN SELECT RAISE(ABORT,'test'); END");
 try{trlSave($db,1,$owner,['revision'=>2,'actuel'=>5,'preuves'=>'test']);}catch(PDOException $expected){}
 trlCheck(trlLoad($db,1)===$prior,'Atomic rollback');
-echo "TRL: complete scale, unknown initial state, permissions, evidence, persistence, isolation, revision and audit OK\n";
+$db->exec("INSERT INTO projet_trl(projet_id,entree,actuel,cible,preuves,revision) VALUES(2,2,8,9,'Évaluation ancienne',1)");
+$legacy=trlLoad($db,2);
+trlCheck($legacy['entree']===null && $legacy['actuel']===null && $legacy['cible']===null,'Excluded levels not usable in UI');
+trlCheck($legacy['_excluded_levels']===['entree'=>2,'actuel'=>8,'cible'=>9],'Original levels retained for reassessment audit');
+trlCheck((int)$db->query('SELECT actuel FROM projet_trl WHERE projet_id=2')->fetchColumn()===8,'Reading does not rewrite project data');
+trlCheck(trlDisplayLabel(8)==='À réévaluer' && trlDisplayLabel(4)==='TRL 4','History labels respect usable range');
+$db->exec('DROP TRIGGER reject_trl_history');
+trlReject(fn()=>trlSave($db,2,$admin,['revision'=>1,'actuel'=>8,'preuves'=>'excluded']));
+trlSave($db,2,$admin,['revision'=>1,'entree'=>3,'actuel'=>5,'cible'=>7,'preuves'=>'Réévaluation du périmètre']);
+$audit=json_decode($db->query('SELECT avant_json FROM projet_trl_historique WHERE projet_id=2')->fetchColumn(),true);
+trlCheck($audit['_excluded_levels']['actuel']===8 && trlLoad($db,2)['actuel']===5,'Explicit reassessment preserves previous audit');
+
+function e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+function url($path): string { return '/oddworks/' . $path; }
+function csrfField(): string { return '<input type="hidden" name="csrf" value="test">'; }
+$id=2; $user=$admin; $view='trl';
+ob_start(); require __DIR__.'/../includes/views/project_trl.php'; $html=ob_get_clean();
+preg_match_all('/<option value="([0-9]+)"/', $html, $options);
+trlCheck($options[1]===['3','4','5','6','7','3','4','5','6','7','3','4','5','6','7'],'Only usable levels in every selector');
+trlCheck(str_contains($html,'Recherche industrielle') && str_contains($html,'Développement expérimental'),'Two AID/DGA groups rendered');
+trlCheck(str_contains($html,'name="revision" value="2"') && str_contains($html,'name="csrf"'),'Revision and CSRF controls retained');
+$user=['id'=>1,'role'=>'utilisateur'];
+ob_start(); require __DIR__.'/../includes/views/project_trl.php'; $readonly=ob_get_clean();
+trlCheck(!str_contains($readonly,'<form') && str_contains($readonly,'Réévaluation du périmètre'),'Reader sees evaluation without edit controls');
+$view='dashboard';
+ob_start(); require __DIR__.'/../includes/views/project_trl.php'; $compact=ob_get_clean();
+trlCheck(str_contains($compact,'trl-overview') && !str_contains($compact,'trl-domains'),'Other project views retain compact summary');
+
+echo "TRL: AID/DGA levels 3–7, unknown initial state, permissions, evidence, persistence, isolation, revision and audit OK\n";
