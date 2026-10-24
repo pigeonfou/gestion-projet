@@ -1,8 +1,29 @@
 <?php
 require_once __DIR__.'/project_members.php';
 
+/** Définitions de l’annexe AID/DGA, « Niveaux de maturité technologique », p. 9. */
 function trlLevels(): array {
-    return [1=>'Principes scientifiques observés',2=>'Concept technologique formulé',3=>'Preuve de concept expérimentale',4=>'Technologie validée en laboratoire',5=>'Technologie validée en environnement représentatif',6=>'Prototype démontré en environnement représentatif',7=>'Prototype démontré en environnement opérationnel',8=>'Système complet et qualifié',9=>'Système éprouvé en exploitation réelle'];
+    return [
+        3 => 'Démonstration analytique et expérimentale de la faisabilité des fonctions et/ou des caractéristiques critiques',
+        4 => 'Validation au stade des composants et/ou des maquettes fonctionnelles en environnement laboratoire',
+        5 => 'Validation en environnement représentatif au stade des composants et/ou maquettes fonctionnelles',
+        6 => 'Démonstration système ou sous-systèmes à l’aide d’un modèle ou prototype en environnement très représentatif',
+        7 => 'Démonstration d’un prototype du système en environnement opérationnel',
+    ];
+}
+function trlGroups(): array {
+    return [
+        'ri' => ['code'=>'RI', 'title'=>'Recherche industrielle', 'range'=>'TRL 3 à 5', 'levels'=>[3,4,5],
+            'description'=>'Établir la faisabilité, puis valider les composants et les maquettes fonctionnelles.',
+            'environment'=>'De la faisabilité au laboratoire, puis à un environnement représentatif.'],
+        'de' => ['code'=>'DE', 'title'=>'Développement expérimental', 'range'=>'TRL 6 à 7', 'levels'=>[6,7],
+            'description'=>'Démontrer le système ou ses sous-systèmes au moyen d’un modèle ou d’un prototype.',
+            'environment'=>'D’un environnement très représentatif à un environnement opérationnel.'],
+    ];
+}
+function trlDisplayLabel($value, string $empty = 'Non évalué'): string {
+    if ($value === null || $value === '') return $empty;
+    return isset(trlLevels()[(int)$value]) ? 'TRL ' . (int)$value : 'À réévaluer';
 }
 function trlSchema(PDO $db): void {
     $db->exec('CREATE TABLE IF NOT EXISTS projet_trl (projet_id INTEGER PRIMARY KEY REFERENCES projets(id) ON DELETE CASCADE, entree INTEGER, actuel INTEGER, cible INTEGER, preuves TEXT NOT NULL DEFAULT \'\', revision INTEGER NOT NULL DEFAULT 0, updated_at TEXT, acteur_id INTEGER REFERENCES utilisateurs(id))');
@@ -11,11 +32,20 @@ function trlSchema(PDO $db): void {
 function trlLoad(PDO $db, int $id): array {
     trlSchema($db);
     $q=$db->prepare('SELECT * FROM projet_trl WHERE projet_id=?');$q->execute([$id]);
-    return $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>null,'actuel'=>null,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
+    $state = $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>null,'actuel'=>null,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
+    // Preserve stored values until an explicit reassessment; never invent a replacement level.
+    $state['_excluded_levels'] = [];
+    foreach (['entree', 'actuel', 'cible'] as $key) {
+        if ($state[$key] !== null && !isset(trlLevels()[(int)$state[$key]])) {
+            $state['_excluded_levels'][$key] = $state[$key];
+            $state[$key] = null;
+        }
+    }
+    return $state;
 }
 function trlLevel($value): ?int {
     if ($value==='' || $value===null) return null;
-    if ((!is_string($value) && !is_int($value)) || !preg_match('/^[1-9]$/D',(string)$value)) throw new InvalidArgumentException('Chaque niveau TRL doit être compris entre 1 et 9, ou rester non évalué.');
+    if ((!is_string($value) && !is_int($value)) || !preg_match('/^[3-7]$/D',(string)$value)) throw new InvalidArgumentException('Choisissez un niveau TRL de 3 à 7, ou laissez le niveau non évalué.');
     return (int)$value;
 }
 function trlSave(PDO $db, int $id, array $actor, array $input): void {
