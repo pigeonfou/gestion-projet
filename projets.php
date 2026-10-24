@@ -294,38 +294,6 @@ require __DIR__ . '/includes/header.php';
     </div>
   </div>
 
-  <?php if (interfacePreset() === 'space'): ?>
-  <?php
-    $spaceProject = $projetsEnCours[0] ?? null;
-    $spaceCurrentStep = $spaceProject ? r1bClampStep((int)($spaceProject['current_step'] ?? 1)) : 1;
-    $spaceReviews = [];
-    foreach ($projets as $spaceCandidate) {
-        $spaceReviewStep = (int)($spaceCandidate['current_step'] ?? 1);
-        if (($spaceReviewStep === 3 && empty($spaceCandidate['go_decision'])) || in_array($spaceReviewStep, [7, 8], true)) {
-            $spaceReviews[] = [$spaceCandidate, $spaceReviewStep];
-        }
-    }
-  ?>
-  <section class="space-command-center" aria-labelledby="space-command-title">
-    <div class="space-command-copy">
-      <p class="space-overline"><span class="space-overline-dot"></span> ODDWORKS / R&amp;D SYSTEMS · CONTROL NODE 01</p>
-      <h2 id="space-command-title">Centre de pilotage <span>R&amp;D</span></h2>
-      <p class="space-command-lead">Des premières hypothèses au lancement en production, chaque projet garde sa trajectoire.</p>
-      <div class="space-command-readout">
-        <span><i class="fas fa-satellite-dish" aria-hidden="true"></i> UPLINK <b>ACTIF</b></span>
-        <span><i class="fas fa-diagram-project" aria-hidden="true"></i> <?= (int)$nbProjetsActifs ?> MISSIONS</span>
-        <span><i class="fas fa-clock" aria-hidden="true"></i> <?= date('d.m.Y') ?></span>
-      </div>
-    </div>
-    <div class="space-command-visual" aria-hidden="true">
-      <img src="<?= url('assets/img/space-orbital-insignia.svg') ?>" alt="">
-      <span class="space-coordinate space-coordinate-a">ORBITAL / 01</span>
-      <span class="space-coordinate space-coordinate-b">R&amp;D · 09</span>
-      <span class="space-signal-tag">SYSTEM NOMINAL</span>
-    </div>
-    <div class="space-command-edge" aria-hidden="true"><span>OW</span><i></i><span>FIELD CONTROL</span></div>
-  </section>
-  <?php endif; ?>
   <!-- KPI (identiques Processus-R1b) -->
   <div class="dash-kpi-grid">
     <a class="dash-kpi" href="<?=url('projets.php#active-projects')?>">
@@ -346,53 +314,6 @@ require __DIR__ . '/includes/header.php';
     </div>
   </div>
 
-  <?php if (interfacePreset() === 'space'): ?>
-  <section class="space-control-deck" aria-label="Trajectoire de mission et décisions">
-    <article class="space-flight-panel">
-      <header class="space-panel-header">
-        <div><p class="space-panel-kicker">FLIGHT PLAN · PROCESSUS R1B</p><h3>Trajectoire de mission</h3></div>
-        <?php if ($spaceProject): ?>
-        <a class="space-mission-chip" href="<?= url('projet.php?id=' . (int)$spaceProject['id'] . '&view=processus&step=' . $spaceCurrentStep) ?>">
-          <span class="space-mission-chip-label">MISSION ACTIVE</span><strong><?= e($spaceProject['nom']) ?></strong><span class="space-mission-chip-step">ÉTAPE <?= sprintf('%02d', $spaceCurrentStep) ?> / 09</span>
-        </a>
-        <?php else: ?><span class="space-mission-chip space-mission-chip-empty"><span class="space-mission-chip-label">MISSION ACTIVE</span><strong>En attente de lancement</strong></span><?php endif; ?>
-      </header>
-      <?php if ($spaceProject): ?>
-      <div class="space-flight-scroll">
-        <ol class="space-flightpath" aria-label="Étapes du processus R1B" style="--space-progress:<?= round(($spaceCurrentStep / 9) * 100, 2) ?>%">
-          <?php foreach ($steps as $spaceStepNo => $spaceStepData): ?>
-            <?php if ((int)$spaceStepNo < 1 || (int)$spaceStepNo > 9) continue; ?>
-            <?php $spaceState = (int)$spaceStepNo < $spaceCurrentStep ? 'done' : ((int)$spaceStepNo === $spaceCurrentStep ? 'active' : 'queued'); ?>
-            <li class="space-flight-stop <?= e($spaceState) ?>">
-              <a href="<?= url('projet.php?id=' . (int)$spaceProject['id'] . '&view=processus&step=' . (int)$spaceStepNo) ?>" <?= $spaceState === 'active' ? 'aria-current="step"' : '' ?> title="<?= e($spaceStepData['title'] ?? ('Étape ' . $spaceStepNo)) ?>">
-                <span class="space-flight-node"><span><?= sprintf('%02d', (int)$spaceStepNo) ?></span><i aria-hidden="true"></i></span>
-                <span class="space-flight-label"><?= e($spaceStepData['title'] ?? ('Étape ' . $spaceStepNo)) ?></span>
-              </a>
-            </li>
-          <?php endforeach; ?>
-        </ol>
-      </div>
-      <footer class="space-flight-footer">
-        <span><i class="fas fa-crosshairs" aria-hidden="true"></i> PROGRESSION DE LA MISSION</span>
-        <div class="space-flight-meter" role="progressbar" aria-label="Progression du projet" aria-valuemin="0" aria-valuemax="9" aria-valuenow="<?= $spaceCurrentStep ?>"><span style="--flight-progress:<?= round(($spaceCurrentStep / 9) * 100, 2) ?>%"></span></div>
-        <b><?= round(($spaceCurrentStep / 9) * 100) ?>%</b>
-      </footer>
-      <?php else: ?>
-      <div class="space-mission-empty"><img src="<?= url('assets/img/space-orbital-insignia.svg') ?>" alt="" aria-hidden="true"><div><strong>Aucune mission active</strong><p>Créez un projet pour tracer son parcours de l’idée à la production.</p></div><a class="btn-r1b btn-r1b-primary" href="<?= url('projets.php?action=creer') ?>"><i class="fas fa-plus" aria-hidden="true"></i> Lancer un projet</a></div>
-      <?php endif; ?>
-    </article>
-    <aside class="space-review-panel" aria-labelledby="space-review-title">
-      <header class="space-review-heading"><span class="space-review-alert"><i class="fas fa-bell" aria-hidden="true"></i></span><div><p class="space-panel-kicker">ACTION REQUISE</p><h3 id="space-review-title">Décisions en attente</h3></div><span class="space-review-count"><?= count($spaceReviews) ?></span></header>
-      <?php if ($spaceReviews): ?><div class="space-review-list">
-        <?php foreach ($spaceReviews as [$spaceReviewProject, $spaceReviewStep]): ?>
-          <?php $spaceReviewLabel = $spaceReviewStep === 3 ? 'Arbitrage GO / NO GO' : ($spaceReviewStep === 7 ? 'Revue de conformité' : 'Validation de livraison'); ?>
-          <a class="space-review-item" href="<?= url('projet.php?id=' . (int)$spaceReviewProject['id'] . '&view=processus&step=' . $spaceReviewStep) ?>"><span class="space-review-beacon" aria-hidden="true"></span><span class="space-review-copy"><b><?= e($spaceReviewProject['nom']) ?></b><small><?= e($spaceReviewLabel) ?> · étape <?= sprintf('%02d', $spaceReviewStep) ?></small></span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
-        <?php endforeach; ?>
-      </div><?php else: ?><div class="space-review-clear"><i class="fas fa-check" aria-hidden="true"></i><div><b>Aucune décision bloquante</b><small>La trajectoire est dégagée.</small></div></div><?php endif; ?>
-      <a class="space-review-history" href="<?= url('projets.php#active-projects') ?>">VOIR LES PROGRAMMES <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
-    </aside>
-  </section>
-  <?php endif; ?>
   <details class="pf-create"><summary>Revues à décider & jalons</summary><?php foreach($projets as $project):$pstep=(int)($project['current_step']??1);if(($pstep===3&&empty($project['go_decision']))||in_array($pstep,[7,8],true)):?><p><a href="<?=url('projet.php?id='.(int)$project['id'].'&view=processus&step='.$pstep)?>"><?=e($project['nom'])?> · revue étape <?=$pstep?></a></p><?php endif;?><p><a href="<?=url('planning.php?projet_id='.(int)$project['id'])?>">Planning & jalons · <?=e($project['nom'])?></a></p><?php endforeach;?></details>
   <div class="dash-grid">
     <div class="dash-col-main">
