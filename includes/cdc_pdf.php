@@ -70,11 +70,14 @@ function cdcEnsureGeneratedPdf(int $projectId, string $projectName, array $specs
     return ['path' => $path, 'hash' => cdcGeneratedPdfHash($projectId, $projectName, $specs, $milestones), 'created' => true];
 }
 
+function cdcPdfEscapeBytes(string $encoded): string {
+    return str_replace(["\\", '(', ')'], ["\\\\", '\\(', '\\)'], $encoded);
+}
+
 function cdcPdfLiteral(string $text): string {
     $encoded = iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', $text);
     if (!is_string($encoded)) $encoded = '';
-    $encoded = str_replace(["\\", '(', ')'], ["\\\\", '\\(', '\\)'], $encoded);
-    return $encoded;
+    return cdcPdfEscapeBytes($encoded);
 }
 
 function cdcBuildPdf(string $documentText, string $projectName): string {
@@ -122,7 +125,7 @@ function cdcBuildPdf(string $documentText, string $projectName): string {
             } elseif ($trimmed === '') {
                 $y -= 7;
             } else {
-                $stream .= "0.12 0.16 0.21 rg\nBT /F1 10 Tf 52 {$y} Td (" . cdcPdfLiteral($line) . ") Tj ET\n";
+                $stream .= "0.12 0.16 0.21 rg\nBT /F1 10 Tf 52 {$y} Td (" . cdcPdfEscapeBytes($line) . ") Tj ET\n";
                 $y -= 14;
             }
         }
