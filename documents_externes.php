@@ -23,6 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     requerirAccesProjet($pid);
     $name = (string)($_GET['nom'] ?? '');
     $folder = (string)($_GET['dossier'] ?? '01_Besoin');
+    if (($_GET['usage'] ?? '') === 'trl') $folder = '09_TRL';
+    if ($folder === '09_TRL' && !projectCanManage($db, $pid, utilisateurCourant())) {
+        http_response_code(403); echo json_encode(['ok'=>false,'message'=>'Seul le pilote ou un administrateur peut ajouter une preuve TRL.']); exit;
+    }
     if ($name === '' || in_array($name,['.','..'],true) || str_contains($name,'/') || str_contains($name,chr(92)) || preg_match('/[\x00-\x1f\x7f]/u',$name) ||
         !preg_match('/^[A-Za-z0-9_-]+$/D',$folder) || !preg_match('/^\\d+$/D',$_SERVER['CONTENT_LENGTH'] ?? '')) {
         http_response_code(400); echo json_encode(['ok'=>false,'message'=>'Nom, dossier ou taille du fichier invalide.']); exit;
@@ -38,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         if ($result['ok']) {
             $db->prepare('INSERT INTO documents(projet_id,phase,nom_fichier,chemin_nextcloud,taille,mime,uploader_id) VALUES(?,?,?,?,?,?,?)')
                 ->execute([$pid,$folder,$name,$remote,$size,'application/octet-stream',$actor]);
+            $result['document_id'] = (int)$db->lastInsertId();
             $result['message'] = 'Document « '.$name.' » envoyé sur Nextcloud.';
         } else { http_response_code(502); }
     } catch (Throwable $e) {
@@ -59,6 +64,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         requerirAccesProjet($pid);
         $name=trim((string)($_POST['nom']??''));
         $folder=trim((string)($_POST['dossier']??'01_Besoin'));
+        if ($folder==='09_TRL' && !projectCanManage($db,$pid,utilisateurCourant())) {
+            http_response_code(403); exit('Seul le pilote ou un administrateur peut ajouter une preuve TRL.');
+        }
         $content=(string)($_POST['contenu']??'');
         if (!preg_match('/^[A-Za-z0-9_.-]+\.md$/D',$name) || !preg_match('/^[A-Za-z0-9_-]+$/D',$folder) || $content==='') {
             $result=['ok'=>false,'message'=>'Nom .md, dossier et contenu obligatoires.'];
