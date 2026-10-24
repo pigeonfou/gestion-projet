@@ -431,7 +431,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
-<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=1')?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=2')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -480,7 +480,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
   <div class="r1b-main <?= $view === 'processus' ? 'r1b-process-main' : '' ?>">
 
-    <?php require __DIR__.'/includes/views/project_trl.php'; ?>
+    <?php if ($view !== 'processus') require __DIR__.'/includes/views/project_trl.php'; ?>
     <?php if ($view === 'trl'): ?>
     <?php elseif ($view === 'dashboard'): ?>
       <!-- ========== TABLEAU DE BORD (aligné Processus-R1b) ========== -->
@@ -663,7 +663,23 @@ function stepClass(int $n, int $displayed, array $validated): string
       <?php $stepEditorActions = ''; ?>
       <div class="r1b-step-workspace">
       <div class="r1b-card r1b-step-content">
-        <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
+        <?php
+          $stepTrl = trlLoad($db, $id);
+          $stepTrlLabel = $stepTrl['actuel'] === null ? 'TRL non évalué' : 'TRL ' . (int)$stepTrl['actuel'];
+          $stepTrlDetails = 'Maturité du projet · Entrée : ' . ($stepTrl['entree'] === null ? 'non évaluée' : 'TRL ' . (int)$stepTrl['entree'])
+              . ' · Cible : ' . ($stepTrl['cible'] === null ? 'non définie' : 'TRL ' . (int)$stepTrl['cible']);
+        ?>
+        <div class="r1b-step-heading">
+          <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
+          <a class="trl-stage-badge<?= $stepTrl['actuel'] === null ? ' is-unknown' : '' ?>"
+             href="<?= e(url('projet.php?id=' . $id . '&view=trl')) ?>"
+             title="<?= e($stepTrlDetails) ?>"
+             aria-label="<?= e($stepTrlLabel . ' pour le projet. Consulter ou modifier l’évaluation de maturité technologique.') ?>">
+            <i class="fas fa-layer-group" aria-hidden="true"></i>
+            <?= e($stepTrlLabel) ?>
+            <i class="fas fa-angle-right" aria-hidden="true"></i>
+          </a>
+        </div>
 
         <?php if($currentStep>=6):?><div class="pf-links"><a href="<?=url('planning.php?projet_id='.$id)?>">Planning des tâches</a><a href="<?=url('documents_externes.php?projet_id='.$id)?>">Dossier & preuves</a><a href="<?=url('qualite_projet.php?projet_id='.$id)?>">Conformité fournisseurs</a><a href="<?=url('production.php?projet_id='.$id)?>">Prototype & production</a></div><?php endif;?>
         <?php if ($currentStep === 1): ?>
