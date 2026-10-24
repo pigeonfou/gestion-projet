@@ -452,7 +452,7 @@ function stepClass(int $n, int $displayed, array $validated): string
         <i class="fas fa-folder-open"></i> Documents
       </a>
       <a href="<?= url('qualite_projet.php?projet_id=' . $id) ?>"><i class="fas fa-check-circle"></i> Qualité fournisseurs</a>
-      <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
+      <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">
         <i class="fas fa-file-alt"></i> Cahier des charges
       </a>
       <a href="<?= url('cdc_test_form.php?projet_id=' . $id) ?>"><i class="fas fa-flask"></i> CDC-Test-Form</a>
@@ -581,11 +581,11 @@ function stepClass(int $n, int $displayed, array $validated): string
           <div class="r1b-card">
             <div class="flex-between mb-3">
               <h3>Jalons</h3>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-secondary btn-sm">Éditer</a>
+              <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-secondary btn-sm">Éditer</a>
             </div>
             <?php if (empty($jalonsProjet)): ?>
               <p class="text-muted text-sm">Aucun jalon défini.</p>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter</a>
+              <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-plus"></i> Ajouter</a>
             <?php else: ?>
               <div class="dash-jalon-list">
                 <?php foreach ($jalonsProjet as $j): ?>
@@ -630,7 +630,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <p class="text-sm"><strong>Créateur :</strong> <?= e($projet['createur'] ?? '—') ?></p>
             <p class="text-sm mt-1"><strong>Statut :</strong> <?= e($projet['status'] ?? 'actif') ?></p>
             <p class="text-sm mt-1"><strong>CDC :</strong>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">Ouvrir le cahier des charges</a>
+              <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>">Ouvrir le cahier des charges</a>
             </p>
           </div>
         </div>
@@ -684,7 +684,7 @@ function stepClass(int $n, int $displayed, array $validated): string
             <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
           <?php endif; ?>
           <?php ob_start(); ?>
-          <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
+          <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
           <?php $stepEditorActions = ob_get_clean(); ?>
 
         <?php elseif ($currentStep === 2): ?>
@@ -703,7 +703,7 @@ function stepClass(int $n, int $displayed, array $validated): string
           <?php if (empty($fonctionsSF)): ?>
             <div class="r1b-info-box">
               <p>Aucune spécification fonctionnelle dans le cahier des charges.</p>
-              <a href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
+              <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . $cdcReturnQuery) ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Ouvrir le CDC</a>
             </div>
           <?php else: ?>
             <script type="application/json" id="st-reference-data"><?= json_encode($techniquesAll, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
@@ -798,7 +798,7 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?php ob_start(); ?>
               <div class="mt-3">
                 <button type="submit" form="formSpecsTech" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les spécifications techniques</button>
-                <a href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
+                <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . '&step=2&return_view=processus&return_step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.F. (CDC)</a>
               </div>
               <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
@@ -1240,6 +1240,42 @@ function stepClass(int $n, int $displayed, array $validated): string
 <script src="<?= url('assets/js/projet-r1b.js?v=review-edge-4') ?>"></script>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 </main>
+<dialog class="cdc-modal-dialog" id="cdcModal" aria-labelledby="cdcModalTitle">
+  <div class="cdc-modal-heading">
+    <strong id="cdcModalTitle"><i class="fas fa-file-alt"></i> Cahier des charges</strong>
+    <button type="button" class="btn btn-secondary btn-sm" id="closeCdcModal" aria-label="Fermer la fenêtre CDC">Fermer <span aria-hidden="true">&times;</span></button>
+  </div>
+  <iframe id="cdcModalFrame" title="Saisie et consultation du cahier des charges" src="about:blank"></iframe>
+</dialog>
+<style>
+.cdc-modal-dialog { width:min(96vw,1280px); height:min(94vh,960px); max-width:none; max-height:none; padding:0; border:1px solid rgba(148,163,184,.55); border-radius:14px; overflow:hidden; background:#f8fafc; box-shadow:0 24px 90px rgba(0,0,0,.38); }
+.cdc-modal-dialog[open] { display:flex; flex-direction:column; }
+.cdc-modal-dialog::backdrop { background:rgba(3,13,25,.68); backdrop-filter:blur(3px); }
+.cdc-modal-heading { flex:0 0 52px; display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.55rem .9rem; color:#eaf2f8; background:#0c2235; border-bottom:1px solid rgba(148,163,184,.25); }
+.cdc-modal-heading strong { display:flex; align-items:center; gap:.6rem; }
+.cdc-modal-heading button { color:#eaf2f8; border-color:rgba(255,255,255,.25); }
+#cdcModalFrame { display:block; flex:1 1 auto; width:100%; min-height:0; border:0; background:#f8fafc; }
+@media(max-width:640px) { .cdc-modal-dialog { width:100vw; height:100dvh; border-radius:0; } .cdc-modal-heading { flex-basis:48px; } }
+</style>
+<script>
+(function(){
+  const modal=document.getElementById('cdcModal');
+  const frame=document.getElementById('cdcModalFrame');
+  if(!modal||!frame) return;
+  document.addEventListener('click',function(event){
+    const link=event.target.closest('a[href*="cahier_form.php"]');
+    if(!link) return;
+    const target=new URL(link.href,window.location.href);
+    if(target.origin!==window.location.origin) return;
+    event.preventDefault();
+    target.searchParams.set('embedded','1');
+    frame.src=target.toString();
+    if(!modal.open) modal.showModal();
+  });
+  document.getElementById('closeCdcModal').addEventListener('click',()=>modal.close());
+  modal.addEventListener('close',()=>{frame.src='about:blank';});
+})();
+</script>
 <footer class="footer">
   <div class="footer-container"><p>&copy; <?= date('Y') ?> OddWorks — Processus R1b</p></div>
 </footer>

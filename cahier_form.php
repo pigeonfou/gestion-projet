@@ -4,12 +4,14 @@ require_once __DIR__ . '/includes/decision_dashboard.php';
 $activePage = 'projets';
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/cahier_specs.php';
+require_once __DIR__ . '/includes/cdc_pdf.php';
 require_once __DIR__ . '/includes/r1b_steps.php';
 requerirConnexion();
 
 $db = getDB();
 $user = utilisateurCourant();
 $projet_id = (int)($_GET['projet_id'] ?? $_POST['projet_id'] ?? 0);
+$cdcEmbedded = (($_GET['embedded'] ?? $_POST['embedded'] ?? '') === '1');
 if ($projet_id <= 0) redirect('projets.php');
 
 // Conserver le contexte d'origine pour que « Retour au projet »
@@ -101,28 +103,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
            ->execute([$specs['objectifs'], $specs['cas_usage'], $specs['cas_usage'], $cahier_id]);
 
         if ($action === 'generate') {
-            $text = generateCahierText($specs, $projet['nom'], loadJalons($cahier_id));
-            $_SESSION['cdc_generated'] = $text;
-            setFlash('success', 'Cahier des charges généré et enregistré.');
-            redirect('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep . '&generated=1');
+            // L’endpoint réutilise le PDF correspondant au contenu actuel ou le crée à la demande.
+            $downloadPath = 'cdc_pdf_download.php?projet_id=' . $projet_id;
+            if ($cdcEmbedded) $downloadPath .= '&embedded=1';
+            redirect($downloadPath);
         }
         setFlash('success', 'Brouillon enregistré.');
-        redirect('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep);
+        $returnPath = 'cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep;
+        if ($cdcEmbedded) $returnPath .= '&embedded=1';
+        redirect($returnPath);
     }
 }
 
 $s = loadSpecs($cahier_id);
 $jalonsList = loadJalons($cahier_id);
-$generated = $_SESSION['cdc_generated'] ?? null;
-if (isset($_GET['generated'])) {
-    // keep flash; text in session
-} else {
-    unset($_SESSION['cdc_generated']);
-    $generated = null;
-}
-if (isset($_GET['generated']) && !empty($_SESSION['cdc_generated'])) {
-    $generated = $_SESSION['cdc_generated'];
-}
+$pdfAlreadyGenerated = cdcGeneratedPdfExists($projet_id, $projet['nom'], $s, $jalonsList);
 
 $pageTitle = 'CDC — ' . $projet['nom'];
 require __DIR__ . '/includes/header.php';
@@ -140,21 +135,14 @@ function sel(?string $cur, string $val): string {
         <h1><i class="fas fa-file-alt"></i> Cahier des charges structuré</h1>
         <p class="text-muted text-sm mt-1">Projet : <strong><?= e($projet['nom']) ?></strong></p>
     </div>
+    <?php if (!$cdcEmbedded): ?>
     <a href="<?= url($returnUrl) ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour au projet</a>
+    <?php endif; ?>
 </div>
 
-<?php if ($generated): ?>
-<div class="card mb-2">
-    <div class="card-header">
-        <h2><i class="fas fa-file-export"></i> Document généré</h2>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('cdcOut').value);this.textContent='Copié !'">Copier</button>
-    </div>
-    <div class="card-body">
-        <textarea id="cdcOut" class="form-control" rows="18" readonly style="font-family:monospace;font-size:.8rem;"><?= e($generated) ?></textarea>
-        <a class="btn btn-primary mt-2" href="data:text/plain;charset=utf-8,<?= rawurlencode($generated) ?>" download="CDC_<?= e(preg_replace('/\s+/', '_', $projet['nom'])) ?>.txt">
-            <i class="fas fa-download"></i> Télécharger .txt
-        </a>
-    </div>
+<?php if ($pdfAlreadyGenerated): ?>
+<div class="alert alert-info mb-2">
+    Le PDF correspondant au contenu enregistré existe déjà. Une nouvelle génération sans modification le téléchargera sans recréer le fichier.
 </div>
 <?php endif; ?>
 
@@ -166,10 +154,11 @@ function sel(?string $cur, string $val): string {
 </div>
 <div class="cdc-progress"><div class="cdc-progress-bar" id="cdcProgress" style="width:33%"></div></div>
 
-<form method="POST" id="cdcForm" action="<?= url('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep) ?>">
+<form method="POST" id="cdcForm" action="<?= url('cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep . ($cdcEmbedded ? '&embedded=1' : '')) ?>">
     <input type="hidden" name="projet_id" value="<?= $projet_id ?>">
     <input type="hidden" name="return_view" value="<?= e($returnView) ?>">
     <input type="hidden" name="return_step" value="<?= $returnStep ?>">
+    <input type="hidden" name="embedded" value="<?= $cdcEmbedded ? '1' : '0' ?>">
     <input type="hidden" name="form_action" id="formAction" value="save">
     <?= csrfField() ?>
 
@@ -303,16 +292,36 @@ function sel(?string $cur, string $val): string {
         <button type="button" class="btn btn-secondary" id="btnPrev" disabled><i class="fas fa-arrow-left"></i> Précédent</button>
         <button type="button" class="btn btn-secondary" id="btnNext">Suivant <i class="fas fa-arrow-right"></i></button>
         <span style="flex:1"></span>
-        <button type="submit" class="btn btn-secondary" onclick="document.getElementById('formAction').value='save'">
+        <button type="submit" class="btn btn-secondary" id="saveCdcDraft" onclick="document.getElementById('formAction').value='save'">
             <i class="fas fa-save"></i> Enregistrer le brouillon
         </button>
-        <button type="submit" class="btn btn-primary" onclick="document.getElementById('formAction').value='generate'">
-            <i class="fas fa-file-export"></i> Générer le cahier des charges
+        <button type="button" class="btn btn-primary" id="generateCdcPdf">
+            <i class="fas fa-file-pdf"></i> Générer / télécharger le CDC (PDF)
         </button>
     </div>
 </form>
 
+<dialog class="cdc-confirm-dialog" id="cdcGenerateConfirm" aria-labelledby="cdcConfirmTitle">
+    <div class="cdc-confirm-content">
+        <h2 id="cdcConfirmTitle"><i class="fas fa-file-pdf"></i> Générer le CDC</h2>
+        <p>La génération du PDF enregistrera les modifications apportées au CDC. Souhaites-tu continuer&nbsp;?</p>
+        <div class="cdc-confirm-actions">
+            <button type="button" class="btn btn-secondary" id="cancelCdcGenerate">Annuler</button>
+            <button type="button" class="btn btn-primary" id="confirmCdcGenerate">Continuer</button>
+        </div>
+    </div>
+</dialog>
+
 <style>
+.cdc-confirm-dialog { width:min(92vw, 520px); border:1px solid var(--border, #cbd5e1); border-radius:12px; padding:0; color:var(--text-primary, #0f172a); background:var(--surface, #fff); box-shadow:0 24px 80px rgba(0,0,0,.28); }
+.cdc-confirm-dialog::backdrop { background:rgba(4,15,28,.58); backdrop-filter:blur(2px); }
+.cdc-confirm-content { padding:1.25rem; }
+.cdc-confirm-content h2 { margin:0 0 .75rem; font-size:1.15rem; }
+.cdc-confirm-content p { margin:.5rem 0 1.25rem; line-height:1.55; }
+.cdc-confirm-actions { display:flex; justify-content:flex-end; gap:.65rem; }
+.cdc-embedded .header, .cdc-embedded .footer { display:none !important; }
+.cdc-embedded .main-content { width:100%; max-width:none; margin:0; padding:1rem; }
+.cdc-embedded .page-header > a { display:none; }
 .cdc-stepper {
   display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem;
 }
@@ -383,8 +392,36 @@ function sel(?string $cur, string $val): string {
   const initialStep = parseInt(params.get('step') || params.get('onglet') || '1', 10);
   show(initialStep >= 1 && initialStep <= total ? initialStep : 1);
 
-  // localStorage draft backup
   const form = document.getElementById('cdcForm');
+  const actionField = document.getElementById('formAction');
+  const generateButton = document.getElementById('generateCdcPdf');
+  const confirmDialog = document.getElementById('cdcGenerateConfirm');
+  let dirty = false;
+  form.addEventListener('input', () => { dirty = true; });
+  form.addEventListener('change', () => { dirty = true; });
+  form.addEventListener('click', event => {
+    if (event.target.closest('#sfAddRow, .btn-sf-del, #jalonAddRow, .btn-jalon-del')) dirty = true;
+  });
+  function submitGeneration() {
+    actionField.value = 'generate';
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.submit();
+  }
+  generateButton.addEventListener('click', () => {
+    if (!dirty) {
+      submitGeneration();
+      return;
+    }
+    if (typeof confirmDialog.showModal === 'function') confirmDialog.showModal();
+    else if (window.confirm('La génération du PDF enregistrera les modifications apportées au CDC. Continuer ?')) submitGeneration();
+  });
+  document.getElementById('cancelCdcGenerate').addEventListener('click', () => confirmDialog.close());
+  document.getElementById('confirmCdcGenerate').addEventListener('click', () => {
+    confirmDialog.close();
+    submitGeneration();
+  });
+
+  // localStorage draft backup
   const key = 'cdc_draft_<?= (int)$projet_id ?>';
   try {
     const saved = localStorage.getItem(key);
