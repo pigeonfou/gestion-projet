@@ -9,7 +9,7 @@ $siteNom = getSetting('site_nom', 'OddWorks');
 
 ?>
 <!DOCTYPE html>
-<html lang="fr" data-theme="<?=e(interfaceTheme())?>" data-preset="<?=e(interfacePreset())?>">
+<html lang="fr" data-theme="<?=e(interfaceTheme())?>">
 <head>
     <meta charset="UTF-8">
     <script src="<?=url('assets/js/appearance.js?v=1')?>"></script>
@@ -22,10 +22,8 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/appearance-presets.css?v=1') ?>">
-    <link rel="stylesheet" href="<?= url('assets/css/account-appearance.css?v=1') ?>">
 </head>
-<body class="pf-app" data-preset="<?=e(interfacePreset())?>" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
+<body class="pf-app" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
         <div class="header-container">
             <div class="logo oddworks-brand" aria-label="<?= e($siteNom) ?>">
@@ -64,7 +62,6 @@ $siteNom = getSetting('site_nom', 'OddWorks');
                         <i class="fas fa-caret-down" style="font-size:.75rem;opacity:.7;"></i>
                     </button>
                     <div class="user-dropdown-menu" id="userMenu">
-                        <a href="<?= url('apparence.php') ?>"><i class="fas fa-palette"></i> Mon apparence</a>
                         <?php if (estAdmin()): ?>
                         <a href="<?= url('admin/settings.php') ?>"><i class="fas fa-cog"></i> Paramètres</a>
                         <a href="<?= url('admin/utilisateurs.php') ?>"><i class="fas fa-users"></i> Utilisateurs</a>

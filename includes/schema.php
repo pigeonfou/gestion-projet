@@ -83,14 +83,6 @@ function runSchemaMigrations(): void
         valeur TEXT,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
-    $db->exec("CREATE TABLE IF NOT EXISTS preferences_utilisateur (
-        utilisateur_id INTEGER NOT NULL,
-        cle TEXT NOT NULL,
-        valeur TEXT NOT NULL,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (utilisateur_id, cle),
-        FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE
-    )");
     $db->exec("CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         projet_id INTEGER NOT NULL,

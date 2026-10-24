@@ -7,6 +7,5 @@
 </footer>
 <script src="<?= url('assets/js/app.js') ?>"></script>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
-<script src="<?=url('assets/js/appearance-presets.js?v=1')?>" defer></script>
 </body>
 </html>
