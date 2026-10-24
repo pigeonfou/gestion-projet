@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
     try { $specs['decision_cibles'] = ddTargets($_POST); }
     catch (InvalidArgumentException $e) { $errors[]=$e->getMessage(); }
-    if ($action === 'generate') {
+    if (in_array($action, ['generate', 'validate'], true)) {
         if ($specs['objectifs'] === '') $errors[] = 'Les objectifs et le contexte sont obligatoires.';
     }
 
@@ -107,6 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $downloadPath = 'cdc_pdf_download.php?projet_id=' . $projet_id;
             if ($cdcEmbedded) $downloadPath .= '&embedded=1';
             redirect($downloadPath);
+        }
+        if ($action === 'validate') {
+            redirect('cdc_validation.php?projet_id=' . $projet_id . ($cdcEmbedded ? '&embedded=1' : ''));
         }
         setFlash('success', 'Brouillon enregistré.');
         $returnPath = 'cahier_form.php?projet_id=' . $projet_id . '&return_view=' . rawurlencode($returnView) . '&return_step=' . $returnStep;
@@ -298,13 +301,16 @@ function sel(?string $cur, string $val): string {
         <button type="button" class="btn btn-primary" id="generateCdcPdf">
             <i class="fas fa-file-pdf"></i> Générer / télécharger le CDC (PDF)
         </button>
+        <button type="button" class="btn btn-primary" id="requestCdcValidation">
+            <i class="fas fa-clipboard-check"></i> Demander la validation du CDC
+        </button>
     </div>
 </form>
 
 <dialog class="cdc-confirm-dialog" id="cdcGenerateConfirm" aria-labelledby="cdcConfirmTitle">
     <div class="cdc-confirm-content">
         <h2 id="cdcConfirmTitle"><i class="fas fa-file-pdf"></i> Générer le CDC</h2>
-        <p>La génération du PDF enregistrera les modifications apportées au CDC. Souhaites-tu continuer&nbsp;?</p>
+        <p id="cdcConfirmMessage">La génération du PDF enregistrera les modifications apportées au CDC. Souhaites-tu continuer&nbsp;?</p>
         <div class="cdc-confirm-actions">
             <button type="button" class="btn btn-secondary" id="cancelCdcGenerate">Annuler</button>
             <button type="button" class="btn btn-primary" id="confirmCdcGenerate">Continuer</button>
@@ -395,6 +401,7 @@ function sel(?string $cur, string $val): string {
   const form = document.getElementById('cdcForm');
   const actionField = document.getElementById('formAction');
   const generateButton = document.getElementById('generateCdcPdf');
+  const validationButton = document.getElementById('requestCdcValidation');
   const confirmDialog = document.getElementById('cdcGenerateConfirm');
   let dirty = false;
   form.addEventListener('input', () => { dirty = true; });
@@ -402,23 +409,34 @@ function sel(?string $cur, string $val): string {
   form.addEventListener('click', event => {
     if (event.target.closest('#sfAddRow, .btn-sf-del, #jalonAddRow, .btn-jalon-del')) dirty = true;
   });
-  function submitGeneration() {
-    actionField.value = 'generate';
+  let pendingAction = 'generate';
+  function submitAction(action) {
+    actionField.value = action;
     if (typeof form.requestSubmit === 'function') form.requestSubmit();
     else form.submit();
   }
-  generateButton.addEventListener('click', () => {
+  function requestAction(action) {
+    pendingAction = action;
+    if (action === 'validate') {
+      document.getElementById('cdcConfirmTitle').innerHTML = '<i class="fas fa-clipboard-check"></i> Demander la validation';
+      document.getElementById('cdcConfirmMessage').textContent = 'La demande de validation enregistrera les modifications apportées au CDC. Continuer ?';
+    } else {
+      document.getElementById('cdcConfirmTitle').innerHTML = '<i class="fas fa-file-pdf"></i> Générer le CDC';
+      document.getElementById('cdcConfirmMessage').textContent = 'La génération du PDF enregistrera les modifications apportées au CDC. Continuer ?';
+    }
     if (!dirty) {
-      submitGeneration();
+      submitAction(action);
       return;
     }
     if (typeof confirmDialog.showModal === 'function') confirmDialog.showModal();
-    else if (window.confirm('La génération du PDF enregistrera les modifications apportées au CDC. Continuer ?')) submitGeneration();
-  });
+    else if (window.confirm(action === 'validate' ? 'La demande de validation enregistrera les modifications apportées au CDC. Continuer ?' : 'La génération du PDF enregistrera les modifications apportées au CDC. Continuer ?')) submitAction(action);
+  }
+  generateButton.addEventListener('click', () => requestAction('generate'));
+  validationButton.addEventListener('click', () => requestAction('validate'));
   document.getElementById('cancelCdcGenerate').addEventListener('click', () => confirmDialog.close());
   document.getElementById('confirmCdcGenerate').addEventListener('click', () => {
     confirmDialog.close();
-    submitGeneration();
+    submitAction(pendingAction);
   });
 
   // localStorage draft backup
