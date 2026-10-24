@@ -6,9 +6,9 @@ $trlUrl = url('projet.php?id=' . $id . '&view=trl');
 $trlLabel = static fn($value) => trlDisplayLabel($value);
 $trlValueLabel = static fn(string $key) => isset($trl['_excluded_levels'][$key])
     ? 'À réévaluer' : trlDisplayLabel($trl[$key], $key === 'cible' ? 'Non définie' : 'Non évalué');
-$trlTitles = [3=>'Faisabilité démontrée', 4=>'Validation en laboratoire', 5=>'Validation en environnement représentatif',
+$trlTitles = [2=>'Concept et application spécifiés', 3=>'Faisabilité démontrée', 4=>'Validation en laboratoire', 5=>'Validation en environnement représentatif',
     6=>'Démonstration en environnement très représentatif', 7=>'Démonstration en environnement opérationnel'];
-$trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 'de');
+$trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] === 2 ? 'concept' : ((int)$trl['actuel'] <= 5 ? 'ri' : 'de'));
 ?>
 <?php if ($view !== 'trl'): ?>
 <aside class="trl-overview" aria-label="Maturité technologique du projet">
@@ -21,7 +21,7 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 
 <?php else: ?>
 <section class="trl-page" aria-labelledby="trl-page-title">
  <header class="trl-page-header">
-  <span class="trl-eyebrow">Référentiel AID/DGA · TRL 3 à 7</span>
+  <span class="trl-eyebrow">Référentiel AID/DGA · TRL 2 à 7</span>
   <h2 id="trl-page-title">Maturité technologique · TRL</h2>
   <p>Positionner la technologie selon les résultats démontrés et l’environnement d’essai.</p>
  </header>
@@ -45,13 +45,9 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 
  </div>
 
  <?php if ($trl['_excluded_levels']): ?>
- <p class="trl-reassess" role="status">Une évaluation antérieure utilise un niveau hors du périmètre actuel. Renseignez une nouvelle évaluation entre TRL 3 et TRL 7. Les données antérieures restent conservées pour la traçabilité.</p>
+ <p class="trl-reassess" role="status">Une évaluation antérieure utilise un niveau hors du périmètre actuel. Renseignez une nouvelle évaluation entre TRL 2 et TRL 7. Les données antérieures restent conservées pour la traçabilité.</p>
  <?php endif; ?>
 
- <div class="trl-section-heading">
-  <h3>Deux natures de projet, cinq niveaux de maturité</h3>
-  <p>Du composant ou de la maquette fonctionnelle à la démonstration du système.</p>
- </div>
  <div class="trl-domains">
  <?php foreach ($trlGroups as $groupId => $group): ?>
   <section class="trl-domain trl-domain-<?= e($groupId) ?>" aria-labelledby="trl-domain-<?= e($groupId) ?>">
@@ -79,7 +75,7 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 
   </section>
  <?php endforeach; ?>
  </div>
- <p class="trl-source">Définitions : AID/DGA, annexe « Niveaux de maturité technologique », page 9. Périmètre utilisé dans OddWorks : TRL 3 à 7.</p>
+ <p class="trl-source">Définitions : AID/DGA, annexe « Niveaux de maturité technologique », page 9. Périmètre utilisé dans OddWorks : TRL 2 à 7.</p>
 
  <section class="trl-evaluation" aria-labelledby="trl-evaluation-title">
   <div class="trl-section-heading">
@@ -107,13 +103,37 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 
    </div>
    <label class="trl-proof-label" for="trl-preuves">Preuves, environnement d’essai et justification</label>
    <textarea id="trl-preuves" name="preuves" class="form-control" rows="5" maxlength="10000" aria-describedby="trl-proof-help" placeholder="Décrivez ce qui a été démontré, dans quel environnement et avec quels résultats. Indiquez les références des essais ou documents justificatifs."><?= e($trl['preuves']) ?></textarea>
-   <p id="trl-proof-help" class="trl-note">Une justification est obligatoire pour renseigner le niveau actuel. Une réévaluation à la baisse est possible si les résultats le nécessitent.</p>
+   <p id="trl-proof-help" class="trl-note">Une justification écrite ou un fichier justificatif est obligatoire pour renseigner le niveau actuel. Une réévaluation à la baisse est possible si les résultats le nécessitent.</p>
    <div class="trl-form-footer"><span class="trl-note"><?= $trl['updated_at'] ? e('Dernière évaluation : ' . $trl['updated_at'] . ' UTC') : 'Aucune évaluation enregistrée' ?></span><button class="btn btn-primary" type="submit">Enregistrer l’évaluation</button></div>
   </form>
   <?php else: ?>
    <?php if ($trl['preuves'] !== ''): ?><p class="trl-proof"><?= e($trl['preuves']) ?></p><?php else: ?><p class="trl-note">Aucune justification enregistrée.</p><?php endif; ?>
    <?php if ($trl['updated_at']): ?><p class="trl-note">Dernière évaluation : <?= e($trl['updated_at']) ?> UTC.</p><?php endif; ?>
   <?php endif; ?>
+
+ <div class="trl-evidence" aria-labelledby="trl-evidence-title">
+  <h4 id="trl-evidence-title">Fichiers justificatifs / preuves</h4>
+  <?php $trlDocuments = trlEvidence($db, $id); ?>
+  <ul id="trl-evidence-list" class="trl-evidence-list">
+   <?php foreach ($trlDocuments as $document): ?>
+   <li><a href="<?= e(url('documents_externes.php?projet_id='.$id.'&document='.(int)$document['id'])) ?>"><?= e($document['nom_fichier']) ?></a> <span><?= number_format((int)$document['taille']/1024,1,',',' ') ?> Ko</span></li>
+   <?php endforeach; ?>
+  </ul>
+  <p id="trl-evidence-empty" class="trl-note" <?= $trlDocuments ? 'hidden' : '' ?>>Aucun fichier justificatif ajouté.</p>
+  <?php if (projectCanManage($db, $id, $user)): ?>
+  <form id="fileUploadForm" data-preserve-page="true" data-endpoint="<?= e(url('documents_externes.php?projet_id='.$id.'&usage=trl')) ?>">
+   <?= csrfField() ?>
+   <input id="uploadFolder" type="hidden" value="09_TRL">
+   <label for="uploadFile">Ajouter un fichier justificatif (tout type)</label>
+   <input id="uploadFile" type="file" class="form-control" required>
+   <button class="btn btn-secondary" type="submit">Déposer le justificatif</button>
+   <progress id="uploadProgress" max="100" value="0" hidden></progress>
+   <p id="uploadStatus" role="status" aria-live="polite"></p>
+   <p class="trl-note">Le fichier est enregistré immédiatement dans les documents du projet sur Nextcloud. Enregistrez ensuite l’évaluation pour y référencer les preuves déposées.</p>
+  </form>
+  <script src="<?= e(url('assets/js/document-upload.js?v=2')) ?>" defer></script>
+  <?php endif; ?>
+ </div>
  </section>
 
  <details class="trl-history">
@@ -128,6 +148,7 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] <= 5 ? 'ri' : 
    <p class="trl-history-meta"><?= e($entry['date_action'] . ' UTC · ' . ($entry['identifiant'] ?? 'Utilisateur')) ?></p>
    <p>Entrée : <strong><?= e($trlLabel($state['entree'])) ?></strong> · Actuel : <strong><?= e($trlLabel($state['actuel'])) ?></strong> · Cible : <strong><?= e($trlLabel($state['cible'])) ?></strong></p>
    <p class="trl-proof"><?= e($state['preuves']) ?></p>
+   <?php if (!empty($state['documents_justificatifs'])): ?><ul class="trl-evidence-list"><?php foreach ($state['documents_justificatifs'] as $document): ?><li><a href="<?= e(url('documents_externes.php?projet_id='.$id.'&document='.(int)$document['id'])) ?>"><?= e($document['nom_fichier']) ?></a></li><?php endforeach; ?></ul><?php endif; ?>
   </article>
   <?php endforeach; ?>
  </details>

@@ -63,3 +63,20 @@
 .trl-stage-badge.is-unknown{border-color:var(--border-default,#94a3b8);background:var(--surface-muted,#e2e8f0);color:var(--text-secondary,#334155)}
 .trl-stage-badge:hover{text-decoration:underline}
 .trl-stage-badge:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+
+/* The concept stage precedes RI and DE in its own full-width block. */
+.trl-domain-concept{grid-column:1/-1;--trl-accent:#c49a56;margin-bottom:.65rem;border-top-width:2px}
+.trl-domain-concept .trl-domain-header{padding:.9rem 1.2rem}
+.trl-domain-concept .trl-domain-environment{border:0;padding-top:0}
+.trl-domain-concept .trl-level-list{padding-bottom:.9rem}
+.trl-phase-concept{--trl-accent:#c49a56}
+.trl-evidence{margin-top:1.25rem;border-top:1px solid var(--border-default,#94a3b8);padding-top:1rem}
+.trl-evidence h4{margin:0 0 .75rem}
+.trl-evidence-list{padding-left:1.2rem;overflow-wrap:anywhere;font-size:.85rem}
+.trl-evidence-list li{margin:.5rem 0}
+.trl-evidence-list a{color:var(--text-primary,inherit);text-decoration:underline}
+.trl-evidence-list span{color:var(--text-secondary,#52677a);font-size:.75rem}
+.trl-evidence form{display:grid;gap:.7rem;font-size:.85rem}
+.trl-evidence .btn{justify-self:start}
+.trl-evidence progress{width:100%}
+.trl-evidence input[type=file]{max-width:100%;min-width:0}

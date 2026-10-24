@@ -4,6 +4,7 @@ require_once __DIR__.'/project_members.php';
 /** Définitions de l’annexe AID/DGA, « Niveaux de maturité technologique », p. 9. */
 function trlLevels(): array {
     return [
+        2 => 'Concept technologique et/ou application spécifiés',
         3 => 'Démonstration analytique et expérimentale de la faisabilité des fonctions et/ou des caractéristiques critiques',
         4 => 'Validation au stade des composants et/ou des maquettes fonctionnelles en environnement laboratoire',
         5 => 'Validation en environnement représentatif au stade des composants et/ou maquettes fonctionnelles',
@@ -13,6 +14,9 @@ function trlLevels(): array {
 }
 function trlGroups(): array {
     return [
+        'concept' => ['code'=>'Concept', 'title'=>'Concept technologique', 'range'=>'TRL 2', 'levels'=>[2],
+            'description'=>'Définir le concept technologique et l’application envisagée.',
+            'environment'=>'Niveau d’entrée par défaut, distinct des groupes RI et DE.'],
         'ri' => ['code'=>'RI', 'title'=>'Recherche industrielle', 'range'=>'TRL 3 à 5', 'levels'=>[3,4,5],
             'description'=>'Établir la faisabilité, puis valider les composants et les maquettes fonctionnelles.',
             'environment'=>'De la faisabilité au laboratoire, puis à un environnement représentatif.'],
@@ -32,7 +36,7 @@ function trlSchema(PDO $db): void {
 function trlLoad(PDO $db, int $id): array {
     trlSchema($db);
     $q=$db->prepare('SELECT * FROM projet_trl WHERE projet_id=?');$q->execute([$id]);
-    $state = $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>null,'actuel'=>null,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
+    $state = $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>2,'actuel'=>null,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
     // Preserve stored values until an explicit reassessment; never invent a replacement level.
     $state['_excluded_levels'] = [];
     foreach (['entree', 'actuel', 'cible'] as $key) {
@@ -45,16 +49,22 @@ function trlLoad(PDO $db, int $id): array {
 }
 function trlLevel($value): ?int {
     if ($value==='' || $value===null) return null;
-    if ((!is_string($value) && !is_int($value)) || !preg_match('/^[3-7]$/D',(string)$value)) throw new InvalidArgumentException('Choisissez un niveau TRL de 3 à 7, ou laissez le niveau non évalué.');
+    if ((!is_string($value) && !is_int($value)) || !preg_match('/^[2-7]$/D',(string)$value)) throw new InvalidArgumentException('Choisissez un niveau TRL de 2 à 7, ou laissez le niveau non évalué.');
     return (int)$value;
+}
+function trlEvidence(PDO $db, int $id): array {
+    $q = $db->prepare("SELECT id,nom_fichier,taille,date_upload FROM documents WHERE projet_id=? AND phase='09_TRL' ORDER BY id DESC");
+    $q->execute([$id]);
+    return $q->fetchAll(PDO::FETCH_ASSOC);
 }
 function trlSave(PDO $db, int $id, array $actor, array $input): void {
     if (!projectCanManage($db,$id,$actor)) throw new InvalidArgumentException('Seul le pilote du projet ou un administrateur peut modifier le TRL.');
+    $input += ['entree'=>2];
     $values=[];foreach(['entree','actuel','cible'] as $key)$values[$key]=trlLevel($input[$key]??null);
     $proofs=$input['preuves']??'';
     if (!is_string($proofs) || strlen($proofs)>10000) throw new InvalidArgumentException('Les preuves et le contexte sont limités à 10 000 octets.');
     $proofs=trim($proofs);
-    if ($values['actuel']!==null && $proofs==='') throw new InvalidArgumentException('Précisez les preuves et l’environnement d’essai pour évaluer le TRL actuel.');
+    if ($values['actuel']!==null && $proofs==='' && !trlEvidence($db,$id)) throw new InvalidArgumentException('Ajoutez une justification écrite ou un fichier justificatif pour évaluer le TRL actuel.');
     $rev=$input['revision']??null;
     if (!is_scalar($rev) || !ctype_digit((string)$rev)) throw new InvalidArgumentException('Révision TRL invalide. Rechargez la page.');
     trlSchema($db);$db->beginTransaction();
@@ -64,6 +74,7 @@ function trlSave(PDO $db, int $id, array $actor, array $input): void {
         $db->prepare('INSERT INTO projet_trl(projet_id,entree,actuel,cible,preuves,revision,updated_at,acteur_id) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP,?) ON CONFLICT(projet_id) DO UPDATE SET entree=excluded.entree,actuel=excluded.actuel,cible=excluded.cible,preuves=excluded.preuves,revision=excluded.revision,updated_at=excluded.updated_at,acteur_id=excluded.acteur_id')
             ->execute([$id,$values['entree'],$values['actuel'],$values['cible'],$proofs,(int)$rev+1,$actor['id']]);
         $after=trlLoad($db,$id);
+        $after['documents_justificatifs'] = trlEvidence($db,$id);
         $db->prepare('INSERT INTO projet_trl_historique(projet_id,acteur_id,avant_json,apres_json) VALUES(?,?,?,?)')->execute([$id,$actor['id'],json_encode($before,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),json_encode($after,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
         $db->commit();
     } catch(Throwable $error) {if($db->inTransaction())$db->rollBack();throw $error;}
