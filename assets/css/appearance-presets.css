@@ -743,3 +743,120 @@ body.pf-app[data-preset="space"] :is(.table,.sf-table) tbody tr:hover {backgroun
 @media(prefers-reduced-motion:reduce) {
   body.pf-app[data-preset="space"] *,body.pf-app[data-preset="space"] *:before,body.pf-app[data-preset="space"] *:after {scroll-behavior:auto!important;animation:none!important;transition:none!important}
 }
+
+
+/* Space dashboard correction: prevent the project menu from stretching the page */
+body.pf-app[data-preset="space"] .r1b-layout {
+  display:block!important;height:auto!important;min-height:0!important;overflow:visible!important;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar {
+  display:grid!important;grid-template-columns:160px minmax(0,1.65fr) minmax(0,.85fr) 170px!important;
+  align-items:center!important;justify-content:stretch!important;gap:7px;
+  position:relative!important;top:auto!important;inset:auto!important;
+  width:auto!important;height:auto!important;min-height:0!important;max-height:none!important;max-width:none!important;
+  flex:none!important;overflow:visible!important;
+  margin:12px 22px 0!important;padding:8px!important;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar-title {
+  display:block!important;align-self:center!important;justify-self:stretch!important;
+  width:auto!important;max-width:none!important;min-width:0!important;height:auto!important;min-height:0!important;
+  flex:none!important;padding:0 8px!important;margin:0!important;border:0!important;
+  color:#eaf6fb!important;text-align:left!important;font-size:.8rem!important;line-height:1.25;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar .r1b-nav {
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;
+  align-self:center!important;justify-self:stretch!important;gap:3px!important;
+  width:auto!important;min-width:0!important;max-width:100%!important;height:38px!important;max-height:38px!important;
+  flex:none!important;overflow-x:auto!important;overflow-y:hidden!important;margin:0!important;padding:0!important;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar .r1b-nav a {
+  display:inline-flex!important;align-items:center!important;flex:0 0 auto!important;
+  min-height:32px!important;height:32px!important;margin:0!important;padding:6px 8px!important;
+  font-size:.68rem!important;white-space:nowrap!important;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar-foot {
+  display:block!important;align-self:center!important;justify-self:stretch!important;
+  width:auto!important;min-width:0!important;height:auto!important;max-height:none!important;
+  flex:none!important;margin:0!important;padding:0!important;
+}
+body.pf-app[data-preset="space"] .r1b-sidebar-foot label {display:none!important}
+body.pf-app[data-preset="space"] .r1b-sidebar-foot .form-control {width:100%!important;height:34px!important;min-height:34px!important}
+
+/* Project-level dashboard: make the process a visible mission trajectory */
+body.pf-app[data-preset="space"] .r1b-main > .r1b-page-head {
+  position:relative;display:flex;align-items:flex-end;min-height:104px;margin:0 0 16px;padding:18px 22px;
+  overflow:hidden;border:1px solid rgba(36,154,187,.48);border-radius:7px;
+  background:linear-gradient(100deg,rgba(3,14,26,.96),rgba(3,19,34,.78)),url("../img/space-mission-blueprint.webp") center 42%/cover;
+}
+body.pf-app[data-preset="space"] .r1b-main > .r1b-page-head:after {
+  content:"";position:absolute;right:8%;top:-160px;width:320px;height:320px;border:1px solid rgba(28,189,222,.25);
+  border-radius:50%;box-shadow:0 0 0 28px rgba(28,189,222,.025),0 0 0 76px rgba(28,189,222,.02);pointer-events:none;
+}
+body.pf-app[data-preset="space"] .r1b-main > .r1b-page-head h2 {
+  color:#f1f8fc!important;font-size:1.45rem!important;letter-spacing:.075em;text-transform:uppercase;
+}
+body.pf-app[data-preset="space"] .r1b-main > .r1b-page-head .text-muted {color:#8fc7d7!important}
+body.pf-app[data-preset="space"] .r1b-main > .r1b-page-head .btn {position:relative;z-index:1}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid {gap:12px;margin:0 0 16px}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi {
+  position:relative;overflow:hidden;min-height:108px;padding:17px 19px;border:1px solid rgba(50,121,149,.42)!important;border-radius:6px;
+  background:linear-gradient(145deg,rgba(7,26,43,.97),rgba(4,17,29,.94))!important;
+}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi:after {
+  content:"";position:absolute;right:14px;top:12px;width:32px;height:32px;border:1px solid currentColor;border-radius:7px;opacity:.22;
+}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi:nth-child(1) {color:#26d5e5}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi:nth-child(2) {color:#ff9147}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi:nth-child(3) {color:#b19aff}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi:nth-child(4) {color:#28d8c8}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi-label {color:#a9c2ce!important;letter-spacing:.1em;text-transform:uppercase}
+body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid .dash-kpi-value {color:#f2f8fc!important;font-size:2rem}
+body.pf-app[data-preset="space"] .r1b-main .dash-grid {grid-template-columns:minmax(0,1.6fr) minmax(290px,.9fr);gap:16px}
+body.pf-app[data-preset="space"] .r1b-main .dash-col-main>.r1b-card:first-child {
+  padding:19px 18px 20px;border-color:rgba(31,156,187,.52)!important;
+  background:linear-gradient(115deg,rgba(3,17,30,.96),rgba(5,24,39,.93)),url("../img/space-mission-blueprint.webp") center/cover!important;
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-col-main>.r1b-card:first-child h3 {
+  color:#edf8fc!important;letter-spacing:.16em;text-transform:uppercase;font-size:.88rem!important;
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-steps {
+  display:grid;grid-template-columns:repeat(9,minmax(95px,1fr));gap:6px;overflow-x:auto;
+  padding:19px 4px 10px;border:1px solid rgba(41,134,161,.3);border-radius:4px;
+  background:linear-gradient(90deg,rgba(3,16,28,.76),rgba(3,19,33,.86)),url("../img/space-mission-blueprint.webp") center/cover;
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-step {
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;min-width:95px;
+  padding:0 4px 7px;border:0!important;border-radius:0!important;background:transparent!important;text-align:center;color:#a8c2ce!important;
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-step-num {
+  width:42px;height:42px;border:1px solid #355b70;border-radius:50%;background:#081a2a!important;color:#a9bdc8!important;
+  box-shadow:0 0 0 4px rgba(5,18,31,.76);font-size:.76rem;
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-step.done .dash-step-num {
+  border-color:#20bfd1;background:#0b3849!important;color:#61e2ec!important;box-shadow:0 0 0 4px rgba(12,193,211,.1),0 0 15px rgba(12,193,211,.18);
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-step.active .dash-step-num {
+  transform:scale(1.13);border:2px solid #42dfeb;background:radial-gradient(circle at 35% 30%,#48eff0,#078ca6 58%,#05283f)!important;
+  color:#06151e!important;box-shadow:0 0 0 5px rgba(10,194,215,.13),0 0 26px rgba(10,194,215,.42);
+}
+body.pf-app[data-preset="space"] .r1b-main .dash-step-body {display:flex;flex-direction:column;align-items:center;gap:4px}
+body.pf-app[data-preset="space"] .r1b-main .dash-step-title {color:#b8d2dd!important;font-size:.67rem;line-height:1.25}
+body.pf-app[data-preset="space"] .r1b-main .dash-step.active .dash-step-title {color:#57dfe9!important;font-weight:700}
+body.pf-app[data-preset="space"] .r1b-main .dash-step-pct {color:#7797a7!important;font-size:.62rem}
+body.pf-app[data-preset="space"] .r1b-main .dash-progress-bar {height:3px;margin-top:12px;border-radius:0;background:#193647}
+body.pf-app[data-preset="space"] .r1b-main .dash-progress-fill {background:linear-gradient(90deg,#12c5d9,#48eced);box-shadow:0 0 12px rgba(18,197,217,.44)}
+body.pf-app[data-preset="space"] .r1b-main .dash-grid .r1b-card h3 {color:#eff7fa!important}
+body.pf-app[data-preset="space"] .r1b-main .dash-task-row {border-color:rgba(55,117,141,.34);color:#dbe9ef}
+@media(max-width:1300px) {
+  body.pf-app[data-preset="space"] .r1b-sidebar {grid-template-columns:145px minmax(0,1fr) minmax(0,.7fr)!important}
+  body.pf-app[data-preset="space"] .r1b-sidebar-foot {grid-column:1/-1;max-width:220px;justify-self:end}
+}
+@media(max-width:950px) {
+  body.pf-app[data-preset="space"] .r1b-sidebar {grid-template-columns:1fr!important;gap:6px;margin:8px 10px 0!important}
+  body.pf-app[data-preset="space"] .r1b-sidebar-title {grid-column:1/-1}
+  body.pf-app[data-preset="space"] .r1b-sidebar .r1b-nav {width:100%!important}
+  body.pf-app[data-preset="space"] .r1b-sidebar-foot {display:none!important}
+  body.pf-app[data-preset="space"] .r1b-main .dash-grid {grid-template-columns:1fr}
+  body.pf-app[data-preset="space"] .r1b-main > .dash-kpi-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.pf-app[data-preset="space"] .r1b-main .dash-steps {grid-template-columns:repeat(9,minmax(90px,1fr))}
+}
