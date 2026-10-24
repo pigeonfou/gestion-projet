@@ -25,16 +25,19 @@ jobs:
     env:
       DEPLOY_BRANCH: ${{ inputs.branch || github.ref_name }}
     steps:
+      - name: Récupérer le commit à vérifier
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.sha }}
+          fetch-depth: 0
       - name: Vérifications avant déploiement
         shell: bash
         run: |
           set -Eeuo pipefail
           git check-ref-format --branch "$DEPLOY_BRANCH"
-          cd /var/www/html/gestion-projet
-          git fetch origin "+refs/heads/$DEPLOY_BRANCH:refs/remotes/origin/$DEPLOY_BRANCH"
-          candidate=$(git rev-parse "refs/remotes/origin/$DEPLOY_BRANCH")
+          candidate=$(git rev-parse HEAD)
           if [[ "$GITHUB_EVENT_NAME" == push && "$candidate" != "$GITHUB_SHA" ]]; then
-            echo "La branche a changé depuis cette exécution."
+            echo "Le commit récupéré ne correspond pas à celui du déclenchement."
             exit 1
           fi
           test_dir=$(mktemp -d)
@@ -93,7 +96,4 @@ jobs:
         if: always()
         shell: bash
         run: |
-          cd /var/www/html/gestion-projet
-          git branch --show-current
-          git log -1 --oneline
-          git status --short
+          echo "Commit demandé : $GITHUB_SHA"
