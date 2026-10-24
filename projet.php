@@ -431,7 +431,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
-<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=2')?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=3')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -665,9 +665,9 @@ function stepClass(int $n, int $displayed, array $validated): string
       <div class="r1b-card r1b-step-content">
         <?php
           $stepTrl = trlLoad($db, $id);
-          $stepTrlLabel = $stepTrl['actuel'] === null ? 'TRL non évalué' : 'TRL ' . (int)$stepTrl['actuel'];
-          $stepTrlDetails = 'Maturité du projet · Entrée : ' . ($stepTrl['entree'] === null ? 'non évaluée' : 'TRL ' . (int)$stepTrl['entree'])
-              . ' · Cible : ' . ($stepTrl['cible'] === null ? 'non définie' : 'TRL ' . (int)$stepTrl['cible']);
+          $stepTrlLabel = isset($stepTrl['_excluded_levels']['actuel']) ? 'TRL à réévaluer' : trlDisplayLabel($stepTrl['actuel'], 'TRL non évalué');
+          $stepTrlDetails = 'Maturité du projet · Entrée : ' . (isset($stepTrl['_excluded_levels']['entree']) ? 'à réévaluer' : trlDisplayLabel($stepTrl['entree'], 'non évaluée'))
+              . ' · Cible : ' . (isset($stepTrl['_excluded_levels']['cible']) ? 'à réévaluer' : trlDisplayLabel($stepTrl['cible'], 'non définie'));
         ?>
         <div class="r1b-step-heading">
           <h3>Étape <?= $currentStep ?> – <?= e($steps[$currentStep]['title'] ?? '') ?></h3>
@@ -1300,4 +1300,3 @@ function stepClass(int $n, int $displayed, array $validated): string
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>
-
