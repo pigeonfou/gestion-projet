@@ -70,11 +70,14 @@ require __DIR__ . '/includes/header.php';
                     <span class="appearance-preset-name"><?= e($preset['label']) ?></span>
                     <span class="appearance-preset-check" aria-hidden="true"><i class="fas fa-check"></i></span>
                 </span>
-                <span class="appearance-preset-swatches" aria-hidden="true">
-                    <?php foreach ($preset['swatches'] as $swatch): ?>
-                    <span style="--swatch:<?= e($swatch) ?>"></span>
-                    <?php endforeach; ?>
-                    <span class="appearance-preset-sample"><i class="fas fa-bars"></i><i class="fas fa-chart-line"></i><i class="fas fa-list-check"></i></span>
+                <span class="appearance-mini-ui" data-mini-preset="<?= e($value) ?>" aria-hidden="true">
+                    <span class="appearance-mini-top"><i></i><i></i><i></i><b>ODDWORKS</b></span>
+                    <span class="appearance-mini-sidebar"><i></i><i></i><i></i></span>
+                    <span class="appearance-mini-main">
+                        <span class="appearance-mini-title"></span>
+                        <span class="appearance-mini-stats"><i></i><i></i><i></i></span>
+                        <span class="appearance-mini-row"><i></i><i></i><i></i></span>
+                    </span>
                 </span>
                 <span class="appearance-preset-description"><?= e($preset['description']) ?></span>
             </label>
