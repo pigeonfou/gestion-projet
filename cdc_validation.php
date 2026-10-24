@@ -34,7 +34,14 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $q=$db->prepare("SELECT * FROM cdc_validations WHERE projet_id=? AND cdc_hash=? ORDER BY id DESC LIMIT 1");
             $q->execute([$pid,$currentHash]);$prepared=$q->fetch() ?: null;
             if($prepared && $prepared['status']==='refusé') $prepared=null;
-            $generated=cdcEnsureGeneratedPdf($pid,(string)$project['nom'],$specs,$milestones);
+            if($prepared && $prepared['status']!=='pending') throw new RuntimeException('Cette validation est déjà clôturée. Modifiez le CDC ou traitez un refus pour ouvrir un nouveau cycle.');
+            if($prepared){
+                $pdfPath=cdcGeneratedPdfPath($pid,(string)$project['nom'],$specs,$milestones);
+                if(!is_file($pdfPath)||filesize($pdfPath)<=0) throw new RuntimeException('Le PDF archivé de cette validation n’est plus disponible sur le serveur. Aucun nouvel archivage n’a été effectué.');
+                $generated=['path'=>$pdfPath,'hash'=>$currentHash,'created'=>false];
+            }else{
+                $generated=cdcEnsureGeneratedPdf($pid,(string)$project['nom'],$specs,$milestones);
+            }
             if(!$prepared){
                 $stamp=date('Ymd-His');
                 $reference='ODW-P'.$pid.'-'.substr($currentHash,0,10).'-'.$stamp.'-'.strtoupper(bin2hex(random_bytes(2)));
@@ -51,9 +58,24 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                 if(!hash_equals((string)$prepared['recipient'],$recipient)) $db->prepare('UPDATE cdc_validations SET recipient=? WHERE id=?')->execute([$recipient,(int)$prepared['id']]);
                 $q=$db->prepare('SELECT * FROM cdc_validations WHERE id=?');$q->execute([(int)$prepared['id']]);$prepared=$q->fetch();
             }
-            $prepared['outlook_url']=cdcValidationOutlookUrl($recipient,cdcValidationSubject((string)$project['nom'],(string)$prepared['reference']),cdcValidationBody((string)$project['nom'],(string)$prepared['reference']));
-            $prepared['reused']=!empty($generated['created'])?false:true;
             if($prepared['status']!=='pending') throw new RuntimeException('Cette validation est déjà clôturée. Un nouveau cycle peut être ouvert depuis le CDC après modification ou refus.');
+            $msgPath=cdcValidationBuildMsg(
+                $recipient,
+                cdcValidationSubject((string)$project['nom'],(string)$prepared['reference']),
+                (string)$project['nom'],
+                (string)$prepared['reference'],
+                (string)$generated['path'],
+                basename((string)$prepared['pdf_remote_path'])
+            );
+            $downloadName='Demande_validation_CDC_'.preg_replace('/[^A-Za-z0-9_-]+/','_', (string)$prepared['reference']).'.msg';
+            header('Content-Type: application/vnd.ms-outlook');
+            header('X-Content-Type-Options: nosniff');
+            header('Content-Length: '.(string)filesize($msgPath));
+            header('Cache-Control: private, no-store, max-age=0');
+            header("Content-Disposition: attachment; filename=\"{$downloadName}\"");
+            readfile($msgPath);
+            @unlink($msgPath);
+            exit;
         }elseif($action==='import'){
             $validationId=(int)($_POST['validation_id']??0);
             $q=$db->prepare("SELECT * FROM cdc_validations WHERE id=? AND projet_id=? AND status='pending'");$q->execute([$validationId,$pid]);$validation=$q->fetch();
@@ -111,20 +133,13 @@ require __DIR__.'/includes/header.php';
 <?php if($error!==''):?><div class="alert alert-error" role="alert"><?=e($error)?></div><?php endif;?>
 <section class="card card-body" style="margin-bottom:1rem">
  <h2>Préparer une demande</h2>
- <p>OddWorks archive le PDF du CDC dans les fichiers du projet, puis prépare un brouillon Outlook avec la référence de validation.</p>
+ <p>OddWorks archive la version PDF du CDC lors de la première demande, puis génère un brouillon Outlook <code>.msg</code> avec le PDF joint. Pour le même CDC en attente, un nouveau clic régénère le brouillon avec la même référence sans créer une nouvelle archive ni une entrée d’historique.</p>
  <form method="post" class="form-row" style="align-items:end;gap:1rem"><?=csrfField()?>
   <input type="hidden" name="projet_id" value="<?=$pid?>"><input type="hidden" name="action" value="start"><input type="hidden" name="embedded" value="<?=$cdcEmbedded?'1':'0'?>">
   <div class="form-group" style="flex:1;min-width:260px"><label for="recipient">Destinataire</label><input class="form-control" id="recipient" type="email" name="recipient" required value="<?=e((string)($prepared['recipient']??($latestPending['recipient']??'francois.couraud@procomm-mmc.com')))?>"></div>
-  <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Préparer la demande de validation</button>
+  <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Générer le brouillon Outlook (.msg)</button>
  </form>
 </section>
-<?php if($prepared):?>
-<section class="card card-body" style="margin-bottom:1rem;border-left:4px solid #0e7490">
- <h2>Brouillon prêt · <?=e((string)$prepared['reference'])?></h2>
- <p>La version du CDC est archivée dans les fichiers du projet. Dans Outlook, joignez le PDF archivé à ce brouillon avant de l’envoyer. Le deeplink Outlook ne permet pas de joindre automatiquement un fichier.</p>
- <div style="display:flex;flex-wrap:wrap;gap:.75rem"><a class="btn btn-primary" href="<?=e($prepared['outlook_url'])?>" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Ouvrir le brouillon dans Outlook</a><a class="btn btn-secondary" href="<?=url('cdc_validation_pdf.php?id='.(int)$prepared['id'])?>"><i class="fas fa-file-pdf"></i> Télécharger le PDF archivé</a></div>
-</section>
-<?php endif;?>
 <?php if($latestPending):?>
 <section class="card card-body" style="margin-bottom:1rem">
  <h2>Importer la réponse</h2><p>Exportez le message reçu depuis Outlook en <code>.eml</code> ou <code>.msg</code>, puis importez-le ici. Le courriel doit contenir la référence <strong><?=e((string)$latestPending['reference'])?></strong>, une décision explicite « CDC Accepté » ou « CDC Refusé », et le champ « Commentaire : ».</p>

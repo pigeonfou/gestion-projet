@@ -46,15 +46,43 @@ function cdcValidationSubject(string $projectName, string $reference): string {
     return 'Validation du cahier des charges — ' . $projectName . ' — ' . $reference;
 }
 
-function cdcValidationBody(string $projectName, string $reference): string {
-    return "Bonjour,\r\n\r\nMerci de valider le cahier des charges du projet « {$projectName} ».\r\n\r\nRépondez en indiquant exactement l’une des décisions suivantes :\r\nCDC Accepté\r\nCDC Refusé\r\n\r\nCommentaire :\r\n[Votre commentaire]\r\n\r\nRéférence de validation : {$reference}\r\nMerci de conserver cette référence dans l’objet ou le corps de votre réponse et de joindre, si nécessaire, le CDC annoté.\r\n\r\nCordialement";
-}
-
-function cdcValidationOutlookUrl(string $recipient, string $subject, string $body): string {
-    return 'https://outlook.office.com/mail/deeplink/compose?' . http_build_query(
-        ['to' => $recipient, 'subject' => $subject, 'body' => $body],
-        '', '&', PHP_QUERY_RFC3986
-    );
+/** Produit un brouillon Outlook .msg à usage unique, avec le PDF exact du cycle en pièce jointe. */
+function cdcValidationBuildMsg(string $recipient, string $subject, string $projectName, string $reference, string $pdfPath, string $pdfName): string {
+    if (!is_file($pdfPath) || !is_readable($pdfPath) || filesize($pdfPath) <= 0) {
+        throw new RuntimeException('Le PDF archivé de cette demande est introuvable. Aucun nouveau PDF n’a été créé.');
+    }
+    $output = tempnam(sys_get_temp_dir(), 'oddworks-cdc-msg-');
+    if ($output === false) throw new RuntimeException('Le brouillon Outlook temporaire n’a pas pu être créé.');
+    @unlink($output);
+    $python = '/var/lib/oneforall/oddworks/cdc-msg-venv/bin/python3';
+    $script = __DIR__ . '/../scripts/generate-cdc-msg.py';
+    if (!is_executable($python) || !is_file($script)) {
+        throw new RuntimeException('Le générateur de brouillons Outlook .msg n’est pas installé sur le serveur.');
+    }
+    $payload = json_encode([
+        'recipient' => $recipient,
+        'subject' => $subject,
+        'project' => $projectName,
+        'reference' => $reference,
+        'pdf_path' => $pdfPath,
+        'pdf_name' => basename($pdfName),
+        'output_path' => $output,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    if (!is_string($payload)) throw new RuntimeException('Les données du brouillon n’ont pas pu être préparées.');
+    $pipes = [];
+    $process = proc_open([$python, $script], [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']], $pipes, null, ['PYTHONIOENCODING'=>'utf-8']);
+    if (!is_resource($process)) throw new RuntimeException('Le générateur Outlook n’a pas pu démarrer.');
+    fwrite($pipes[0], $payload);
+    fclose($pipes[0]);
+    $stdout = stream_get_contents($pipes[1]); fclose($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]); fclose($pipes[2]);
+    $status = proc_close($process);
+    if ($status !== 0 || !is_file($output) || filesize($output) <= 512) {
+        @unlink($output);
+        error_log('OddWorks CDC MSG generator failed: '.trim((string)$stderr));
+        throw new RuntimeException('Le brouillon Outlook .msg n’a pas pu être généré. Réessayez ; la demande et son archive existantes sont conservées.');
+    }
+    return $output;
 }
 
 function cdcValidationDecodeHeader(string $value): string {
