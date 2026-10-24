@@ -62,20 +62,22 @@ trap cleanup EXIT
 git --git-dir="$repo" archive "$sha" | tar -x -C "$stage"
 test -f "$stage/includes/schema.php"
 test -f "$stage/login.php"
+test -f "$stage/scripts/generate-cdc-msg.py"
+test -f "$stage/requirements-cdc-msg.txt"
 while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find "$stage" -name '*.php' -print0)
 # Prepare the isolated, non-networking .msg file writer before the brief PHP-FPM
 # maintenance window. The runtime lives with application data, outside releases.
-msg_runtime=/var/lib/oneforall/oddworks/cdc-msg-venv
+msg_runtime=/opt/oneforall/apps/oddworks/shared/cdc-msg-venv
 if ! [[ -x "$msg_runtime/bin/python3" ]] || ! "$msg_runtime/bin/python3" -c 'import aspose.email_foss' >/dev/null 2>&1; then
   if ! python3 -m venv --help >/dev/null 2>&1; then
     apt-get update
     apt-get install -y python3-venv
   fi
-  install -d -o ofa-oddworks -g ofa-oddworks -m 0750 "$(dirname "$msg_runtime")"
+  install -d -o root -g root -m 0755 "$(dirname "$msg_runtime")"
   if ! [[ -x "$msg_runtime/bin/python3" ]]; then
-    runuser -u ofa-oddworks -- python3 -m venv "$msg_runtime"
+    python3 -m venv "$msg_runtime"
   fi
-  runuser -u ofa-oddworks -- "$msg_runtime/bin/python3" -m pip install --disable-pip-version-check --no-input -r "$stage/requirements-cdc-msg.txt"
+  "$msg_runtime/bin/python3" -m pip install --disable-pip-version-check --no-input -r "$stage/requirements-cdc-msg.txt"
   runuser -u ofa-oddworks -- "$msg_runtime/bin/python3" -c 'from aspose.email_foss.msg import MapiMessage; print("MSG runtime ready")' >/dev/null
 fi
 if [[ -e $release ]]; then
