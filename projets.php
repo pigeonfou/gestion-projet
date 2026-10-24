@@ -325,6 +325,7 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="space-command-edge" aria-hidden="true"><span>OW</span><i></i><span>FIELD CONTROL</span></div>
   </section>
+  <?php endif; ?>
   <!-- KPI (identiques Processus-R1b) -->
   <div class="dash-kpi-grid">
     <a class="dash-kpi" href="<?=url('projets.php#active-projects')?>">
@@ -358,7 +359,7 @@ require __DIR__ . '/includes/header.php';
       </header>
       <?php if ($spaceProject): ?>
       <div class="space-flight-scroll">
-        <ol class="space-flightpath" aria-label="Étapes du processus R1B">
+        <ol class="space-flightpath" aria-label="Étapes du processus R1B" style="--space-progress:<?= round(($spaceCurrentStep / 9) * 100, 2) ?>%">
           <?php foreach ($steps as $spaceStepNo => $spaceStepData): ?>
             <?php if ((int)$spaceStepNo < 1 || (int)$spaceStepNo > 9) continue; ?>
             <?php $spaceState = (int)$spaceStepNo < $spaceCurrentStep ? 'done' : ((int)$spaceStepNo === $spaceCurrentStep ? 'active' : 'queued'); ?>
@@ -391,6 +392,7 @@ require __DIR__ . '/includes/header.php';
       <a class="space-review-history" href="<?= url('projets.php#active-projects') ?>">VOIR LES PROGRAMMES <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
     </aside>
   </section>
+  <?php endif; ?>
   <details class="pf-create"><summary>Revues à décider & jalons</summary><?php foreach($projets as $project):$pstep=(int)($project['current_step']??1);if(($pstep===3&&empty($project['go_decision']))||in_array($pstep,[7,8],true)):?><p><a href="<?=url('projet.php?id='.(int)$project['id'].'&view=processus&step='.$pstep)?>"><?=e($project['nom'])?> · revue étape <?=$pstep?></a></p><?php endif;?><p><a href="<?=url('planning.php?projet_id='.(int)$project['id'])?>">Planning & jalons · <?=e($project['nom'])?></a></p><?php endforeach;?></details>
   <div class="dash-grid">
     <div class="dash-col-main">
