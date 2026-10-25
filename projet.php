@@ -227,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($action === 'decide') {
         $decision = $_POST['decision'] ?? '';
-        $motif = trim((string)($_POST['motif'] ?? $projet['step_notes'] ?? ''));
+        $motif = trim((string)($_POST['motif'] ?? projectNotesText(projectNotes($db,$id,false,$currentStep))));
         if (!in_array($decision, r1bAllowedDecisions($currentStep), true) || $currentStep > $progressStep) {
             setFlash('error', 'Décision invalide pour cette étape ou étape non encore atteinte.');
             redirect('projet.php?id=' . $id . '&view=processus&step=' . $progressStep);
@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         $db->prepare('INSERT INTO projet_decisions(projet_id,etape,decision,motif,utilisateur_id,snapshot_json) VALUES(?,?,?,?,?,?)')
-            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet, projectNotes($db,$id)) : null]);
+            ->execute([$id,$currentStep,$decision,$motif,$user['id'], $currentStep === 3 ? ddSnapshot(loadSpecs(getOrCreateCahierId($id)), $projet, projectNotes($db,$id,false,$currentStep), $currentStep) : json_encode(['version'=>1,'etape'=>$currentStep,'notes'=>projectNotes($db,$id,false,$currentStep)], JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
         $db->commit();
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
@@ -431,7 +431,7 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
-<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=5')?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=6')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
@@ -683,26 +683,17 @@ function stepClass(int $n, int $displayed, array $validated): string
 
         <?php if($currentStep>=6):?><div class="pf-links"><a href="<?=url('planning.php?projet_id='.$id)?>">Planning des tâches</a><a href="<?=url('documents_externes.php?projet_id='.$id)?>">Dossier & preuves</a><a href="<?=url('qualite_projet.php?projet_id='.$id)?>">Conformité fournisseurs</a><a href="<?=url('production.php?projet_id='.$id)?>">Prototype & production</a></div><?php endif;?>
         <?php if ($currentStep === 1): ?>
-          <hr class="my-4">
-          <h4 class="mb-2" style="font-size:1rem;font-weight:600;">1. Contexte, objectifs et besoins utilisateurs</h4>
           <?php
-            $hasContexte = trim($specs['objectifs'] ?? '') !== ''
-                || trim($specs['resultats_attendus'] ?? '') !== ''
-                || trim($specs['cas_usage'] ?? '') !== ''
-                || trim($specs['profils_utilisateurs'] ?? '') !== '';
+            $projet_id=$id; $s=$specs; $jalonsList=loadJalons($cahier_id);
+            $returnView='processus'; $returnStep=1; $cdcEmbedded=false; $cdcInline=true;
+            require __DIR__.'/includes/views/cdc_editor.php';
+            ob_start();
           ?>
-          <?php if ($hasContexte): ?>
-            <div class="r1b-info-box"><p><strong>Objectifs et contexte</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['objectifs'] ?: '—') ?></p></div>
-            <div class="r1b-info-box"><p><strong>Hors périmètre du projet</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['resultats_attendus'] ?: '—') ?></p></div>
-            <div class="r1b-info-box"><p><strong>Contraintes</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['cas_usage'] ?: '—') ?></p></div>
-            <div class="r1b-info-box"><p><strong>Profils des utilisateurs finaux</strong></p><p class="mt-1" style="white-space:pre-wrap;"><?= e($specs['profils_utilisateurs'] ?: '—') ?></p></div>
-          <?php else: ?>
-            <p class="text-muted text-sm">Aucun contenu renseigné dans la section Contexte du CDC structuré.</p>
-          <?php endif; ?>
-          <?php ob_start(); ?>
-          <a class="cdc-modal-link" href="<?= url('cahier_form.php?projet_id=' . $id . '&step=1&return_view=processus&return_step=1') ?>" class="btn btn-primary btn-sm mt-2"><i class="fas fa-edit"></i> Éditer le contexte (CDC)</a>
-          <?php $stepEditorActions = ob_get_clean(); ?>
-
+          <button type="submit" form="cdcForm" class="btn btn-primary btn-sm" id="saveCdcDraft"><i class="fas fa-save" aria-hidden="true"></i> Enregistrer CDC</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="generateCdcPdf"><i class="fas fa-file-pdf" aria-hidden="true"></i> Générer/télécharger le CDC (PDF)</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="requestCdcValidation">Préparer une demande</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="importCdcReply">Importer la réponse</button>
+          <?php $stepEditorActions=ob_get_clean(); ?>
         <?php elseif ($currentStep === 2): ?>
           <?php
             $fonctionsSF = $specs['fonctions'] ?? [];
@@ -974,7 +965,6 @@ function stepClass(int $n, int $displayed, array $validated): string
               <?php ob_start(); ?>
               <div class="mt-3">
                 <button type="submit" form="formComposantsSt" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Enregistrer les composants</button>
-                <a href="<?= url('projet.php?id=' . $id . '&view=processus&step=2') ?>" class="btn btn-secondary btn-sm">Éditer les S.T. (étape 2)</a>
               </div>
               <?php $stepEditorActions = ob_get_clean(); ?>
             </form>
