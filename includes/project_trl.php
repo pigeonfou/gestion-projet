@@ -36,7 +36,7 @@ function trlSchema(PDO $db): void {
 function trlLoad(PDO $db, int $id): array {
     trlSchema($db);
     $q=$db->prepare('SELECT * FROM projet_trl WHERE projet_id=?');$q->execute([$id]);
-    $state = $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>2,'actuel'=>null,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
+    $state = $q->fetch(PDO::FETCH_ASSOC) ?: ['projet_id'=>$id,'entree'=>2,'actuel'=>2,'cible'=>null,'preuves'=>'','revision'=>0,'updated_at'=>null,'acteur_id'=>null];
     // Preserve stored values until an explicit reassessment; never invent a replacement level.
     $state['_excluded_levels'] = [];
     foreach (['entree', 'actuel', 'cible'] as $key) {
