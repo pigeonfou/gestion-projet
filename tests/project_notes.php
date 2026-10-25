@@ -13,4 +13,13 @@ changeProjectNote($db,1,4,'delete','',$n['id'],2);checkNote(count(projectNotes($
 changeProjectNote($db,1,4,'restore','',$n['id'],3);checkNote(count(projectNotes($db,1))===2,'Restauration');
 checkNote(str_contains($db->query('SELECT step_notes FROM projets WHERE id=1')->fetchColumn(),'Correction'),'Compatibilité');
 try{changeProjectNote($db,1,4,'add',' ');throw new LogicException('Vide accepté');}catch(InvalidArgumentException $e){}
+changeProjectNote($db,1,3,'add','Note étape trois');
+changeProjectNote($db,1,6,'add','Note étape six');
+$three=projectNotes($db,1,false,3);$six=projectNotes($db,1,false,6);
+checkNote(count($three)===1&&$three[0]['contenu']==='Note étape trois'&&count($six)===1&&$six[0]['contenu']==='Note étape six','Lecture isolée par étape');
+try { changeProjectNote($db,1,6,'edit','Déplacement interdit',(int)$three[0]['id'],1); throw new LogicException('Isolation étape absente'); } catch(RuntimeException $e) {}
+checkNote(projectNotes($db,1,false,3)[0]['contenu']==='Note étape trois','Édition inter-étapes refusée');
+require __DIR__.'/../includes/decision_dashboard.php';
+$snapshot=json_decode(ddSnapshot([],[],array_merge($three,$six),3),true);
+checkNote(count($snapshot['notes'])===1&&$snapshot['notes'][0]['etape']===3,'Archivage isolé par étape');
 echo "Notes : import, dates, isolation, modification, concurrence, suppression et restauration OK\n";
