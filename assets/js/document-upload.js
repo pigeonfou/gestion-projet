@@ -17,7 +17,7 @@ document.getElementById('fileUploadForm')?.addEventListener('submit', function (
         status.textContent = 'Transfert en cours : ' + Math.round(progress.value) + ' %.';
     };
     const evaluationButton = this.dataset.preservePage === 'true'
-        ? document.querySelector('.trl-evaluation-form button[type="submit"]') : null;
+        ? document.getElementById('trlEvaluationSave') : null;
     const releaseButtons = () => { button.disabled = false; if (evaluationButton) evaluationButton.disabled = false; };
     button.disabled = true;
     if (evaluationButton) evaluationButton.disabled = true;
