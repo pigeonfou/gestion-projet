@@ -80,3 +80,12 @@
 .trl-evidence .btn{justify-self:start}
 .trl-evidence progress{width:100%}
 .trl-evidence input[type=file]{max-width:100%;min-width:0}
+
+/* Prominent evaluation fields and a single action row after the evidence area. */
+.trl-form-grid .trl-level-field{padding:1rem;border:1px solid var(--border-default,#94a3b8);border-top:4px solid #c49a56;border-radius:10px;background:var(--surface-muted,#eef3f6);color:var(--text-primary,#142b3d);font-size:1rem;font-weight:700;gap:.75rem}
+.trl-form-grid .trl-level-field-actuel{border-top-color:#20b8ca}
+.trl-form-grid .trl-level-field-cible{border-top-color:#7aa747}
+.trl-form-grid .trl-level-field select{min-height:3.25rem;padding:.65rem .75rem;border:2px solid var(--border-default,#94a3b8);background:var(--surface-raised,#fff);color:var(--text-primary,#142b3d);font-size:.95rem;font-weight:600;line-height:1.5}
+.trl-form-grid .trl-level-field select:focus-visible{outline:3px solid var(--state-info,#078c9c);outline-offset:3px}
+.trl-evaluation > .trl-form-footer{margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-default,#94a3b8)}
+.trl-evaluation > .trl-form-footer .btn{min-height:2.75rem;padding:.7rem 1.15rem;font-weight:700}

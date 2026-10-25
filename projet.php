@@ -431,13 +431,13 @@ function stepClass(int $n, int $displayed, array $validated): string
 
 <link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>">
 <link rel="stylesheet" href="<?= url('assets/css/decision-dashboard.css?v=night-4') ?>">
-<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=4')?>">
+<link rel="stylesheet" href="<?=url('assets/css/project-trl.css?v=5')?>">
 <div class="r1b-layout">
   <!-- Sidebar projet -->
   <aside class="r1b-sidebar">
     <div class="r1b-sidebar-title"><?= e($projet['nom']) ?></div>
     <nav class="r1b-nav" aria-label="Navigation du projet">
-      <a href="<?=url('projet.php?id='.$id.'&view=trl')?>" class="<?=$view==='trl'?'active':''?>">Maturité technologique · TRL</a>
+      <a href="<?=url('projet.php?id='.$id.'&view=trl')?>" class="<?=$view==='trl'?'active':''?>">Maturité · TRL</a>
       <a href="<?= url('projet.php?id=' . $id . '&view=dashboard') ?>" class="<?= $view === 'dashboard' ? 'active' : '' ?>">
         <i class="fas fa-th-large"></i> Synthèse du projet
       </a>
