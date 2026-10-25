@@ -6,15 +6,15 @@ $owner=['id'=>1,'role'=>'utilisateur'];$admin=['id'=>3,'role'=>'admin'];
 $db->exec("CREATE TABLE documents(id INTEGER PRIMARY KEY,projet_id INTEGER,phase TEXT,nom_fichier TEXT,taille INTEGER,date_upload TEXT)");
 function trlCheck(bool $ok,string $msg):void {if(!$ok)throw new LogicException($msg);}
 function trlReject(callable $fn):void {$rejected=false;try{$fn();}catch(InvalidArgumentException $e){$rejected=true;}trlCheck($rejected,'Invalid or forbidden evaluation accepted');}
-trlCheck(array_keys(trlLevels())===[2,3,4,5,6,7] && trlLoad($db,1)['actuel']===null,'AID/DGA subset and no fabricated maturity');
+trlCheck(array_keys(trlLevels())===[2,3,4,5,6,7] && trlLoad($db,1)['actuel']===2,'AID/DGA subset and initial current level');
 foreach(['0','1','8','9',1,8,9,'10','3.5','03',[],true] as $bad)trlReject(fn()=>trlLevel($bad));
-trlCheck(trlLoad($db,1)['entree']===2 && trlLoad($db,1)['actuel']===null,'Default entry is concept, current remains unevaluated');
+trlCheck(trlLoad($db,1)['entree']===2 && trlLoad($db,1)['actuel']===2,'Entry and current default to concept level');
 trlCheck(trlGroups()['concept']['levels']===[2] && trlGroups()['ri']['levels']===[3,4,5],'Concept separate from RI');
 trlReject(fn()=>trlSave($db,1,['id'=>2,'role'=>'utilisateur'],['revision'=>0]));
 trlReject(fn()=>trlSave($db,1,$owner,['revision'=>0,'actuel'=>6,'preuves'=>'']));
 trlSave($db,1,$owner,['revision'=>'0','entree'=>'3','actuel'=>'4','cible'=>'7','preuves'=>'Prototype essayé en laboratoire']);
 $first=trlLoad($db,1);trlCheck($first['actuel']===4 && $first['revision']===1 && $first['cible']===7,'Stored levels and revision');
-trlCheck(trlLoad($db,2)['actuel']===null,'Project isolation');
+trlCheck(trlLoad($db,2)['actuel']===2,'Project isolation and initial current level');
 trlCheck((int)$db->query('SELECT current_step FROM projets WHERE id=1')->fetchColumn()===3,'TRL does not validate process step');
 trlReject(fn()=>trlSave($db,1,$owner,['revision'=>0,'actuel'=>5,'preuves'=>'stale']));
 trlSave($db,1,$admin,['revision'=>1,'entree'=>3,'actuel'=>3,'cible'=>6,'preuves'=>'Réévaluation après essai']);
@@ -58,4 +58,7 @@ trlCheck($snapshot['documents_justificatifs'][0]['id']===1,'File-only proof acce
 trlCheck(str_contains($html,'type="file"') && !str_contains($html,'accept=') && str_contains($html,'usage=trl'),'All file types upload available to managers');
 trlCheck(!str_contains($readonly,'type="file"'),'Read-only user cannot upload proof');
 trlCheck(!str_contains($html,'Deux natures de projet, cinq niveaux de maturité'),'Obsolete subtitle removed');
+$db->exec("INSERT INTO projets VALUES(3,1,1,'actif');INSERT INTO projet_trl(projet_id,entree,actuel,revision) VALUES(3,2,NULL,1)");
+trlCheck(trlLoad($db,3)['actuel']===null,'Explicit unevaluated state is preserved');
+trlCheck(trlLoad($db,1)['actuel']===3,'Existing evaluated level is preserved');
 echo "TRL: AID/DGA levels 2–7, unknown initial state, permissions, evidence, persistence, isolation, revision and audit OK\n";
