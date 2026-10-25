@@ -136,7 +136,7 @@ if($cdcMode==='history' && ($_GET['fragment']??'')==='1'){
 $pageTitle='Validation du CDC — '.(string)$project['nom'];
 require __DIR__.'/includes/header.php';
 ?>
-<?php if($cdcEmbedded):?><style>.cdc-embedded .header,.cdc-embedded .footer{display:none!important}.cdc-embedded .main-content{width:100%;max-width:none;margin:0;padding:1rem}</style><?php endif;?>
+<?php if($cdcEmbedded):?><style>.cdc-embedded .header,.cdc-embedded .footer{display:none!important}.cdc-embedded{display:block;min-height:0;height:auto}.cdc-embedded .main-content{display:block;flex:none;min-height:0;width:100%;max-width:none;margin:0;padding:1rem}.cdc-embedded .card.card-body{margin:0!important;padding:0;border:0;box-shadow:none;background:transparent}.cdc-embedded .card-body>h2{display:none}.cdc-embedded .form-row{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch!important}.cdc-embedded .form-group{min-width:0!important;margin-bottom:0}.cdc-embedded .form-control{width:100%;box-sizing:border-box}.cdc-embedded form .btn{justify-self:end;max-width:100%;white-space:normal}.cdc-embedded .card-body>p{margin:0 0 1rem;line-height:1.6}.cdc-embedded form:not(.form-row){display:grid;gap:1rem}.cdc-embedded input[type=file]{max-width:100%}</style><?php endif;?>
 <?php if(!$cdcEmbedded):?><div class="page-header"><h1>Validation du cahier des charges</h1><a class="btn btn-secondary" href="<?=url('projet.php?id='.$pid.'&view=processus&step=1&onglet=4')?>">Retour au projet</a></div><?php endif;?>
 <?php if($error!==''):?><div class="alert alert-error" role="alert"><?=e($error)?></div><?php endif;?>
 <?php if($cdcMode==='overview'): ?>
@@ -170,6 +170,13 @@ require __DIR__.'/includes/header.php';
 <?php endif;?>
 <?php if($cdcMode==='overview'):?></dialog><?php endif;?>
 <?php if(in_array($cdcMode,['overview','history'],true))require __DIR__.'/includes/views/cdc_validation_history.php';?>
-<style>.cdc-popup{width:min(92vw,850px);max-height:90vh;overflow:auto;padding:1rem;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}.cdc-popup::backdrop{background:rgba(3,13,25,.65)}</style>
+<style>.cdc-popup{position:fixed;inset:0;margin:auto;width:min(92vw,850px);max-height:90vh;overflow:auto;padding:1rem;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}.cdc-popup::backdrop{background:rgba(3,13,25,.65)}</style>
 <script>document.querySelectorAll('[data-open-validation]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.openValidation).showModal()));document.querySelectorAll('[data-close-validation]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));</script>
+<?php if($cdcEmbedded):?><script>
+(() => {
+ const content=document.querySelector('.main-content');if(!content||window.parent===window)return;
+ const report=()=>window.parent.postMessage({type:'cdc-dialog-size',height:Math.ceil(content.getBoundingClientRect().height)},window.location.origin);
+ new ResizeObserver(report).observe(content);window.addEventListener('load',report);report();
+})();
+</script><?php endif;?>
 <?php require __DIR__.'/includes/footer.php';?>

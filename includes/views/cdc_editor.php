@@ -181,5 +181,5 @@
  <iframe title="<?=e($cdcModalTitle)?>" src="about:blank" data-cdc-validation-mode="<?=e($cdcMode)?>"></iframe>
 </dialog>
 <?php endforeach; ?>
-<link rel="stylesheet" href="<?=url('assets/css/cdc-editor.css?v=1')?>">
-<script src="<?=url('assets/js/cdc-editor.js?v=1')?>" defer></script>
+<link rel="stylesheet" href="<?=url('assets/css/cdc-editor.css?v=2')?>">
+<script src="<?=url('assets/js/cdc-editor.js?v=2')?>" defer></script>

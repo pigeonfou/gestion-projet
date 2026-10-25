@@ -51,15 +51,17 @@
 
 .cdc-stepper .step[aria-selected=true]{border-color:var(--state-info,#079dad);color:var(--text-primary,#132839);background:var(--surface-muted,#e2e8f0)}
 .cdc-stepper .step:focus-visible{outline:2px solid var(--state-info,#079dad);outline-offset:2px}
-.cdc-validation-dialog{width:min(94vw,900px);height:min(86vh,760px);max-width:none;max-height:none;padding:0;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}
+.cdc-validation-dialog{position:fixed;inset:0;margin:auto;width:min(calc(100vw - 2rem),760px);height:min(78vh,460px);max-width:calc(100vw - 2rem);max-height:calc(100dvh - 2rem);padding:0;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}
 .cdc-validation-dialog[open]{display:flex;flex-direction:column}
 .cdc-validation-dialog::backdrop{background:rgba(3,13,25,.65)}
-.cdc-validation-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--border-default,#94a3b8)}
+.cdc-validation-dialog>header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--border-default,#94a3b8)}
 .cdc-validation-dialog h2{font-size:1.05rem;margin:0}
-.cdc-validation-dialog iframe{border:0;width:100%;flex:1;min-height:0}
+.cdc-validation-dialog iframe{display:block;border:0;width:100%;flex:1;min-height:0;background:var(--surface-raised,#fff)}
 .r1b-step-heading .trl-stage-badge{margin-left:auto}
 .r1b-step-tools>#saveCdcDraft,.r1b-step-tools>#generateCdcPdf,.r1b-step-tools>#requestCdcValidation,.r1b-step-tools>#importCdcReply{display:flex;width:100%;justify-content:center;margin-bottom:.6rem}
 #cdcForm .card-header h2{font-size:1.05rem}
 #cdcForm .card{margin-bottom:.75rem}
 #cdcSaveStatus:empty{display:none}
-@media(max-width:640px){.cdc-stepper .step{font-size:.75rem;min-width:calc(50% - .35rem)}.cdc-validation-dialog{width:98vw;height:94dvh}}
+@media(max-width:640px){.cdc-stepper .step{font-size:.75rem;min-width:calc(50% - .35rem)}.cdc-validation-dialog{width:calc(100vw - 1rem);max-width:calc(100vw - 1rem);max-height:calc(100dvh - 1rem)}}
+
+.cdc-confirm-dialog{position:fixed;inset:0;margin:auto;max-height:calc(100dvh - 2rem);overflow:auto}
