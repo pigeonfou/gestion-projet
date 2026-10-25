@@ -146,11 +146,18 @@ require __DIR__.'/includes/header.php';
 <?php if(in_array($cdcMode,['overview','request'],true)):?>
 <section class="card card-body" style="margin-bottom:1rem">
  <h2>Préparer une demande</h2>
- <p>OddWorks archive la version PDF du CDC lors de la première demande, puis génère un brouillon Outlook <code>.msg</code> avec le PDF joint. Pour le même CDC en attente, un nouveau clic régénère le brouillon avec la même référence sans créer une nouvelle archive ni une entrée d’historique.</p>
+ <div class="cdc-dialog-intro">
+  <p class="cdc-dialog-lead">Soumettez le cahier des charges à votre interlocuteur pour validation.</p>
+  <ol class="cdc-dialog-steps">
+   <li>Renseignez le destinataire pour créer un <strong>brouillon Outlook</strong>, avec le CDC au format PDF en pièce jointe.</li>
+   <li>Ouvrez le fichier <code>.msg</code> téléchargé dans Outlook, vérifiez le message, puis envoyez-le.</li>
+  </ol>
+  <p class="cdc-dialog-tip"><i class="fas fa-info-circle" aria-hidden="true"></i> Besoin de recommencer ? Tant que le CDC est inchangé et la validation en attente, OddWorks reprend la même demande et son archive.</p>
+ </div>
  <form method="post" class="form-row" style="align-items:end;gap:1rem"><?=csrfField()?>
   <input type="hidden" name="projet_id" value="<?=$pid?>"><input type="hidden" name="action" value="start"><input type="hidden" name="embedded" value="<?=$cdcEmbedded?'1':'0'?>">
-  <div class="form-group" style="flex:1;min-width:260px"><label for="recipient">Destinataire</label><input class="form-control" id="recipient" type="email" name="recipient" required value="<?=e((string)($prepared['recipient']??($latestPending['recipient']??'francois.couraud@procomm-mmc.com')))?>"></div>
-  <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Générer le brouillon Outlook (.msg)</button>
+  <div class="form-group" style="flex:1;min-width:260px"><label for="recipient">Adresse e-mail du destinataire</label><input class="form-control" id="recipient" type="email" name="recipient" required value="<?=e((string)($prepared['recipient']??($latestPending['recipient']??'francois.couraud@procomm-mmc.com')))?>"></div>
+  <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Créer le brouillon Outlook (.msg)</button>
  </form>
 </section>
 <?php endif;?>
@@ -159,18 +166,40 @@ require __DIR__.'/includes/header.php';
  <?php if(($_GET['complete']??'')==='1'):?><p class="alert alert-success">Réponse importée et archivée dans les fichiers du projet.</p><script>if(window.parent!==window)window.parent.postMessage({type:'cdc-response-imported'},window.location.origin);</script>
  <?php elseif($latestPending):?>
 <section class="card card-body" style="margin-bottom:1rem">
- <h2>Importer la réponse</h2><p>Exportez le message reçu depuis Outlook en <code>.eml</code> ou <code>.msg</code>, puis importez-le ici. Le courriel doit contenir la référence <strong><?=e((string)$latestPending['reference'])?></strong>, une décision explicite « CDC Accepté » ou « CDC Refusé », et le champ « Commentaire : ».</p>
+ <h2>Importer la réponse</h2>
+ <div class="cdc-dialog-intro">
+  <p class="cdc-dialog-lead">Enregistrez la décision reçue pour finaliser la validation du cahier des charges.</p>
+  <ol class="cdc-dialog-steps">
+   <li>Depuis Outlook, enregistrez le <strong>message de réponse</strong> au format <code>.eml</code> ou <code>.msg</code>.</li>
+   <li>Vérifiez qu’il contient la référence ci-dessous, une décision <strong>« CDC Accepté »</strong> ou <strong>« CDC Refusé »</strong>, ainsi que la rubrique <strong>« Commentaire : »</strong>.</li>
+   <li>Sélectionnez le fichier, puis lancez l’import.</li>
+  </ol>
+  <div class="cdc-dialog-reference"><span>Référence de la demande</span><strong><?=e((string)$latestPending['reference'])?></strong></div>
+  <p class="cdc-dialog-tip"><i class="fas fa-archive" aria-hidden="true"></i> OddWorks relève la décision, le commentaire, la date et l’expéditeur, puis archive le message original avec ces informations dans les fichiers du projet.</p>
+ </div>
  <form method="post" enctype="multipart/form-data"><?=csrfField()?>
   <input type="hidden" name="projet_id" value="<?=$pid?>"><input type="hidden" name="action" value="import"><input type="hidden" name="validation_id" value="<?=(int)$latestPending['id']?>"><input type="hidden" name="embedded" value="<?=$cdcEmbedded?'1':'0'?>">
-  <div class="form-group"><label for="replyFile">Courriel exporté (.eml ou .msg)</label><input class="form-control" id="replyFile" type="file" name="reply_file" accept=".eml,.msg,message/rfc822,application/vnd.ms-outlook" required></div>
+  <div class="form-group"><label for="replyFile">Fichier de réponse Outlook</label><input class="form-control" id="replyFile" aria-describedby="cdcReplyHelp" type="file" name="reply_file" accept=".eml,.msg,message/rfc822,application/vnd.ms-outlook" required><p id="cdcReplyHelp" class="cdc-dialog-help">Formats acceptés : .eml et .msg · Taille maximale : 30 Mo.</p></div>
   <button class="btn btn-primary" type="submit"><i class="fas fa-file-import"></i> Importer et archiver la réponse</button>
  </form>
 </section>
- <?php else:?><p>Aucune demande de validation en attente. Préparez d’abord une demande pour ce CDC.</p><?php endif;?>
+ <?php else:?><p class="cdc-dialog-lead">Aucune réponse n’est attendue pour le moment.</p><p>Préparez d’abord une demande de validation. Vous pourrez ensuite revenir ici pour importer la réponse reçue dans Outlook.</p><?php endif;?>
 <?php endif;?>
 <?php if($cdcMode==='overview'):?></dialog><?php endif;?>
 <?php if(in_array($cdcMode,['overview','history'],true))require __DIR__.'/includes/views/cdc_validation_history.php';?>
-<style>.cdc-popup{position:fixed;inset:0;margin:auto;width:min(92vw,850px);max-height:90vh;overflow:auto;padding:1rem;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}.cdc-popup::backdrop{background:rgba(3,13,25,.65)}</style>
+<style>
+.cdc-dialog-intro{margin-bottom:1.25rem}
+.cdc-dialog-lead{font-size:1rem;line-height:1.6;font-weight:600;margin:0 0 1rem}
+.cdc-dialog-steps{padding-left:1.4rem;margin:0 0 1rem;font-size:.875rem;line-height:1.65}
+.cdc-dialog-steps li{padding-left:.25rem;margin:.6rem 0}
+.cdc-dialog-steps li::marker{color:var(--state-info,#089baa);font-weight:700}
+.cdc-dialog-tip{display:block;padding:.75rem .9rem;margin:.8rem 0 0;border-left:3px solid var(--state-info,#089baa);border-radius:0 8px 8px 0;background:var(--surface-muted,#edf4f6);color:var(--text-secondary,#40586c);font-size:.8rem;line-height:1.6}
+.cdc-dialog-tip i{margin-right:.3rem}
+.cdc-dialog-reference{display:flex;flex-direction:column;gap:.35rem;padding:.8rem 1rem;border:1px solid var(--border-default,#94a3b8);border-radius:8px}
+.cdc-dialog-reference span{font-size:.75rem;color:var(--text-secondary,#52677a)}
+.cdc-dialog-reference strong{font-size:.85rem;overflow-wrap:anywhere}
+.cdc-dialog-help{font-size:.75rem;color:var(--text-secondary,#52677a);margin:.45rem 0 0}
+.cdc-popup{position:fixed;inset:0;margin:auto;width:min(92vw,850px);max-height:90vh;overflow:auto;padding:1rem;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}.cdc-popup::backdrop{background:rgba(3,13,25,.65)}</style>
 <script>document.querySelectorAll('[data-open-validation]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.openValidation).showModal()));document.querySelectorAll('[data-close-validation]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));</script>
 <?php if($cdcEmbedded):?><script>
 (() => {
