@@ -3,7 +3,6 @@ require __DIR__.'/../includes/cahier_specs.php';
 $db=new PDO('sqlite::memory:');$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 $db->exec("CREATE TABLE projets(id INTEGER PRIMARY KEY);INSERT INTO projets VALUES(1)");
 function e($value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
-function url($path): string { return '/oddworks/'.$path; }
 function csrfField(): string { return '<input type="hidden" name="_csrf" value="test">'; }
 function editorCheck(bool $ok,string $message): void { if(!$ok)throw new RuntimeException($message); }
 $projet_id=1;$returnView='processus';$returnStep=1;$cdcEmbedded=false;$cdcInline=true;
