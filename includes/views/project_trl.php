@@ -83,13 +83,13 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] === 2 ? 'conce
    <p>Le niveau actuel s’appuie sur des preuves. La cible reste un objectif ; la validation d’une étape R1b ne modifie pas automatiquement le TRL.</p>
   </div>
   <?php if (projectCanManage($db, $id, $user)): ?>
-  <form method="post" action="<?= e($trlUrl) ?>" class="trl-evaluation-form">
+  <form method="post" action="<?= e($trlUrl) ?>" class="trl-evaluation-form" id="trlEvaluationForm">
    <?= csrfField() ?>
    <input type="hidden" name="action" value="save_trl">
    <input type="hidden" name="revision" value="<?= (int)$trl['revision'] ?>">
    <div class="trl-form-grid">
    <?php foreach (['entree'=>'Niveau à l’entrée', 'actuel'=>'Niveau actuel évalué', 'cible'=>'Niveau cible'] as $key => $title): ?>
-    <label for="trl-<?= $key ?>"><?= e($title) ?>
+    <label class="trl-level-field trl-level-field-<?= e($key) ?>" for="trl-<?= $key ?>"><?= e($title) ?>
      <select id="trl-<?= $key ?>" name="<?= $key ?>" class="form-control">
       <option value="">Non renseigné</option>
       <?php foreach ($trlGroups as $group): ?>
@@ -104,7 +104,6 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] === 2 ? 'conce
    <label class="trl-proof-label" for="trl-preuves">Preuves, environnement d’essai et justification</label>
    <textarea id="trl-preuves" name="preuves" class="form-control" rows="5" maxlength="10000" aria-describedby="trl-proof-help" placeholder="Décrivez ce qui a été démontré, dans quel environnement et avec quels résultats. Indiquez les références des essais ou documents justificatifs."><?= e($trl['preuves']) ?></textarea>
    <p id="trl-proof-help" class="trl-note">Une justification écrite ou un fichier justificatif est obligatoire pour renseigner le niveau actuel. Une réévaluation à la baisse est possible si les résultats le nécessitent.</p>
-   <div class="trl-form-footer"><span class="trl-note"><?= $trl['updated_at'] ? e('Dernière évaluation : ' . $trl['updated_at'] . ' UTC') : 'Aucune évaluation enregistrée' ?></span><button class="btn btn-primary" type="submit">Enregistrer l’évaluation</button></div>
   </form>
   <?php else: ?>
    <?php if ($trl['preuves'] !== ''): ?><p class="trl-proof"><?= e($trl['preuves']) ?></p><?php else: ?><p class="trl-note">Aucune justification enregistrée.</p><?php endif; ?>
@@ -131,9 +130,12 @@ $trlPhase = $trl['actuel'] === null ? null : ((int)$trl['actuel'] === 2 ? 'conce
    <p id="uploadStatus" role="status" aria-live="polite"></p>
    <p class="trl-note">Le fichier est enregistré immédiatement dans les documents du projet sur Nextcloud. Enregistrez ensuite l’évaluation pour y référencer les preuves déposées.</p>
   </form>
-  <script src="<?= e(url('assets/js/document-upload.js?v=2')) ?>" defer></script>
+  <script src="<?= e(url('assets/js/document-upload.js?v=3')) ?>" defer></script>
   <?php endif; ?>
  </div>
+  <?php if (projectCanManage($db, $id, $user)): ?>
+   <div class="trl-form-footer"><span class="trl-note"><?= $trl['updated_at'] ? e('Dernière évaluation : ' . $trl['updated_at'] . ' UTC') : 'Aucune évaluation enregistrée' ?></span><button class="btn btn-primary" type="submit" id="trlEvaluationSave" form="trlEvaluationForm">Enregistrer l’évaluation</button></div>
+  <?php endif; ?>
  </section>
 
  <details class="trl-history">
