@@ -29,6 +29,13 @@
   const endpoint=new URL(form.dataset.validationUrl,location.href);endpoint.searchParams.set('embedded','1');endpoint.searchParams.set('mode',mode);
   frame.src=endpoint.href;dialog.showModal();
  }
+ window.addEventListener('message',event=>{
+  if(event.origin!==location.origin||event.data?.type!=='cdc-dialog-size'||!Number.isFinite(event.data.height))return;
+  const dialog=[...document.querySelectorAll('.cdc-validation-dialog')].find(d=>d.open&&d.querySelector('iframe').contentWindow===event.source);
+  if(!dialog)return;
+  const header=dialog.querySelector('header').getBoundingClientRect().height;
+  dialog.style.height=Math.max(180,Math.min(window.innerHeight-32,event.data.height+header+4))+'px';
+ });
  document.querySelectorAll('[data-close-cdc-validation]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
  document.querySelectorAll('.cdc-validation-dialog').forEach(d=>d.addEventListener('close',refreshHistory));
  window.addEventListener('message',e=>{const d=document.getElementById('cdcValidation-import');if(e.origin===location.origin&&e.source===d.querySelector('iframe').contentWindow&&e.data?.type==='cdc-response-imported'){d.close();status.textContent='Réponse importée et archivée.';refreshHistory();}});
