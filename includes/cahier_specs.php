@@ -790,3 +790,8 @@ function getOrCreateCahierId(int $projetId): int
     }
     return $cid;
 }
+
+/** Revision token for the CDC editor; PDF generation remains explicitly requested. */
+function cdcEditorRevision(array $specs, array $milestones): string {
+    return hash('sha256',json_encode([$specs,$milestones],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
+}
