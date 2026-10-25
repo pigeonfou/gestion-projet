@@ -20,6 +20,8 @@ if(!$cahierId){setFlash('error','Enregistrez le cahier des charges avant de dema
 $specs=loadSpecs($cahierId);$milestones=loadJalons($cahierId);
 $currentHash=cdcGeneratedPdfHash($pid,(string)$project['nom'],$specs,$milestones);
 $error='';$prepared=null;
+$cdcMode=(string)($_GET['mode']??'overview');
+if(!in_array($cdcMode,['overview','request','import','history'],true))$cdcMode='overview';
 
 if($_SERVER['REQUEST_METHOD']==='POST'){
     csrfRequire();
@@ -115,7 +117,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
             $db->prepare("UPDATE cdc_validations SET status=?,decision=?,comment=?,validator_name=?,validator_email=?,validated_at=?,response_format=?,response_remote_path=?,archive_remote_path=? WHERE id=? AND status='pending'")
                 ->execute([$result['decision'],$result['decision'],$result['comment'],$displaySender,$senderEmail,$validatedAt,$ext,$zipRemote,$zipRemote,$validationId]);
             setFlash('success','Réponse importée : CDC '.($result['decision']==='accepté'?'accepté':'refusé').'. Le message original et les informations extraites sont archivés dans les fichiers du projet.');
-            redirect('cdc_validation.php?projet_id='.$pid.($cdcEmbedded?'&embedded=1':''));
+            redirect('cdc_validation.php?projet_id='.$pid.'&mode=import&complete=1'.($cdcEmbedded?'&embedded=1':''));
         }else throw new RuntimeException('Action de validation inconnue.');
     }catch(Throwable $e){
         error_log('OddWorks CDC validation project '.$pid.': '.get_class($e).' '.$e->getMessage());
@@ -125,12 +127,23 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 
 $q=$db->prepare('SELECT * FROM cdc_validations WHERE projet_id=? ORDER BY id DESC');$q->execute([$pid]);$history=$q->fetchAll();
 $latestPending=null;foreach($history as $row){if($row['status']==='pending'){$latestPending=$row;break;}}
+
+$cdcHistory=$history;$cdcHistoryProject=$pid;
+if($cdcMode==='history' && ($_GET['fragment']??'')==='1'){
+    header('Content-Type: text/html; charset=utf-8');
+    require __DIR__.'/includes/views/cdc_validation_history.php';exit;
+}
 $pageTitle='Validation du CDC — '.(string)$project['nom'];
 require __DIR__.'/includes/header.php';
 ?>
-<?php if($cdcEmbedded):?><style>.cdc-embedded .header,.cdc-embedded .footer{display:none!important}.cdc-embedded .main-content{width:100%;max-width:none;margin:0;padding:1rem}.cdc-embedded .page-header>a{display:none}</style><?php endif;?>
-<div class="page-header"><div><h1><i class="fas fa-clipboard-check"></i> Validation du cahier des charges</h1><p class="text-muted">Projet : <strong><?=e((string)$project['nom'])?></strong></p></div><a class="btn btn-secondary" href="<?=url('projet.php?id='.$pid.'&view=documents')?>">Retour au projet</a></div>
+<?php if($cdcEmbedded):?><style>.cdc-embedded .header,.cdc-embedded .footer{display:none!important}.cdc-embedded .main-content{width:100%;max-width:none;margin:0;padding:1rem}</style><?php endif;?>
+<?php if(!$cdcEmbedded):?><div class="page-header"><h1>Validation du cahier des charges</h1><a class="btn btn-secondary" href="<?=url('projet.php?id='.$pid.'&view=processus&step=1&onglet=4')?>">Retour au projet</a></div><?php endif;?>
 <?php if($error!==''):?><div class="alert alert-error" role="alert"><?=e($error)?></div><?php endif;?>
+<?php if($cdcMode==='overview'): ?>
+ <div class="pf-links"><button type="button" class="btn btn-primary" data-open-validation="validationRequest">Préparer une demande</button><button type="button" class="btn btn-secondary" data-open-validation="validationImport">Importer la réponse</button></div>
+<?php endif;?>
+<?php if($cdcMode==='overview'):?><dialog id="validationRequest" class="cdc-popup" aria-label="Préparer une demande"><button type="button" class="btn btn-secondary" data-close-validation>Fermer</button><?php endif;?>
+<?php if(in_array($cdcMode,['overview','request'],true)):?>
 <section class="card card-body" style="margin-bottom:1rem">
  <h2>Préparer une demande</h2>
  <p>OddWorks archive la version PDF du CDC lors de la première demande, puis génère un brouillon Outlook <code>.msg</code> avec le PDF joint. Pour le même CDC en attente, un nouveau clic régénère le brouillon avec la même référence sans créer une nouvelle archive ni une entrée d’historique.</p>
@@ -140,7 +153,11 @@ require __DIR__.'/includes/header.php';
   <button type="submit" class="btn btn-primary"><i class="fas fa-envelope"></i> Générer le brouillon Outlook (.msg)</button>
  </form>
 </section>
-<?php if($latestPending):?>
+<?php endif;?>
+<?php if($cdcMode==='overview'):?></dialog><dialog id="validationImport" class="cdc-popup" aria-label="Importer la réponse"><button type="button" class="btn btn-secondary" data-close-validation>Fermer</button><?php endif;?>
+<?php if(in_array($cdcMode,['overview','import'],true)):?>
+ <?php if(($_GET['complete']??'')==='1'):?><p class="alert alert-success">Réponse importée et archivée dans les fichiers du projet.</p><script>if(window.parent!==window)window.parent.postMessage({type:'cdc-response-imported'},window.location.origin);</script>
+ <?php elseif($latestPending):?>
 <section class="card card-body" style="margin-bottom:1rem">
  <h2>Importer la réponse</h2><p>Exportez le message reçu depuis Outlook en <code>.eml</code> ou <code>.msg</code>, puis importez-le ici. Le courriel doit contenir la référence <strong><?=e((string)$latestPending['reference'])?></strong>, une décision explicite « CDC Accepté » ou « CDC Refusé », et le champ « Commentaire : ».</p>
  <form method="post" enctype="multipart/form-data"><?=csrfField()?>
@@ -149,9 +166,10 @@ require __DIR__.'/includes/header.php';
   <button class="btn btn-primary" type="submit"><i class="fas fa-file-import"></i> Importer et archiver la réponse</button>
  </form>
 </section>
+ <?php else:?><p>Aucune demande de validation en attente. Préparez d’abord une demande pour ce CDC.</p><?php endif;?>
 <?php endif;?>
-<section class="card card-body"><h2>Historique des validations</h2>
-<?php if(!$history):?><p>Aucune demande de validation enregistrée.</p><?php else:?><div class="table-responsive"><table class="table"><thead><tr><th>Référence</th><th>État</th><th>Décision</th><th>Validateur</th><th>Date du courriel</th><th>Commentaire</th><th>Archive</th></tr></thead><tbody>
-<?php foreach($history as $item):?><tr><td><?=e((string)$item['reference'])?></td><td><?=e($item['status']==='pending'?'En attente':($item['status']==='accepté'?'Clôturée — acceptée':'Clôturée — refusée'))?></td><td><?=e($item['decision']?('CDC '.($item['decision']==='accepté'?'Accepté':'Refusé')):'—')?></td><td><?=e((string)($item['validator_name']??'—'))?><?=!empty($item['validator_email'])?'<br><small>'.e((string)$item['validator_email']).'</small>':''?></td><td><?=e((string)($item['validated_at']??'—'))?></td><td><?=nl2br(e((string)($item['comment']??'—')))?></td><td><?php if(!empty($item['archive_remote_path'])):?><a href="<?=url('documents_externes.php?projet_id='.$pid)?>">Voir les fichiers du projet</a><?php else:?>—<?php endif;?></td></tr><?php endforeach;?></tbody></table></div><?php endif;?>
-</section>
+<?php if($cdcMode==='overview'):?></dialog><?php endif;?>
+<?php if(in_array($cdcMode,['overview','history'],true))require __DIR__.'/includes/views/cdc_validation_history.php';?>
+<style>.cdc-popup{width:min(92vw,850px);max-height:90vh;overflow:auto;padding:1rem;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}.cdc-popup::backdrop{background:rgba(3,13,25,.65)}</style>
+<script>document.querySelectorAll('[data-open-validation]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.openValidation).showModal()));document.querySelectorAll('[data-close-validation]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));</script>
 <?php require __DIR__.'/includes/footer.php';?>

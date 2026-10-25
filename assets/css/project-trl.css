@@ -89,3 +89,5 @@
 .trl-form-grid .trl-level-field select:focus-visible{outline:3px solid var(--state-info,#078c9c);outline-offset:3px}
 .trl-evaluation > .trl-form-footer{margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--border-default,#94a3b8)}
 .trl-evaluation > .trl-form-footer .btn{min-height:2.75rem;padding:.7rem 1.15rem;font-weight:700}
+
+.r1b-step-heading .trl-stage-badge{margin-left:auto}

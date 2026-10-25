@@ -1,0 +1,65 @@
+
+.cdc-confirm-dialog { width:min(92vw, 520px); border:1px solid var(--border, #cbd5e1); border-radius:12px; padding:0; color:var(--text-primary, #0f172a); background:var(--surface, #fff); box-shadow:0 24px 80px rgba(0,0,0,.28); }
+.cdc-confirm-dialog::backdrop { background:rgba(4,15,28,.58); backdrop-filter:blur(2px); }
+.cdc-confirm-content { padding:1.25rem; }
+.cdc-confirm-content h2 { margin:0 0 .75rem; font-size:1.15rem; }
+.cdc-confirm-content p { margin:.5rem 0 1.25rem; line-height:1.55; }
+.cdc-confirm-actions { display:flex; justify-content:flex-end; gap:.65rem; }
+.cdc-embedded .header, .cdc-embedded .footer { display:none !important; }
+.cdc-embedded .main-content { width:100%; max-width:none; margin:0; padding:1rem; }
+.cdc-embedded .page-header > a { display:none; }
+.cdc-stepper {
+  display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .5rem;
+}
+.cdc-stepper .step {
+  flex: 1; min-width: 100px; padding: .5rem .4rem; border: 1px solid var(--border);
+  background: var(--surface-raised, #fff); border-radius: 6px; cursor: pointer; font-size: .75rem;
+  display: flex; align-items: center; gap: .35rem; color: var(--text-muted);
+}
+.cdc-stepper .step span {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--surface-muted, #e2e8f0);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: .7rem;
+}
+.cdc-stepper .step.active { border-color: var(--primary-light); color: var(--primary); font-weight: 600; }
+.cdc-stepper .step.active span { background: var(--primary-light); color: #fff; }
+.cdc-stepper .step.done span { background: var(--success); color: #fff; }
+.cdc-progress { height: 4px; background: var(--surface-muted, #e2e8f0); border-radius: 2px; margin-bottom: 1rem; overflow: hidden; }
+.cdc-progress-bar { height: 100%; background: var(--primary-light); transition: width .25s; }
+.cdc-step-panel { display: none; }
+.cdc-step-panel.active { display: block; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .35rem .75rem; }
+.cdc-form-actions {
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+  margin: 1.25rem 0 2rem; padding: 1rem; background: var(--surface-raised, #fff);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .cdc-stepper .step { min-width: 44px; font-size: 0; }
+  .cdc-stepper .step span { font-size: .7rem; }
+}
+
+.sf-table-wrap { overflow-x: auto; }
+.sf-table { width: 100%; border-collapse: collapse; font-size: .85rem; background: var(--surface-raised, #fff); }
+.sf-table th, .sf-table td { border: 1px solid var(--border, var(--border-default, #e2e8f0)); padding: .4rem .5rem; vertical-align: middle; }
+.sf-table th { background: var(--surface-raised, #f8fafc); font-weight: 600; text-align: left; }
+.sf-table .sf-id { font-weight: 700; color: var(--state-info, #5b21b6); font-family: ui-monospace, monospace; white-space: nowrap; }
+.sf-table input[type="text"], .sf-table select { width: 100%; font-size: .85rem; }
+.btn-sf-del { background: transparent; border: none; color: #dc2626; font-size: 1.25rem; cursor: pointer; line-height: 1; padding: .15rem .35rem; border-radius: 4px; }
+.btn-sf-del:hover { background: var(--state-danger-bg, #fef2f2); }
+
+.section-label { font-weight: 600; font-size: .9rem; margin: 1rem 0 .5rem; color: var(--text-secondary, #334155); }
+
+.cdc-stepper .step[aria-selected=true]{border-color:var(--state-info,#079dad);color:var(--text-primary,#132839);background:var(--surface-muted,#e2e8f0)}
+.cdc-stepper .step:focus-visible{outline:2px solid var(--state-info,#079dad);outline-offset:2px}
+.cdc-validation-dialog{width:min(94vw,900px);height:min(86vh,760px);max-width:none;max-height:none;padding:0;border:1px solid var(--border-default,#94a3b8);border-radius:12px;background:var(--surface-raised,#fff);color:var(--text-primary,#132839)}
+.cdc-validation-dialog[open]{display:flex;flex-direction:column}
+.cdc-validation-dialog::backdrop{background:rgba(3,13,25,.65)}
+.cdc-validation-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--border-default,#94a3b8)}
+.cdc-validation-dialog h2{font-size:1.05rem;margin:0}
+.cdc-validation-dialog iframe{border:0;width:100%;flex:1;min-height:0}
+.r1b-step-heading .trl-stage-badge{margin-left:auto}
+.r1b-step-tools>#saveCdcDraft,.r1b-step-tools>#generateCdcPdf,.r1b-step-tools>#requestCdcValidation,.r1b-step-tools>#importCdcReply{display:flex;width:100%;justify-content:center;margin-bottom:.6rem}
+#cdcForm .card-header h2{font-size:1.05rem}
+#cdcForm .card{margin-bottom:.75rem}
+#cdcSaveStatus:empty{display:none}
+@media(max-width:640px){.cdc-stepper .step{font-size:.75rem;min-width:calc(50% - .35rem)}.cdc-validation-dialog{width:98vw;height:94dvh}}

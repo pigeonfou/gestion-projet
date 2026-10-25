@@ -5,8 +5,11 @@ function initProjectNotes(PDO $db, int $project): void {
     $s=$db->prepare("INSERT INTO project_notes(projet_id,etape,contenu) SELECT id,0,step_notes FROM projets WHERE id=? AND trim(COALESCE(step_notes,''))<>'' AND NOT EXISTS(SELECT 1 FROM project_notes WHERE projet_id=?)");
     $s->execute([$project,$project]);
 }
-function projectNotes(PDO $db,int $project,bool $deleted=false): array {
-    $s=$db->prepare('SELECT * FROM project_notes WHERE projet_id=?'.($deleted?'':' AND deleted_at IS NULL').' ORDER BY id');$s->execute([$project]);return $s->fetchAll(PDO::FETCH_ASSOC);
+function projectNotes(PDO $db,int $project,bool $deleted=false,?int $step=null): array {
+    $sql='SELECT * FROM project_notes WHERE projet_id=?'.($deleted?'':' AND deleted_at IS NULL');
+    $args=[$project];
+    if ($step !== null) { $sql.=' AND etape=?'; $args[]=$step; }
+    $s=$db->prepare($sql.' ORDER BY id');$s->execute($args);return $s->fetchAll(PDO::FETCH_ASSOC);
 }
 function projectNotesText(array $rows): string {
     return implode("\n\n",array_map(static fn($n)=>($n['created_at'] ? '['.$n['created_at'].' · Étape '.$n['etape'].']' : '[Note antérieure · date inconnue]').($n['updated_at']?' · modifiée le '.$n['updated_at']:'')."\n".$n['contenu'],$rows));
@@ -20,8 +23,8 @@ function changeProjectNote(PDO $db,int $project,int $step,string $action,string 
         if($action==='add') {$s=$db->prepare("INSERT INTO project_notes(projet_id,etape,contenu,created_at) VALUES(?,?,?,datetime('now'))");$s->execute([$project,$step,$text]);}
         else {
             $sql=match($action){'edit'=>"contenu=?,updated_at=datetime('now')",'delete'=>"deleted_at=datetime('now')",'restore'=>'deleted_at=NULL'};
-            $s=$db->prepare('UPDATE project_notes SET '.$sql.',revision=revision+1 WHERE id=? AND projet_id=? AND revision=? AND deleted_at IS '.($action==='restore'?'NOT NULL':'NULL'));
-            $args=$action==='edit'?[$text,$note,$project,$revision]:[$note,$project,$revision];$s->execute($args);
+            $s=$db->prepare('UPDATE project_notes SET '.$sql.',revision=revision+1 WHERE id=? AND projet_id=? AND etape=? AND revision=? AND deleted_at IS '.($action==='restore'?'NOT NULL':'NULL'));
+            $args=$action==='edit'?[$text,$note,$project,$step,$revision]:[$note,$project,$step,$revision];$s->execute($args);
             if($s->rowCount()!==1) throw new RuntimeException('La note a changé ou n’est plus disponible. Rechargez avant de réessayer.');
         }
         $db->prepare('UPDATE projets SET step_notes=? WHERE id=?')->execute([projectNotesText(projectNotes($db,$project)),$project]);
