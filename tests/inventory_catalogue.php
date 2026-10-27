@@ -58,4 +58,12 @@ catalogReject('supplier_save',['article_id'=>$other,'company'=>'Distributeur','m
 catalogReject('manufacturer_save',['article_id'=>$id,'company'=>'Fabricant A','reference'=>'BAD','lien'=>'javascript:alert(1)']);
 $before=invRevision($db);inventorySchema($db);catalogCheck($before===invRevision($db),'Migration rejouée sans altération');
 catalogCheck(count(invRows($db,'SELECT * FROM inventory_history'))>10,'Historique conservé');
+$alt=catalogCommand('alternative_save',['article_id'=>$id,'alternative_id'=>$other,'projet_id'=>$pid,'statut'=>'approuvee','motif'=>'Essai validé pour ce projet']);
+invRun($db,"INSERT INTO projets(nom,createur_id) VALUES('Autre projet',1)");$pid2=(int)$db->lastInsertId();
+catalogCheck(!invOne($db,'SELECT id FROM inventory_alternatives WHERE projet_id=?',[$pid2]),'Approbation non propagée à un autre projet');
+catalogReject('alternative_save',['article_id'=>$id,'alternative_id'=>$id,'projet_id'=>$pid,'statut'=>'approuvee','motif'=>'Référence identique']);
+$photo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aE8sAAAAASUVORK5CYII=';
+catalogCommand('article_save',array_replace($part,['id'=>$id,'inventory_photo'=>$photo]));
+catalogCheck(invArticle($db,$id)['inventory_photo']===$photo,'Image persistée avec la fiche');
+catalogReject('article_save',array_replace($part,['id'=>$id,'inventory_photo'=>'data:image/svg+xml;base64,PHN2Zz4=']));
 echo "OK : catalogue natif, identité fabricant, variantes, catégories, emplacements, paramètres, stock, contrôles, réservations, prix, séries, verrous et atomicité\n";

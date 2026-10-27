@@ -13,10 +13,10 @@ try {
         $p=json_decode(file_get_contents('php://input'),true,64,JSON_THROW_ON_ERROR);
         if(!is_array($p)||!csrfVerify($p['_csrf']??null))inventoryReply(['error'=>'Jeton de sécurité invalide. Rechargez la page.'],403);
         $action=invText($p,'action',60,true);
-        if($action==='reserve'||$action==='release'){
+        if(in_array($action,['reserve','release','alternative_save'],true)){
             $pid=(int)($p['projet_id']??0);
             if($action==='release')$pid=(int)(invOne($db,'SELECT projet_id FROM stock_reservations WHERE id=?',[(int)($p['id']??0)])['projet_id']??0);
-            if(!projectCanContribute($db,$pid,$actor))inventoryReply(['error'=>'Vous ne pouvez pas modifier les réservations de ce projet.'],403);
+            if(($action==='alternative_save'?!projectCanManage($db,$pid,$actor):!projectCanContribute($db,$pid,$actor)))inventoryReply(['error'=>'Vous ne pouvez pas modifier les réservations de ce projet.'],403);
         }
         $db->exec('BEGIN IMMEDIATE');
         try {
@@ -27,6 +27,7 @@ try {
     // One consistent read snapshot for rows and optimistic revision.
     $db->beginTransaction();$state=invState($db);$db->commit();
     $state['projects']=array_values(array_filter(invRows($db,'SELECT id,nom,status FROM projets ORDER BY nom'),fn($p)=>projectCanContribute($db,(int)$p['id'],$actor)));
+    foreach($state['projects'] as &$project)$project['can_manage']=projectCanManage($db,(int)$project['id'],$actor);unset($project);
     $state['csrf']=csrfToken();$state['result_id']=$id??null;inventoryReply($state);
 }catch(InvalidArgumentException|JsonException $e){inventoryReply(['error'=>$e->getMessage()],422);}
 catch(PDOException $e){error_log('OddWorks inventory: '.$e->getMessage());inventoryReply(['error'=>'Enregistrement refusé : référence déjà utilisée, relation invalide ou base occupée. Vos données restent conservées.'],409);}
