@@ -20,6 +20,9 @@ jobs:
           set -euo pipefail
           bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup
           bash packaging/debian/build.sh 1.0.2
+          echo "Working directory: $PWD"
+          ls -lah dist/
+          test -f dist/oddworks_1.0.2_all.deb
           dpkg-deb --info dist/oddworks_1.0.2_all.deb
           dpkg-deb --ctrl-tarfile dist/oddworks_1.0.2_all.deb | tar -xOf - ./postinst | sh -n
           dpkg-deb --field dist/oddworks_1.0.2_all.deb Depends | grep -F python3-venv
@@ -33,7 +36,10 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/oddworks_1.0.2_all.deb
           sudo test -s /var/lib/oddworks/database.sqlite
           sudo test -s /var/lib/oddworks/initial-admin-password
-          sudo nginx -t\n          curl -fsS -o /dev/null http://127.0.0.1/assets/css/style.css\n          curl -fsS -o /dev/null http://127.0.0.1/gestion-projet/assets/css/style.css\n          curl -fsS -o /dev/null http://127.0.0.1/assets/js/app.js
+          sudo nginx -t
+          curl -fsS -o /dev/null http://127.0.0.1/assets/css/style.css
+          curl -fsS -o /dev/null http://127.0.0.1/gestion-projet/assets/css/style.css
+          curl -fsS -o /dev/null http://127.0.0.1/assets/js/app.js
           php -v
           curl -fsS -o /tmp/oddworks-login.html -w '%{http_code}\n' http://127.0.0.1/login.php | grep -Fx 200
           sudo sqlite3 /var/lib/oddworks/database.sqlite "SELECT identifiant FROM utilisateurs WHERE role='admin';" | grep -Fx admin
