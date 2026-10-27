@@ -1,4 +1,4 @@
-# ProjectFlow — Gestion de projets
+# OddWorks — Gestion de projets
 
 Application web PHP de gestion de projets, tâches, utilisateurs et cahiers des charges.
 
@@ -227,6 +227,10 @@ gestion-projet/
 - Sessions sécurisées et régénérées à la connexion
 - Base SQLite hors du DocumentRoot
 
-## Installation via OneForAll
+## Indépendance de l'application
 
-Voir [le guide OneForAll](docs/ONEFORALL.md). L’instance gérée est séparée de l’installation Apache autonome ; ses données et services portent les chemins OneForAll.
+OddWorks est installé et exploité sans OneForAll. Le dépôt fournit son propre installateur Ubuntu, ses scripts de maintenance et ses tests. La publication externe et les tunnels réseau ne sont pas gérés par OddWorks.
+
+**Attention sur un serveur déjà occupé :** l'installateur historique installe Apache et exécute `apt-get upgrade`, puis redémarre Apache. Ne pas l'exécuter sur le serveur actuel sans adapter l'installation à Nginx/PHP-FPM et vérifier les ports.
+
+La branche `extraction-oddworks-autonome` est une branche de préparation : aucune installation en production ne doit être déclenchée depuis cette branche.
