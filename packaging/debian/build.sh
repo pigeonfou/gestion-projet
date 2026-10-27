@@ -10,8 +10,9 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 PKG="$STAGE/package"
 mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/oddworks" "$PKG/usr/lib/oddworks" "$PKG/usr/share/doc/oddworks"
-tar -C "$ROOT" --exclude=.git --exclude=dist --exclude=packaging --exclude=.github --exclude=tests --exclude=deploy -cf - . | tar -C "$PKG/usr/share/oddworks" -xf -
+tar -C "$ROOT" --exclude=.git --exclude=dist --exclude=packaging --exclude=.github --exclude=tests -cf - . | tar -C "$PKG/usr/share/oddworks" -xf -
 install -m 755 "$ROOT/packaging/debian/oddworks-configure" "$PKG/usr/lib/oddworks/oddworks-configure"
+install -m 755 "$ROOT/packaging/debian/oddworks-web-setup" "$PKG/usr/lib/oddworks/oddworks-web-setup"
 install -m 644 "$ROOT/packaging/debian/README.md" "$PKG/usr/share/doc/oddworks/README.md"
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: oddworks
@@ -35,5 +36,6 @@ EOF
 chmod 755 "$PKG/DEBIAN/postinst"
 mkdir -p "$PKG/usr/sbin"
 ln -s /usr/lib/oddworks/oddworks-configure "$PKG/usr/sbin/oddworks-configure"
+ln -s /usr/lib/oddworks/oddworks-web-setup "$PKG/usr/sbin/oddworks-web-setup"
 dpkg-deb --build --root-owner-group "$PKG" "$OUT/oddworks_${VERSION}_all.deb"
 echo "Built $OUT/oddworks_${VERSION}_all.deb"
