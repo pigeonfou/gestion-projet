@@ -33,7 +33,6 @@ if [ "$1" = configure ]; then
 fi
 EOF
 chmod 755 "$PKG/DEBIAN/postinst"
-ln -s /usr/lib/oddworks/oddworks-configure "$PKG/usr/lib/oddworks/oddworks-configure-link" 
 mkdir -p "$PKG/usr/sbin"
 ln -s /usr/lib/oddworks/oddworks-configure "$PKG/usr/sbin/oddworks-configure"
 dpkg-deb --build --root-owner-group "$PKG" "$OUT/oddworks_${VERSION}_all.deb"
