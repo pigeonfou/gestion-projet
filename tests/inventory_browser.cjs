@@ -1,7 +1,7 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 (async()=>{
- const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1050}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1050}});page.setDefaultTimeout(20000);page.setDefaultNavigationTimeout(30000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const root='http://127.0.0.1:8091';await page.goto(root+'/login.php');await page.fill('#identifiant','admin');await page.fill('#mot_de_passe','inventory-browser-only');await Promise.all([page.waitForURL('**/projets.php'),page.locator('button[type=submit]').click()]);
  await page.goto(root+'/stocks.php');await page.waitForURL('**/inventaire.php');await page.locator('[data-section=categories]').click();await page.locator('[data-action=category_new]').click();await page.fill('#f_nom','Capteurs');await page.fill('#f_description','Mesure et acquisition');await page.click('#entrySave');await page.waitForSelector('#entryDialog:not([open])');assert.match(await page.locator('#workspace').innerText(),/Capteurs/);
  await page.click('[data-section=list]');await page.click('[data-action=article_new]');await page.fill('#f_fabricant','Marque A');await page.fill('#f_reference_fabricant','CAP-01');await page.fill('#f_designation','Capteur de température');await page.selectOption('#f_categorie_id',{label:'Capteurs'});await page.selectOption('#f_inventory_mode','lot');await page.click('#entrySave');await page.waitForSelector('#entryDialog:not([open])');await page.waitForSelector('[data-sub=stock]');
