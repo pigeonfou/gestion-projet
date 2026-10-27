@@ -1,31 +1,41 @@
-# OddWorks standalone Ubuntu 24.04 / 26.04
+# OddWorks — paquet autonome Ubuntu 24.04 et 26.04
 
-## Construire le paquet
-
-Depuis une copie du code source (GitHub n'est pas nécessaire pour installer le paquet) :
+## Construire
 
 ```bash
 bash packaging/debian/build.sh 1.0.0
 ```
 
-Le résultat est `dist/oddworks_1.0.0_all.deb`. Copier ce fichier et `packaging/debian/install-ubuntu.sh` sur le serveur cible.
-
 ## Installer
 
+Copier `dist/oddworks_1.0.0_all.deb` sur le serveur Ubuntu, puis :
+
 ```bash
-sudo bash install-ubuntu.sh ./oddworks_1.0.0_all.deb
-sudo oddworks-configure
-sudo oddworks-web-setup
+sudo apt update
+sudo apt install ./oddworks_1.0.0_all.deb
 ```
 
-Le script d'installation utilise les dépôts APT Ubuntu pour installer les dépendances système, puis PyPI pour installer `aspose-email-foss` dans un environnement Python isolé. Une connexion aux dépôts de paquets est donc nécessaire pendant l'installation, mais **aucun accès GitHub n'est requis**. Il ne lance pas de mise à niveau générale du système.
+APT télécharge les dépendances système depuis les dépôts configurés. Lors de la configuration du paquet, OddWorks crée la base SQLite et le compte administrateur, installe les dépendances Python d'export Outlook dans un environnement virtuel, puis configure un serveur Nginx et un pool PHP-FPM dédiés. Aucun accès GitHub ni OneForAll n'est nécessaire. PyPI doit être accessible pour installer les dépendances Python.
 
-Le code est dans `/usr/share/oddworks`, la base dans `/var/lib/oddworks/database.sqlite`, les sessions dans `/var/lib/oddworks/sessions`. Le site est configuré sur `127.0.0.1:18081`, volontairement non exposé sur le réseau. La publication externe est hors périmètre.
+Application : `http://127.0.0.1:18081/login.php` (accessible seulement depuis la machine).
 
-## Mises à jour et désinstallation
+Identifiant initial : `admin`. Le mot de passe généré est conservé dans un fichier accessible à root uniquement :
 
-Installer un nouveau paquet avec `sudo apt install ./oddworks_VERSION_all.deb`. Le gestionnaire de paquets remplace le code sans effacer les données dans `/var/lib/oddworks`. Vérifier les migrations et sauvegarder SQLite avant toute mise à jour de production. La suppression du paquet ne supprime pas volontairement les données. La configuration Nginx/PHP-FPM créée séparément doit être gérée explicitement.
+```bash
+sudo cat /var/lib/oddworks/initial-admin-password
+```
 
-## Limites de la version préparatoire
+Changez ce mot de passe à la première connexion, puis supprimez le fichier initial.
 
-Les scripts doivent encore être validés sur Ubuntu 24.04 et 26.04, y compris la configuration Nginx/PHP-FPM, les migrations SQLite, les dépendances Python et les tests fonctionnels. Ne pas utiliser sur un serveur de production avant cette recette.
+## Mise à jour
+
+```bash
+sudo apt update
+sudo apt install ./oddworks_VERSION_all.deb
+```
+
+Les données persistantes sont dans `/var/lib/oddworks` et ne sont pas incluses dans les fichiers remplacés par le paquet. Les configurations web existantes sont conservées lors des mises à jour. Sauvegardez la base avant une mise à jour de production.
+
+## Important
+
+La recette d'installation réelle sur Ubuntu 24.04 et 26.04, la migration de données et le fonctionnement de l'export Outlook restent à valider. Le paquet ne doit pas être déployé en production avant ces tests. Aucune mise à niveau générale du serveur n'est déclenchée.
