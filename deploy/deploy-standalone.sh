@@ -24,6 +24,7 @@ if [[ ! -f /var/lib/oddworks/database.sqlite ]]; then
   echo "Initialize SQLite and administrator with the documented installer before first deployment." >&2
   exit 1
 fi
+runuser -u www-data -- sqlite3 /var/lib/oddworks/database.sqlite "PRAGMA integrity_check;" | grep -qx ok || { echo "SQLite integrity check failed" >&2; exit 1; }
 runuser -u www-data -- env PROJECTFLOW_DB_PATH=/var/lib/oddworks/database.sqlite php -r 'require $argv[1]; runSchemaMigrations();' "$RELEASE/includes/schema.php"
 PREVIOUS="$(readlink "$ROOT/current" || true)"
 ln -sfn "$RELEASE" "$ROOT/current.new"
