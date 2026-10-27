@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || { echo "Run with sudo" >&2; exit 1; }
+APP=/usr/share/oddworks
+DB=/var/lib/oddworks/database.sqlite
+[[ -f "$APP/install/init_database.php" ]] || { echo "OddWorks package is incomplete" >&2; exit 1; }
+install -d -o www-data -g www-data -m 750 /var/lib/oddworks /var/lib/oddworks/sessions
+if [[ ! -e "$DB" ]]; then
+  read -r -s -p 'Initial admin password (minimum 12 characters): ' PASSWORD; echo
+  [[ ${#PASSWORD} -ge 12 ]] || { echo "Password too short" >&2; exit 1; }
+  read -r -s -p 'Confirm password: ' CONFIRM; echo
+  [[ "$PASSWORD" == "$CONFIRM" ]] || { echo "Passwords differ" >&2; exit 1; }
+  runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB" PROJECTFLOW_ADMIN_PASSWORD="$PASSWORD" php "$APP/install/init_database.php"
+  unset PASSWORD CONFIRM
+fi
+runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB" php -r 'require $argv[1]; runSchemaMigrations();' "$APP/includes/schema.php"
+echo "Database prepared at $DB"
+echo "Web integration is not automatic: configure a dedicated PHP-FPM pool and Nginx server before exposing OddWorks."
