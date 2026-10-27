@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VERSION="${1:-1.0.0}"
+VERSION="${1:-1.0.2}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected version X.Y.Z" >&2; exit 1; }
 command -v dpkg-deb >/dev/null || { echo "dpkg-deb is required" >&2; exit 1; }
 OUT="${2:-$ROOT/dist}"
@@ -37,7 +37,7 @@ if [ ! -x /opt/oddworks/shared/cdc-msg-venv/bin/python3 ]; then
 fi
 /opt/oddworks/shared/cdc-msg-venv/bin/python3 -m pip install --disable-pip-version-check --upgrade -r /usr/share/oddworks/requirements-cdc-msg.txt
 /usr/lib/oddworks/oddworks-web-setup
-echo "OddWorks ready at http://127.0.0.1:18081/login.php"
+echo "OddWorks ready at http://127.0.0.1/login.php"
 echo "Admin user: admin"
 echo "Read initial password with: sudo cat /var/lib/oddworks/initial-admin-password"
 EOF
@@ -45,5 +45,5 @@ chmod 755 "$PKG/DEBIAN/postinst"
 mkdir -p "$PKG/usr/sbin"
 ln -s /usr/lib/oddworks/oddworks-configure "$PKG/usr/sbin/oddworks-configure"
 ln -s /usr/lib/oddworks/oddworks-web-setup "$PKG/usr/sbin/oddworks-web-setup"
-dpkg-deb --build --root-owner-group "$PKG" "$OUT/oddworks_${VERSION}_all.deb"
+printf "%s\n" "Source-Commit: $(git -C "$ROOT" rev-parse HEAD)" > "$PKG/usr/share/doc/oddworks/source-commit"\ndpkg-deb --build --root-owner-group "$PKG" "$OUT/oddworks_${VERSION}_all.deb"
 echo "Built $OUT/oddworks_${VERSION}_all.deb"
