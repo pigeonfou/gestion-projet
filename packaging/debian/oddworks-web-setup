@@ -8,8 +8,12 @@ POOL="/etc/php/$PHPVER/fpm/pool.d/oddworks.conf"
 SITE=/etc/nginx/sites-available/oddworks.conf
 LINK=/etc/nginx/sites-enabled/oddworks.conf
 [[ -f "$APP/index.php" && -d "$(dirname "$POOL")" ]] || exit 1
-for f in "$POOL" "$SITE" "$LINK"; do [[ ! -e "$f" && ! -L "$f" ]] || { echo "Existing configuration: $f" >&2; exit 1; }; done
-if ss -lntH | grep -Fq ":$PORT "; then echo "Port in use" >&2; exit 1; fi
+if [[ -f "$POOL" && -f "$SITE" && -L "$LINK" ]]; then
+  echo "OddWorks web configuration already installed; keeping existing settings."
+  exit 0
+fi
+for f in "$POOL" "$SITE" "$LINK"; do [[ ! -e "$f" && ! -L "$f" ]] || { echo "Conflicting configuration: $f" >&2; exit 1; }; done
+if ss -lntH | awk '{print $4}' | grep -Eq ":$PORT$"; then echo "Port in use" >&2; exit 1; fi
 install -d -o www-data -g www-data -m 750 /var/lib/oddworks /var/lib/oddworks/sessions
 cat > "$POOL" <<'EOF'
 [oddworks]
