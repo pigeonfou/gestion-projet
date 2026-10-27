@@ -1,41 +1,27 @@
-# OddWorks — paquet autonome Ubuntu 24.04 et 26.04
+# OddWorks — paquet Debian autonome
+
+## Source unique et reproductibilité
+Le dépôt `pigeonfou/gestion-projet`, branche `extraction-oddworks-autonome`, est la source unique. Toute correction doit être commitée **avant** construction. Ne jamais reconstruire un paquet à partir d'un ancien .deb.
+
+Le workflow `.github/workflows/package-debian.yml` construit depuis un checkout GitHub Actions Ubuntu 24.04, teste l'installation, puis publie l'artefact `oddworks-deb-ubuntu-24.04`. Le commit source est enregistré dans `/usr/share/doc/oddworks/source-commit` à l'intérieur du paquet.
 
 ## Construire
-
 ```bash
-bash packaging/debian/build.sh 1.0.0
+bash packaging/debian/build.sh 1.0.2
 ```
 
-## Installer
-
-Copier `dist/oddworks_1.0.0_all.deb` sur le serveur Ubuntu, puis :
-
+## Installer sur Ubuntu 24.04 vierge
 ```bash
 sudo apt update
-sudo apt install ./oddworks_1.0.0_all.deb
+sudo apt install ./oddworks_1.0.2_all.deb
 ```
 
-APT télécharge les dépendances système depuis les dépôts configurés. Lors de la configuration du paquet, OddWorks crée la base SQLite et le compte administrateur, installe les dépendances Python d'export Outlook dans un environnement virtuel, puis configure un serveur Nginx et un pool PHP-FPM dédiés. Aucun accès GitHub ni OneForAll n'est nécessaire. PyPI doit être accessible pour installer les dépendances Python.
+Accès LAN : `http://IP_DU_SERVEUR/login.php` (port 80). Chemins `/gestion-projet/` compatibles. Nginx et PHP-FPM dédiés, base `/var/lib/oddworks/database.sqlite`. Aucune dépendance GitHub ni OneForAll à l'exécution ; APT et PyPI sont nécessaires à l'installation.
 
-Application : `http://IP_DU_SERVEUR:18081/login.php` depuis le LAN, sans reverse proxy ni tunnel. Le serveur Nginx écoute sur toutes les interfaces IPv4 (`0.0.0.0:18081`). Vérifier que le pare-feu local autorise le port 18081/TCP depuis le réseau local ; ne pas ouvrir ce port sur Internet.
+Identifiant initial : `admin`. Mot de passe initial : `sudo cat /var/lib/oddworks/initial-admin-password`. Changez-le à la première connexion.
 
-Identifiant initial : `admin`. Le mot de passe généré est conservé dans un fichier accessible à root uniquement :
+## Mise à niveau
+Les données sont conservées dans `/var/lib/oddworks`. Les configurations web OddWorks déjà installées sont préservées. Sauvegarder la base avant toute mise à jour.
 
-```bash
-sudo cat /var/lib/oddworks/initial-admin-password
-```
-
-Changez ce mot de passe à la première connexion, puis supprimez le fichier initial.
-
-## Mise à jour
-
-```bash
-sudo apt update
-sudo apt install ./oddworks_VERSION_all.deb
-```
-
-Les données persistantes sont dans `/var/lib/oddworks` et ne sont pas incluses dans les fichiers remplacés par le paquet. Les configurations web existantes sont conservées lors des mises à jour. Sauvegardez la base avant une mise à jour de production.
-
-## Important
-
-La recette d'installation réelle sur Ubuntu 24.04 et 26.04, la migration de données et le fonctionnement de l'export Outlook restent à valider. Le paquet ne doit pas être déployé en production avant ces tests. Aucune mise à niveau générale du serveur n'est déclenchée.
+## Validation
+La CI teste une installation neuve sur Ubuntu 24.04. Une recette sur le snapshot de majiflow reste nécessaire avant diffusion en production.
