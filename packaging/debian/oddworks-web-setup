@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || exit 1
+PORT=18081
+APP=/usr/share/oddworks
+PHPVER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+POOL="/etc/php/$PHPVER/fpm/pool.d/oddworks.conf"
+SITE=/etc/nginx/sites-available/oddworks.conf
+LINK=/etc/nginx/sites-enabled/oddworks.conf
+[[ -f "$APP/index.php" && -d "$(dirname "$POOL")" ]] || exit 1
+for f in "$POOL" "$SITE" "$LINK"; do [[ ! -e "$f" && ! -L "$f" ]] || { echo "Existing configuration: $f" >&2; exit 1; }; done
+if ss -lntH | grep -Fq ":$PORT "; then echo "Port in use" >&2; exit 1; fi
+install -d -o www-data -g www-data -m 750 /var/lib/oddworks /var/lib/oddworks/sessions
+cat > "$POOL" <<'EOF'
+[oddworks]
+user = www-data
+group = www-data
+listen = /run/php/oddworks.sock
+listen.owner = www-data
+listen.group = www-data
+pm = ondemand
+pm.max_children = 8
+pm.process_idle_timeout = 15s
+php_admin_value[session.save_path] = /var/lib/oddworks/sessions
+env[PROJECTFLOW_BASE_PATH] =
+env[PROJECTFLOW_DB_PATH] = /var/lib/oddworks/database.sqlite
+env[ODDWORKS_CDC_MSG_PYTHON] = /opt/oddworks/shared/cdc-msg-venv/bin/python3
+EOF
+sed -e "s@/opt/oddworks/current@/usr/share/oddworks@g" /usr/share/oddworks/deploy/oddworks-nginx.conf > "$SITE"
+ln -s "$SITE" "$LINK"
+if ! php-fpm"$PHPVER" -t || ! nginx -t; then
+  rm -f "$LINK" "$SITE" "$POOL"
+  echo "Invalid configuration, changes rolled back" >&2
+  exit 1
+fi
+systemctl reload "php$PHPVER-fpm"
+systemctl reload nginx
+echo "OddWorks listening on 127.0.0.1:$PORT"
