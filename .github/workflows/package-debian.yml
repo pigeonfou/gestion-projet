@@ -1,0 +1,30 @@
+name: OddWorks - construire paquet Debian
+on:
+  push:
+    branches: [extraction-oddworks-autonome, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntaxe et construction
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup
+          bash packaging/debian/build.sh 1.0.0
+          dpkg-deb --info dist/oddworks_1.0.0_all.deb
+          dpkg-deb --contents dist/oddworks_1.0.0_all.deb | grep -F /usr/sbin/oddworks-web-setup
+          dpkg-deb --contents dist/oddworks_1.0.0_all.deb | grep -F /usr/share/oddworks/index.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oddworks-deb-${{ matrix.os }}
+          path: dist/*.deb
+          if-no-files-found: error
