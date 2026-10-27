@@ -6,15 +6,7 @@ set -Eeuo pipefail
 DEB="${1:-}"
 [[ -f "$DEB" && "$DEB" == *.deb ]] || { echo "Usage: sudo bash install-ubuntu.sh ./oddworks_VERSION_all.deb" >&2; exit 1; }
 DEB="$(realpath "$DEB")"
-[[ "$(dpkg-deb -f "$DEB" Package)" == oddworks ]] || { echo "Ce paquet n'est pas OddWorks." >&2; exit 1; }
-export DEBIAN_FRONTEND=noninteractive
+[[ "$(dpkg-deb -f "$DEB" Package)" == oddworks ]] || { echo "Paquet incorrect." >&2; exit 1; }
 apt-get update
-apt-get install -y --no-install-recommends ca-certificates nginx php-cli php-fpm php-sqlite3 php-mbstring php-curl php-xml php-zip sqlite3 python3-venv python3-pip
-apt-get install -y --no-install-recommends "$DEB"
-php -r 'if (!extension_loaded("pdo_sqlite") || !extension_loaded("mbstring")) exit(1);'
-install -d -m 755 /opt/oddworks/shared
-python3 -m venv /opt/oddworks/shared/cdc-msg-venv
-/opt/oddworks/shared/cdc-msg-venv/bin/python3 -m pip install --upgrade pip
-/opt/oddworks/shared/cdc-msg-venv/bin/python3 -m pip install -r /usr/share/oddworks/requirements-cdc-msg.txt
-echo "Paquet installe. Lancez sudo oddworks-configure pour initialiser l'administrateur."
-echo "Aucun service web existant n'a ete reconfigure."
+apt-get install -y "$DEB"
+echo "OddWorks installed; see http://127.0.0.1:18081/login.php"
