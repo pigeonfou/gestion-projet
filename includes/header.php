@@ -42,11 +42,8 @@ $siteNom = getSetting('site_nom', 'OddWorks');
                 <a href="<?= url('taches.php') ?>" class="nav-link <?= ($activePage ?? '') === 'taches' ? 'active' : '' ?>">
                     <i class="fas fa-tasks"></i> Tâches
                 </a>
-                <a href="<?= url('stocks.php') ?>" class="nav-link <?= ($activePage ?? '') === 'stocks' ? 'active' : '' ?>">
-                    <i class="fas fa-boxes"></i> Stocks & Matériel
-                </a>
-                <a href="<?= url('stock_pilotage.php') ?>" class="nav-link <?= ($activePage ?? '') === 'stock_pilotage' ? 'active' : '' ?>">
-                    <i class="fas fa-warehouse"></i> Stock avancé
+                <a href="<?= url('inventaire.php') ?>" class="nav-link <?= ($activePage ?? '') === 'inventaire' ? 'active' : '' ?>">
+                    <i class="fas fa-boxes"></i> Stock & inventaire
                 </a>
                 <a href="<?= url('management.php') ?>" class="nav-link <?= ($activePage ?? '') === 'management' ? 'active' : '' ?>">
                     <i class="fas fa-sitemap"></i> Management
