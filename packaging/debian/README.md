@@ -17,7 +17,7 @@ sudo apt install ./oddworks_1.0.0_all.deb
 
 APT télécharge les dépendances système depuis les dépôts configurés. Lors de la configuration du paquet, OddWorks crée la base SQLite et le compte administrateur, installe les dépendances Python d'export Outlook dans un environnement virtuel, puis configure un serveur Nginx et un pool PHP-FPM dédiés. Aucun accès GitHub ni OneForAll n'est nécessaire. PyPI doit être accessible pour installer les dépendances Python.
 
-Application : `http://127.0.0.1:18081/login.php` (accessible seulement depuis la machine).
+Application : `http://IP_DU_SERVEUR:18081/login.php` depuis le LAN, sans reverse proxy ni tunnel. Le serveur Nginx écoute sur toutes les interfaces IPv4 (`0.0.0.0:18081`). Vérifier que le pare-feu local autorise le port 18081/TCP depuis le réseau local ; ne pas ouvrir ce port sur Internet.
 
 Identifiant initial : `admin`. Le mot de passe généré est conservé dans un fichier accessible à root uniquement :
 
