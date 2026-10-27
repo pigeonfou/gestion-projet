@@ -21,6 +21,8 @@ jobs:
           bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup
           bash packaging/debian/build.sh 1.0.0
           dpkg-deb --info dist/oddworks_1.0.0_all.deb
+          dpkg-deb --ctrl-tarfile dist/oddworks_1.0.0_all.deb | tar -xOf - ./postinst | sh -n
+          dpkg-deb --field dist/oddworks_1.0.0_all.deb Depends | grep -F python3-venv
           dpkg-deb --contents dist/oddworks_1.0.0_all.deb | grep -F /usr/sbin/oddworks-web-setup
           dpkg-deb --contents dist/oddworks_1.0.0_all.deb | grep -F /usr/share/oddworks/index.php
       - uses: actions/upload-artifact@v4
