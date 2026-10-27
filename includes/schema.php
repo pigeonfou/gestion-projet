@@ -630,5 +630,8 @@ function runSchemaMigrations(): void
         try { $db->exec($sql); } catch (Throwable $e) {}
     }
 
+    require_once __DIR__.'/stock/catalogue.php';
+    inventorySchema($db);
+
     $done = true;
 }

@@ -1,0 +1,46 @@
+name: Recette Stock et inventaire
+on:
+  pull_request:
+  push:
+    branches: [main, stock-inventaire-integration]
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les outils de test isolés
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y php-cli php-sqlite3
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Vérifier la syntaxe et les règles métier
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find . -name '*.php' -not -path './node_modules/*' -print0)
+          node --check assets/js/inventaire.js
+          php tests/inventory_catalogue.php
+      - name: Recette navigateur avec SQLite temporaire
+        env:
+          PROJECTFLOW_DB_PATH: /tmp/oddworks-browser.sqlite
+          PROJECTFLOW_BASE_PATH: ''
+          PROJECTFLOW_ADMIN_PASSWORD: inventory-browser-only
+        run: |
+          set -euo pipefail
+          php install/init_database.php
+          php -S 127.0.0.1:8091 > /tmp/oddworks-browser.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"; cat /tmp/oddworks-browser.log' EXIT
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8091/login.php >/dev/null && break; sleep 1; done
+          node tests/inventory_browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inventaire-apercu-test
+          path: /tmp/inventory-overview.png
