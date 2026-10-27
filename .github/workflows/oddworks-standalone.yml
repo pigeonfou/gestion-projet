@@ -1,0 +1,33 @@
+name: OddWorks - validation autonome
+on:
+  push:
+    branches: [main, extraction-oddworks-autonome]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installer PHP et SQLite
+        run: sudo apt-get update && sudo apt-get install -y php-cli php-sqlite3 php-mbstring php-curl php-xml php-zip sqlite3
+      - name: Vérifier PHP et scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n install/install_ubuntu.sh
+          bash -n scripts/update_gestion_projet.sh
+          bash -n scripts/rollback_gestion_projet.sh
+          while IFS= read -r -d '' file; do php -l "$file" >/dev/null; done < <(find . -name '*.php' -print0)
+      - name: Tests de régression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in tests/*.php; do
+            case "$file" in
+              tests/nextcloud_sans_curl.php|tests/document_upload_stream.php) php -n "$file" ;;
+              *) php "$file" ;;
+            esac
+          done
