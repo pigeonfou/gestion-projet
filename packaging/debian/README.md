@@ -1,20 +1,31 @@
-# OddWorks Debian package
+# OddWorks standalone Ubuntu 24.04 / 26.04
 
-Build on an Ubuntu/Debian machine with `dpkg-deb`:
+## Construire le paquet
+
+Depuis une copie du code source (GitHub n'est pas nécessaire pour installer le paquet) :
 
 ```bash
 bash packaging/debian/build.sh 1.0.0
 ```
 
-Copy `dist/oddworks_1.0.0_all.deb` to Ubuntu 24.04 or 26.04. No GitHub connection is required on the target machine.
+Le résultat est `dist/oddworks_1.0.0_all.deb`. Copier ce fichier et `packaging/debian/install-ubuntu.sh` sur le serveur cible.
+
+## Installer
 
 ```bash
-sudo apt install ./oddworks_1.0.0_all.deb
+sudo bash install-ubuntu.sh ./oddworks_1.0.0_all.deb
 sudo oddworks-configure
+sudo oddworks-web-setup
 ```
 
-The package ships the application under `/usr/share/oddworks` and stores SQLite under `/var/lib/oddworks/database.sqlite`. Removing the package does not automatically remove the database.
+Le script d'installation utilise les dépôts APT Ubuntu pour installer les dépendances système, puis PyPI pour installer `aspose-email-foss` dans un environnement Python isolé. Une connexion aux dépôts de paquets est donc nécessaire pendant l'installation, mais **aucun accès GitHub n'est requis**. Il ne lance pas de mise à niveau générale du système.
 
-This first package is a **staging package**, not yet a fully configured web installer: Nginx and PHP-FPM need dedicated, version-compatible configuration and verification before serving traffic. The package intentionally does not alter existing virtual hosts or start a new web service. PHP versions come from the target Ubuntu distribution; no PHP 8.5 requirement is hardcoded.
+Le code est dans `/usr/share/oddworks`, la base dans `/var/lib/oddworks/database.sqlite`, les sessions dans `/var/lib/oddworks/sessions`. Le site est configuré sur `127.0.0.1:18081`, volontairement non exposé sur le réseau. La publication externe est hors périmètre.
 
-The Outlook .msg export requires a separately provisioned Python environment with `aspose-email-foss`. It is not yet included in this package. No Cloudflare, GitHub runner or OneForAll runtime dependency.
+## Mises à jour et désinstallation
+
+Installer un nouveau paquet avec `sudo apt install ./oddworks_VERSION_all.deb`. Le gestionnaire de paquets remplace le code sans effacer les données dans `/var/lib/oddworks`. Vérifier les migrations et sauvegarder SQLite avant toute mise à jour de production. La suppression du paquet ne supprime pas volontairement les données. La configuration Nginx/PHP-FPM créée séparément doit être gérée explicitement.
+
+## Limites de la version préparatoire
+
+Les scripts doivent encore être validés sur Ubuntu 24.04 et 26.04, y compris la configuration Nginx/PHP-FPM, les migrations SQLite, les dépendances Python et les tests fonctionnels. Ne pas utiliser sur un serveur de production avant cette recette.
