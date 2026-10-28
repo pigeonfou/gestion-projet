@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+bash "$ROOT/packaging/debian/check-production-source.sh"
 VERSION="${1:-1.0.2}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected version X.Y.Z" >&2; exit 1; }
 command -v dpkg-deb >/dev/null || { echo "dpkg-deb is required" >&2; exit 1; }
@@ -10,7 +11,7 @@ STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 PKG="$STAGE/package"
 mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/oddworks" "$PKG/usr/lib/oddworks" "$PKG/usr/share/doc/oddworks"
-tar -C "$ROOT" --exclude=.git --exclude=dist --exclude=packaging --exclude=.github --exclude=tests -cf - . | tar -C "$PKG/usr/share/oddworks" -xf -
+git -C "$ROOT" archive "$GITHUB_SHA" | tar -C "$PKG/usr/share/oddworks" --exclude=packaging --exclude=.github --exclude=tests -xf -
 install -m 755 "$ROOT/packaging/debian/oddworks-configure" "$PKG/usr/lib/oddworks/oddworks-configure"
 install -m 755 "$ROOT/packaging/debian/oddworks-web-setup" "$PKG/usr/lib/oddworks/oddworks-web-setup"
 install -m 644 "$ROOT/packaging/debian/README.md" "$PKG/usr/share/doc/oddworks/README.md"

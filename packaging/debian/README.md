@@ -5,10 +5,10 @@ Le dépôt `pigeonfou/gestion-projet`, branche `extraction-oddworks-autonome`, e
 
 Le workflow `.github/workflows/package-debian.yml` construit depuis un checkout GitHub Actions Ubuntu 24.04, teste l'installation, puis publie l'artefact `oddworks-deb-ubuntu-24.04`. Le commit source est enregistré dans `/usr/share/doc/oddworks/source-commit` à l'intérieur du paquet.
 
-## Construire
-```bash
-bash packaging/debian/build.sh 1.0.2
-```
+## Construire pour PROD
+Suivre obligatoirement [la procédure centrale](../README.md). La construction locale
+est refusée. Utiliser le workflow **OddWorks - construire paquet Debian** sur la branche
+`extraction-oddworks-autonome`, puis récupérer l’artefact `oddworks-deb-ubuntu-24.04`.
 
 ## Installer sur Ubuntu 24.04 vierge
 ```bash

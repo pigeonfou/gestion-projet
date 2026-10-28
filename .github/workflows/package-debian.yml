@@ -1,7 +1,7 @@
 name: OddWorks - construire paquet Debian
 on:
   push:
-    branches: [extraction-oddworks-autonome, main]
+    branches: [extraction-oddworks-autonome]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,6 +14,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Vérifier la procédure PROD
+        run: bash packaging/debian/check-production-source.sh
       - name: Syntaxe et construction
         shell: bash
         run: |
@@ -43,8 +45,23 @@ jobs:
           php -v
           curl -fsS -o /tmp/oddworks-login.html -w '%{http_code}\n' http://127.0.0.1/login.php | grep -Fx 200
           sudo sqlite3 /var/lib/oddworks/database.sqlite "SELECT identifiant FROM utilisateurs WHERE role='admin';" | grep -Fx admin
+      - name: Enregistrer la provenance et les empreintes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import json, os, pathlib, subprocess
+          payload = {"repository": os.environ["GITHUB_REPOSITORY"], "branch": os.environ["GITHUB_REF_NAME"], "commit": os.environ["GITHUB_SHA"], "workflow": os.environ["GITHUB_WORKFLOW"], "runner": "ubuntu-24.04", "run_url": os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"], "validation": "CI uniquement ; recette majiflow à effectuer", "packages": [{"file": p.name, "version": subprocess.check_output(["dpkg-deb", "--field", str(p), "Version"], text=True).strip()} for p in sorted(pathlib.Path("dist").glob("*.deb"))]}
+          pathlib.Path("dist/PROVENANCE.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2)+"\n")
+          PYTHON
+          source_line=$(dpkg-deb --fsys-tarfile dist/oddworks_1.0.2_all.deb | tar -xOf - ./usr/share/doc/oddworks/source-commit)
+          test "$source_line" = "Source-Commit: $GITHUB_SHA"
+          (cd dist && sha256sum -- *.deb PROVENANCE.json > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: oddworks-deb-${{ matrix.os }}
-          path: dist/*.deb
+          path: |
+            dist/*.deb
+            dist/PROVENANCE.json
+            dist/SHA256SUMS
           if-no-files-found: error
