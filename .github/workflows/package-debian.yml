@@ -4,7 +4,10 @@ on:
     branches: [extraction-oddworks-autonome]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: oddworks-debian-production
+  cancel-in-progress: false
 jobs:
   package:
     strategy:
@@ -16,26 +19,34 @@ jobs:
       - uses: actions/checkout@v4
       - name: Vérifier la procédure PROD
         run: bash packaging/debian/check-production-source.sh
+      - name: Vérifier le calcul de version
+        run: node packaging/debian/test-version.cjs
+      - name: Réserver une nouvelle version
+        id: version
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./packaging/debian/reserve-version.cjs').reserve({github, context, core});
       - name: Syntaxe et construction
         shell: bash
         run: |
           set -euo pipefail
           bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup
-          bash packaging/debian/build.sh 1.0.2
+          bash packaging/debian/build.sh "$ODDWORKS_PACKAGE_VERSION"
           echo "Working directory: $PWD"
           ls -lah dist/
-          test -f dist/oddworks_1.0.2_all.deb
-          dpkg-deb --info dist/oddworks_1.0.2_all.deb
-          dpkg-deb --ctrl-tarfile dist/oddworks_1.0.2_all.deb | tar -xOf - ./postinst | sh -n
-          dpkg-deb --field dist/oddworks_1.0.2_all.deb Depends | grep -F python3-venv
-          dpkg-deb --contents dist/oddworks_1.0.2_all.deb | grep -F /usr/sbin/oddworks-web-setup
-          dpkg-deb --contents dist/oddworks_1.0.2_all.deb | grep -F /usr/share/oddworks/index.php
+          test -f "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb"
+          dpkg-deb --info "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb"
+          dpkg-deb --ctrl-tarfile "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" | tar -xOf - ./postinst | sh -n
+          dpkg-deb --field "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" Depends | grep -F python3-venv
+          dpkg-deb --contents "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" | grep -F /usr/sbin/oddworks-web-setup
+          dpkg-deb --contents "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" | grep -F /usr/share/oddworks/index.php
       - name: Installation et verification fonctionnelle locale
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ./dist/oddworks_1.0.2_all.deb
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "./dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb"
           sudo test -s /var/lib/oddworks/database.sqlite
           sudo test -s /var/lib/oddworks/initial-admin-password
           sudo nginx -t
@@ -51,10 +62,10 @@ jobs:
           set -euo pipefail
           python3 - <<'PYTHON'
           import json, os, pathlib, subprocess
-          payload = {"repository": os.environ["GITHUB_REPOSITORY"], "branch": os.environ["GITHUB_REF_NAME"], "commit": os.environ["GITHUB_SHA"], "workflow": os.environ["GITHUB_WORKFLOW"], "runner": "ubuntu-24.04", "run_url": os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"], "validation": "CI uniquement ; recette majiflow à effectuer", "packages": [{"file": p.name, "version": subprocess.check_output(["dpkg-deb", "--field", str(p), "Version"], text=True).strip()} for p in sorted(pathlib.Path("dist").glob("*.deb"))]}
+          payload = {"repository": os.environ["GITHUB_REPOSITORY"], "branch": os.environ["GITHUB_REF_NAME"], "commit": os.environ["GITHUB_SHA"], "tag": os.environ["ODDWORKS_PACKAGE_TAG"], "workflow": os.environ["GITHUB_WORKFLOW"], "runner": "ubuntu-24.04", "run_url": os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"], "validation": "CI uniquement ; recette majiflow à effectuer", "packages": [{"file": p.name, "version": subprocess.check_output(["dpkg-deb", "--field", str(p), "Version"], text=True).strip()} for p in sorted(pathlib.Path("dist").glob("*.deb"))]}
           pathlib.Path("dist/PROVENANCE.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2)+"\n")
           PYTHON
-          source_line=$(dpkg-deb --fsys-tarfile dist/oddworks_1.0.2_all.deb | tar -xOf - ./usr/share/doc/oddworks/source-commit)
+          source_line=$(dpkg-deb --fsys-tarfile "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" | tar -xOf - ./usr/share/doc/oddworks/source-commit)
           test "$source_line" = "Source-Commit: $GITHUB_SHA"
           (cd dist && sha256sum -- *.deb PROVENANCE.json > SHA256SUMS)
       - uses: actions/upload-artifact@v4
@@ -65,3 +76,9 @@ jobs:
             dist/PROVENANCE.json
             dist/SHA256SUMS
           if-no-files-found: error
+
+      - name: Publier le téléchargement direct du Debian
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./packaging/debian/publish-release.cjs')({github, context, core});

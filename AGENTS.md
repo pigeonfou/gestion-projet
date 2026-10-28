@@ -15,7 +15,7 @@ Lire ce fichier avant toute modification ou livraison. Il s’applique à tout l
 3. Enregistrer toutes les corrections, scripts et configurations dans Git avant construction.
 4. Construire exclusivement avec GitHub Actions, workflow **OddWorks - construire paquet Debian**,
    fichier `.github/workflows/package-debian.yml`, sur **Ubuntu 24.04**.
-5. Livrer exclusivement l’artefact **oddworks-deb-ubuntu-24.04** de cette exécution réussie.
+5. Livrer exclusivement le .deb de cette exécution réussie : artefact **oddworks-deb-ubuntu-24.04** ou fichier identique publié par ce workflow dans GitHub Releases.
 6. Identifier version, commit complet, URL de l’exécution et empreinte SHA256 du .deb livré.
 7. Tester l’installation et le fonctionnement sur **majiflow** avant de déclarer la version validée.
 
@@ -33,3 +33,18 @@ pas une autorisation d’installation sur PROD.
 
 Voir `packaging/README.md` pour la procédure complète. Ces règles doivent rester présentes
 sur `main` et `extraction-oddworks-autonome` lors des merges, extractions et reprises.
+
+## Numérotation et téléchargement direct
+
+Le dernier numéro historique consommé est `1.0.2` (fichier
+`packaging/debian/last-legacy-version`). Le workflow prend le plus grand numéro entre
+cet historique et les tags de version, incrémente le correctif, puis réserve atomiquement
+`oddworks-deb-vX.Y.Z` sur le commit source avant construction. Les tags réservés ne doivent
+pas être supprimés ni réutilisés, même après échec ou relance. Une relance réserve un nouveau
+numéro. Les exécutions sont sérialisées pour éviter les collisions.
+
+Après les tests et la conservation de l’artefact officiel, le workflow publie exactement les
+mêmes fichiers (.deb, provenance, empreintes) dans une GitHub Release marquée préversion,
+avec le statut « recette majiflow à effectuer ». Le résumé Actions fournit un lien direct
+vers le .deb, sans ZIP. Cette publication n’est pas une validation sur majiflow. Ne jamais
+remplacer les fichiers d’une version existante : corriger dans Git et produire la suivante.

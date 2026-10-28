@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 bash "$ROOT/packaging/debian/check-production-source.sh"
-VERSION="${1:-1.0.2}"
+VERSION="${1:?Version réservée par le workflow obligatoire}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Expected version X.Y.Z" >&2; exit 1; }
 command -v dpkg-deb >/dev/null || { echo "dpkg-deb is required" >&2; exit 1; }
 OUT="${2:-$ROOT/dist}"
