@@ -91,7 +91,7 @@ const assert = require('node:assert/strict');
   // Without JavaScript, the original server-rendered table remains usable.
   const fallback=await browser.newContext({javaScriptEnabled:false,storageState:await page.context().storageState()});
   const plain=await fallback.newPage();await plain.goto(url);
-  assert.equal(await plain.locator('.st-table thead').isVisible(),true);
+  assert.equal(await plain.locator('.st-table thead').first().isVisible(),true);
   assert.equal(await plain.locator('[name="st_description[]"]').first().isVisible(),true);
   await fallback.close();await browser.close();
   console.log('OK : real form save/reload, HT/TTC, unknowns, dynamic children, parent deletion, references, themes, density, mobile, no-JS fallback.');
