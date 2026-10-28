@@ -8,6 +8,30 @@ Lire ce fichier avant toute modification ou livraison. Il s’applique à tout l
 - PROD : 192.168.4.9, machine majiflow. La procédure ci-dessous est obligatoire.
 - Ne pas confondre un déploiement DEV, une construction de paquet et une validation PROD.
 
+## Serveur DEV — procédure obligatoire
+
+Pour toute modification fonctionnelle de DEV (192.168.6.28), utiliser le workflow
+historique **Déployer OddWorks sur .28**, fichier `.github/workflows/deploy.yml`,
+depuis le dépôt `pigeonfou/gestion-projet`.
+
+1. Enregistrer les modifications dans Git, les contrôler et les intégrer à `main`.
+2. Le push sur `main` déclenche les tests PHP et les régressions GitHub Actions.
+3. Après réussite, le runner `oddworks-28` vérifie l’IP 192.168.6.28 et les services
+   `oneforall-oddworks-web.service` et `oneforall-nginx.service`.
+4. Le workflow déploie le commit exact avec sauvegarde SQLite via le programme
+   administrateur `oddworks-deploy`, puis vérifie la page locale et
+   `https://www.pigeonfou.com/oddworks/login.php`.
+5. Vérifier les parcours authentifiés concernés lorsque l’accès le permet ; signaler
+   explicitement les contrôles non réalisés et ne pas confondre connexion HTTP et recette métier.
+
+Ne pas remplacer ce parcours par une installation Debian sur DEV, un déploiement manuel
+SSH ou le workflow autonome. Ne pas renommer ou migrer les services OneForAll pour une
+modification ordinaire. Si le runner ou le workflow échoue, corriger dans Git ou signaler
+le blocage sans improviser un autre déploiement.
+
+Voir `docs/DEPLOY_ODDWORKS_28.md`. Pour PROD, utiliser exclusivement la procédure Debian
+ci-dessous : le workflow DEV ne déploie pas 192.168.4.9/majiflow.
+
 ## Paquets Debian destinés à PROD — procédure obligatoire
 
 1. Source unique : dépôt GitHub `pigeonfou/gestion-projet`.
