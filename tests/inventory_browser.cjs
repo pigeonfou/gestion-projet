@@ -14,6 +14,22 @@ const assert=require('node:assert/strict');
  const stale=await page.evaluate(async s=>{const r=await fetch('/inventory_api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'category_save',nom:'Périmé',revision:'0'.repeat(64),_csrf:s.csrf})});return r.status;},state);assert.equal(stale,409);
  await page.goto(root+'/stock_pilotage.php');await page.waitForURL('**/inventaire.php');await page.waitForSelector('[data-open]');await page.locator('[data-open]').first().click();assert.match(await page.locator('#workspace').innerText(),/Capteur de température/);
  assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/inventory-overview.png',fullPage:true});
+ // Appearance is changed through the real settings form, never production preferences.
+ const styles=[];
+ for(const [theme,accent,density,os] of [['light','ocean','comfortable','light'],['dark','indigo','compact','light'],['system','slate','comfortable','dark']]){
+  await page.emulateMedia({colorScheme:os});await page.goto(root+'/admin/settings.php');
+  await page.selectOption('[name=ui_theme]',theme);await page.selectOption('[name=ui_accent]',accent);await page.selectOption('[name=ui_density]',density);
+  await Promise.all([page.waitForNavigation(),page.getByRole('button',{name:'Enregistrer l’apparence',exact:true}).click()]);
+  await page.goto(root+'/inventaire.php');await page.waitForSelector('[data-open]');
+  const palette=await page.evaluate(()=>{const app=document.querySelector('.inventory-app'),body=document.body,root=document.documentElement;return {theme:root.dataset.colorScheme,accent:body.dataset.accent,density:body.dataset.density,background:getComputedStyle(app).backgroundColor,text:getComputedStyle(app).color,button:getComputedStyle(document.querySelector('[data-action=article_new]')).backgroundImage,rowPadding:getComputedStyle(document.querySelector('td')).paddingTop};});
+  assert.equal(palette.theme,theme==='light'?'light':'dark');assert.equal(palette.accent,accent);assert.equal(palette.density,density);
+  await page.locator('[data-open]').first().click();await page.click('[data-action=article_edit]');
+  const dialog=await page.locator('#entryDialog').evaluate(e=>({background:getComputedStyle(e).backgroundColor,text:getComputedStyle(e).color}));
+  assert.equal(dialog.text,palette.text);await page.locator('#entryDialog [data-close]').first().click();
+  styles.push(palette);await page.screenshot({path:'/tmp/inventory-'+theme+'-'+accent+'.png',fullPage:true});
+ }
+ assert.notEqual(styles[0].background,styles[1].background);assert.notEqual(styles[0].button,styles[1].button);assert.notEqual(styles[1].button,styles[2].button);assert.ok(parseFloat(styles[1].rowPadding)<parseFloat(styles[0].rowPadding));
+ console.log('OK : paramètres réels clair, sombre, système sombre, accents cyan/violet/ardoise, formulaires et densité');
  const anon=await browser.newContext();const r=await anon.request.get(root+'/inventory_api.php');assert.equal(r.status(),401);await anon.close();
  await browser.close();console.log('OK : navigation, formulaires, persistance, contrôle qualité, redirections, session, CSRF et concurrence');
 })().catch(e=>{console.error(e);process.exit(1);});

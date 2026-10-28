@@ -5,7 +5,7 @@ $pageTitle = 'Stock & inventaire';
 $activePage = 'inventaire';
 $useAppShell = true;
 $mainClass = 'inventory-shell';
-$pageStyles = ['assets/css/inventaire.css?v=2'];
+$pageStyles = ['assets/css/inventaire.css?v=3'];
 require __DIR__.'/includes/header.php';
 ?>
 <div class="inventory-app">

@@ -14,3 +14,51 @@
 .inventory-app{box-sizing:border-box;--inventory-header-height:var(--header-h,64px)}
 .inventory-app .layout{min-height:calc(100dvh - var(--inventory-header-height))}
 .inventory-app aside{top:var(--inventory-header-height);height:calc(100dvh - var(--inventory-header-height))}
+
+/* Inherit the shared OddWorks palette; no independent inventory theme. */
+.inventory-app{
+  --bg:var(--surface-page);--surface:var(--surface-card);--line:var(--border-default);
+  --ink:var(--text-primary);--muted:var(--text-secondary);--bright:var(--ow-cyan);
+  --cyan:var(--ow-cyan-deep);--green:var(--state-success);--amber:var(--state-warning);
+  background:var(--surface-page);color:var(--text-primary);
+}
+.inventory-app :is(.box,.contextbar,.formdialog,.docdialog){background:var(--surface-card);color:var(--text-primary);border-color:var(--border-default)}
+.inventory-app aside{background:var(--surface-muted);color:var(--text-secondary);border-color:var(--border-default)}
+.inventory-app :is(.boxhead,.modalhead,.modalfoot),.inventory-app .formdialog .modalhead,.inventory-app .docdialog .modalhead{background:var(--surface-muted);color:var(--text-primary);border-color:var(--border-default)}
+.inventory-app :is(th,.commercialsection table th:last-child,.stocktable th:last-child){background:var(--surface-muted);color:var(--text-secondary);border-color:var(--border-default)}
+.inventory-app td,.inventory-app .propertyline{border-color:var(--border-subtle)}
+.inventory-app tbody tr:nth-child(even){background:var(--surface-raised)}
+.inventory-app tbody tr:hover{background:var(--surface-interactive)}
+.inventory-app :is(.commercialsection table td:last-child,.stocktable td:last-child){background:var(--surface-card);border-color:var(--border-default)}
+.inventory-app :is(.imagebox,.readonlyfield){background:var(--surface-raised);color:var(--text-secondary);border-color:var(--border-default)}
+.inventory-app :is(input,select,textarea){background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-default);accent-color:var(--ow-cyan)}
+.inventory-app .searchbar input{background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-default)}
+.inventory-app :is(input,textarea)::placeholder{color:var(--text-discreet)}
+.inventory-app :is(input,select,textarea):disabled{background:var(--surface-muted);color:var(--text-secondary)}
+.inventory-app :is(.muted,.partdesc,.navtitle,.kv dt,.field label,.propertyline span:first-child,.boolean,.price-note,.inventory-status){color:var(--text-secondary)}
+.inventory-app :is(h2,h3,.kv dd){color:var(--text-primary)}
+.inventory-app :is(.ref,.pathlink,.docslist a){color:var(--action-link)}
+.inventory-app .btn{background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-default)}
+.inventory-app .btn:hover{background:var(--surface-interactive);border-color:var(--ow-cyan)}
+.inventory-app .btn.primary{background:linear-gradient(135deg,var(--ow-cyan),var(--ow-cyan-deep));color:var(--on-accent);border-color:var(--ow-cyan-deep)}
+.inventory-app .btn.primary:hover{background:var(--ow-cyan-deep);color:var(--on-accent);border-color:var(--ow-cyan-deep)}
+.inventory-app .chip{color:var(--text-secondary);border-color:var(--border-default)}
+.inventory-app :is(.sidenav,.chip):hover,.inventory-app #contextNav button:hover{background:var(--surface-interactive);color:var(--text-primary)}
+.inventory-app .sidenav,.inventory-app #contextNav button{color:var(--text-secondary)}
+.inventory-app .sidenav.active,.inventory-app .chip.active,.inventory-app #contextNav button.active{
+  background:color-mix(in srgb,var(--ow-cyan) 18%,var(--surface-card));
+  color:var(--text-primary);border-color:var(--ow-cyan);box-shadow:inset 3px 0 var(--ow-cyan);
+}
+.inventory-app :is(.pill,.pill.gray){background:var(--surface-muted);color:var(--text-secondary)}
+.inventory-app :is(.pill.lot,.pill.serial){background:var(--state-info-bg);color:var(--state-info)}
+.inventory-app :is(.pill.green,.boolean.yes){color:var(--state-success)}
+.inventory-app .pill.green{background:var(--state-success-bg)}
+.inventory-app .pill.amber{background:var(--state-warning-bg);color:var(--state-warning)}
+.inventory-app .pill.red,.inventory-app .errorbanner{background:var(--state-danger-bg);color:var(--state-danger);border-color:var(--state-danger)}
+.inventory-app .formerror{color:var(--state-danger)}
+.inventory-app .toast{background:var(--surface-raised);color:var(--text-primary);border:1px solid var(--border-default)}
+body[data-density="compact"] .inventory-app :is(th,td){padding-top:5px;padding-bottom:5px}
+body[data-density="compact"] .inventory-app :is(.boxhead,.propertyline){padding-top:5px;padding-bottom:5px}
+body[data-density="compact"] .inventory-app :is(.sidenav,#contextNav button,.btn){padding-top:5px;padding-bottom:5px}
+body[data-density="compact"] .inventory-app .boxbody{padding:10px}
+body[data-density="compact"] .inventory-app #workspace{padding:12px}

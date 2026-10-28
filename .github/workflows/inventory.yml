@@ -43,4 +43,4 @@ jobs:
         if: always()
         with:
           name: inventaire-apercu-test
-          path: /tmp/inventory-overview.png
+          path: /tmp/inventory-*.png
