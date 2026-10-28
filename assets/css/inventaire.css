@@ -62,3 +62,10 @@ body[data-density="compact"] .inventory-app :is(.boxhead,.propertyline){padding-
 body[data-density="compact"] .inventory-app :is(.sidenav,#contextNav button,.btn){padding-top:5px;padding-bottom:5px}
 body[data-density="compact"] .inventory-app .boxbody{padding:10px}
 body[data-density="compact"] .inventory-app #workspace{padding:12px}
+
+/* Separate the inventory menus from the contextual tabs. */
+.inventory-app #contextLabel{
+  margin:20px 0 8px;
+  padding:16px 10px 0;
+  border-top:1px solid var(--border-default);
+}
