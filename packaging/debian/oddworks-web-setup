@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || { echo "Run as root" >&2; exit 1; }
+APP=/usr/share/oddworks
+PHPVER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
+POOL="/etc/php/$PHPVER/fpm/pool.d/oddworks.conf"
+SITE=/etc/nginx/sites-available/oddworks.conf
+LINK=/etc/nginx/sites-enabled/oddworks.conf
+[[ -f "$APP/index.php" && -d "$(dirname "$POOL")" ]] || { echo "Missing application or PHP-FPM" >&2; exit 1; }
+if [[ -f "$POOL" && -f "$SITE" && -L "$LINK" ]]; then
+  echo "Existing OddWorks configuration preserved"
+  php-fpm"$PHPVER" -t
+  nginx -t
+  systemctl reload "php$PHPVER-fpm"
+  systemctl reload nginx
+  exit 0
+fi
+for f in "$POOL" "$SITE" "$LINK"; do
+  [[ ! -e "$f" && ! -L "$f" ]] || { echo "Conflicting configuration: $f" >&2; exit 1; }
+done
+if ss -lntH '( sport = :80 )' | grep -q .; then
+  if [[ -L /etc/nginx/sites-enabled/default && "$(readlink -f /etc/nginx/sites-enabled/default)" == /etc/nginx/sites-available/default ]]; then
+    echo "Ubuntu default Nginx site detected; will disable it"
+  else
+    echo "Port 80 already occupied; refusing to replace existing service" >&2
+    exit 1
+  fi
+fi
+install -d -o www-data -g www-data -m 750 /var/lib/oddworks /var/lib/oddworks/sessions
+disabled_default=0
+cleanup() {
+  local status=$?
+  if (( status != 0 )); then
+    rm -f "$LINK" "$SITE" "$POOL"
+    if (( disabled_default )); then ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default; fi
+    echo "OddWorks web configuration rolled back" >&2
+  fi
+}
+trap cleanup EXIT
+install -m 644 "$APP/deploy/oddworks-fpm.conf" "$POOL"
+sed 's@/opt/oddworks/current@/usr/share/oddworks@g' "$APP/deploy/oddworks-nginx.conf" > "$SITE"
+if [[ -L /etc/nginx/sites-enabled/default && "$(readlink -f /etc/nginx/sites-enabled/default)" == /etc/nginx/sites-available/default ]]; then
+  rm /etc/nginx/sites-enabled/default
+  disabled_default=1
+fi
+ln -s "$SITE" "$LINK"
+php-fpm"$PHPVER" -t
+nginx -t
+systemctl enable --now "php$PHPVER-fpm" nginx
+systemctl reload "php$PHPVER-fpm"
+systemctl reload nginx
+trap - EXIT
+echo "OddWorks listening on port 80"

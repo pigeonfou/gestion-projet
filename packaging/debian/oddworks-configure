@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ $EUID -eq 0 ]] || { echo "Root required" >&2; exit 1; }
+APP=/usr/share/oddworks
+DB=/var/lib/oddworks/database.sqlite
+SECRET=/var/lib/oddworks/initial-admin-password
+[[ -f "$APP/install/init_database.php" ]] || { echo "Missing application" >&2; exit 1; }
+install -d -o www-data -g www-data -m 750 /var/lib/oddworks /var/lib/oddworks/sessions
+if [[ ! -f "$DB" ]]; then
+  if [[ -t 0 && "${ODDWORKS_NONINTERACTIVE:-0}" != 1 ]]; then
+    read -r -s -p 'Admin password (12 characters minimum): ' PASSWORD; echo
+    [[ ${#PASSWORD} -ge 12 ]] || { echo "Password too short" >&2; exit 1; }
+    read -r -s -p 'Confirm: ' CONFIRM; echo
+    [[ "$PASSWORD" == "$CONFIRM" ]] || { echo "Passwords differ" >&2; exit 1; }
+    unset CONFIRM
+  else
+    PASSWORD="$(openssl rand -hex 24)"
+    (umask 077; printf '%s\n' "$PASSWORD" > "$SECRET")
+  fi
+  runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB" PROJECTFLOW_ADMIN_PASSWORD="$PASSWORD" php "$APP/install/init_database.php"
+  unset PASSWORD
+fi
+runuser -u www-data -- env PROJECTFLOW_DB_PATH="$DB" php -r 'require $argv[1]; runSchemaMigrations();' "$APP/includes/schema.php"
+echo "OddWorks SQLite ready: $DB"
+if [[ -f "$SECRET" ]]; then
+  echo "Initial admin password is stored in $SECRET (root only). Delete after first login."
+fi

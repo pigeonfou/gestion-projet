@@ -1,0 +1,29 @@
+name: OddWorks - deploiement autonome
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Confirmer le deploiement sur 192.168.6.28"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: oddworks-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: ${{ github.event.inputs.deploy == 'true' && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, Linux, X64, oddworks-28]
+    steps:
+      - name: Deployer le commit main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(hostname -I | tr ' ' '\n' | grep -xc '192.168.6.28')" -eq 1
+          test -f /etc/nginx/sites-enabled/oddworks.conf
+          test -f /etc/php/8.5/fpm/pool.d/oddworks.conf
+          sudo -n /usr/local/sbin/oddworks-standalone-deploy "${GITHUB_SHA}"
+      - name: Verification locale
+        run: curl -fsS --max-time 10 http://127.0.0.1:18081/login.php >/dev/null

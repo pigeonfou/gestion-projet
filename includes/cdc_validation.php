@@ -54,7 +54,7 @@ function cdcValidationBuildMsg(string $recipient, string $subject, string $proje
     $output = tempnam(sys_get_temp_dir(), 'oddworks-cdc-msg-');
     if ($output === false) throw new RuntimeException('Le brouillon Outlook temporaire n’a pas pu être créé.');
     @unlink($output);
-    $python = '/opt/oneforall/apps/oddworks/shared/cdc-msg-venv/bin/python3';
+    $python = getenv('ODDWORKS_CDC_MSG_PYTHON') ?: '/opt/oddworks/shared/cdc-msg-venv/bin/python3';
     $script = realpath(__DIR__ . '/../scripts/generate-cdc-msg.py') ?: '';
     if (!is_file($script)) throw new RuntimeException('Le script de génération Outlook .msg est absent de la version OddWorks active.');
     if (!is_executable($python)) throw new RuntimeException('Le runtime Outlook .msg n’est pas accessible au service OddWorks.');
