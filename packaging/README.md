@@ -10,8 +10,8 @@ conversation ou de l’outil employé. `AGENTS.md` à la racine en impose l’ap
 - Reporter les changements validés dans `extraction-oddworks-autonome` en préservant
   l’architecture autonome et les scripts de packaging. Ne pas fusionner aveuglément une
   configuration OneForAll ou DEV dans la branche de packaging.
-- Enregistrer toutes les corrections dans Git, y compris celles du packaging. Fixer la
-  version dans le workflow avant construction. Aucun fichier provenant d’un ancien .deb.
+- Enregistrer toutes les corrections dans Git, y compris celles du packaging. Laisser le workflow réserver une
+  nouvelle version par tag Git avant construction. Aucun fichier provenant d’un ancien .deb.
 
 ## Construction officielle
 
@@ -60,3 +60,18 @@ majiflow** avec sa preuve. Ne jamais annoncer le dernier statut sans recette eff
 Si le workflow échoue ou si ses accès manquent, corriger dans Git puis relancer le workflow.
 Ne pas construire localement, reprendre un ancien .deb ou modifier un paquet téléchargé.
 Signaler le blocage lorsqu’il ne peut pas être résolu dans ce parcours.
+
+## Numérotation et téléchargement direct
+
+Le dernier numéro historique consommé est `1.0.2` (fichier
+`packaging/debian/last-legacy-version`). Le workflow prend le plus grand numéro entre
+cet historique et les tags de version, incrémente le correctif, puis réserve atomiquement
+`oddworks-deb-vX.Y.Z` sur le commit source avant construction. Les tags réservés ne doivent
+pas être supprimés ni réutilisés, même après échec ou relance. Une relance réserve un nouveau
+numéro. Les exécutions sont sérialisées pour éviter les collisions.
+
+Après les tests et la conservation de l’artefact officiel, le workflow publie exactement les
+mêmes fichiers (.deb, provenance, empreintes) dans une GitHub Release marquée préversion,
+avec le statut « recette majiflow à effectuer ». Le résumé Actions fournit un lien direct
+vers le .deb, sans ZIP. Cette publication n’est pas une validation sur majiflow. Ne jamais
+remplacer les fichiers d’une version existante : corriger dans Git et produire la suivante.
