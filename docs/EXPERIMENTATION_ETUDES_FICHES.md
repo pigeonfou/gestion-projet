@@ -8,7 +8,7 @@ La vue en fiches ne concerne que l’étape 2 du processus.
 
 ## Recette
 
-Workflow `Expérimentation études en fiches` : régressions PHP et navigateur sur SQLite jetable,
+Job `validate` du workflow historique `Déployer OddWorks sur .28` : régressions PHP et navigateur sur SQLite jetable,
 sauvegarde et rechargement réels, HT/TTC, coûts et délais inconnus, enfants dynamiques,
 suppression de parent, références S.T., clair/sombre, densité, mobile et repli sans JS.
 Les captures sont conservées dans l’artefact `etudes-fiches-apercus`.

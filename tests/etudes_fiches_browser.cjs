@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
   await page.goto(url); await page.waitForSelector('.etudes-fiches');
   const rows=page.locator('.st-row');
   assert.equal(await rows.count(),5);
+  await page.screenshot({path:'/tmp/etudes-initial.png',fullPage:true});
   assert.match(await page.locator('.ef-overview').innerText(),/260,00.*HT.*120,00.*TTC/);
   assert.match(await page.locator('.ef-missing').innerText(),/1 coût.*1 délai/);
   const second=rows.nth(1);

@@ -62,7 +62,7 @@
     const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.dataset.unknownField = name;
     wrap.append(toggle, document.createTextNode(label)); input.closest('td').append(wrap);
     let known = estimateIsUnknown(input.value) ? '' : input.value;
-    toggle.addEventListener('change', () => {
+    toggle.addEventListener('input', () => {
       if (toggle.checked) { known = input.value; input.value = 'inconnue'; }
       else input.value = known;
       input.dispatchEvent(new Event('input', {bubbles: true}));
