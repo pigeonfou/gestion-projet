@@ -63,6 +63,8 @@ const assert = require('node:assert/strict');
     palettes.push(palette);await page.screenshot({path:'/tmp/etudes-'+theme+'-'+density+'.png',fullPage:true});
     await page.setViewportSize({width:390,height:844});
     const overflow=await page.locator('#formSpecsTech').evaluate(el=>el.scrollWidth>el.clientWidth+2);
+    await page.screenshot({path:'/tmp/etudes-mobile-'+theme+'.png',fullPage:true});
+    if (overflow) console.log('OVERFLOW', await page.locator('#formSpecsTech').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth,items:[...el.querySelectorAll('*')].filter(n=>n.getBoundingClientRect().right>el.getBoundingClientRect().right+2 && n.getBoundingClientRect().width>0).slice(0,20).map(n=>({tag:n.tagName,cls:n.className,w:n.getBoundingClientRect().width,right:n.getBoundingClientRect().right,text:n.textContent.slice(0,80)}))})));
     assert.equal(overflow,false,'No horizontal scrolling in the estimate form');
     await page.screenshot({path:'/tmp/etudes-mobile-'+theme+'.png',fullPage:true});
     await page.setViewportSize({width:1536,height:1100});

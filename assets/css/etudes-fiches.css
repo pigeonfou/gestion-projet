@@ -65,3 +65,9 @@ body[data-density="compact"] #formSpecsTech.etudes-fiches { --ef-space:.7rem; }
   .etudes-fiches .ef-section-toggle .sf-cost-badge { flex-basis:100%; }
   .etudes-fiches .ef-missing { margin-left:0; }
 }
+/* Undo legacy table column constraints inside the card grid. */
+#formSpecsTech.etudes-fiches .st-table .st-row > td { max-width:none; white-space:normal; overflow-wrap:anywhere; }
+#formSpecsTech.etudes-fiches .cp-cost-cell { min-width:0; max-width:100%; width:100%; }
+#formSpecsTech.etudes-fiches .ef-section-toggle > span { min-width:0; overflow-wrap:anywhere; }
+#formSpecsTech.etudes-fiches .ef-card-numbers { min-width:0; }
+#formSpecsTech.etudes-fiches .ef-card-footer .btn { white-space:normal; }
