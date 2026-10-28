@@ -41,6 +41,12 @@
   const save = document.querySelector('[type="submit"][form="formSpecsTech"]');
   save?.parentElement.prepend(dirty);
   save?.parentElement.classList.add('ef-save-actions');
+  if (save) {
+    const bar = save.parentElement; bar.classList.add('ef-savebar');
+    form.closest('.r1b-process-main').append(bar);
+    save.textContent = 'Enregistrer';
+    save.setAttribute('aria-label', 'Enregistrer les spécifications techniques');
+  }
   const signature = () => JSON.stringify([...new FormData(form)]);
   let baseline;
   let submitting = false;
@@ -126,7 +132,10 @@
     const list = rows(); list.forEach(enhance);
     const byUid = new Map(list.map(row => [value(row, 'uid'), row]));
     list.forEach(row => {
-      const type = value(row, 'type'); const desc = value(row, 'description').trim();
+      const type = value(row, 'type');
+      const icons = {'PCB':'fa-microchip','Composant':'fa-cube','Matériel':'fa-toolbox','Prestataire':'fa-user-gear','Logiciel':'fa-code','3D':'fa-cubes','S.T.x.x':'fa-link'};
+      row.querySelector('.ef-icon').className = 'fas ef-icon ' + (icons[type] || 'fa-cube');
+      const desc = value(row, 'description').trim();
       const id = row.querySelector('.st-id').textContent;
       setText(row.querySelector('.ef-card-meta'), type + ' · ' + id);
       setText(row.querySelector('.ef-card-title'), desc || 'Nouvelle solution technique');

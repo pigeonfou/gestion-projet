@@ -71,3 +71,17 @@ body[data-density="compact"] #formSpecsTech.etudes-fiches { --ef-space:.7rem; }
 #formSpecsTech.etudes-fiches .ef-section-toggle > span { min-width:0; overflow-wrap:anywhere; }
 #formSpecsTech.etudes-fiches .ef-card-numbers { min-width:0; }
 #formSpecsTech.etudes-fiches .ef-card-footer .btn { white-space:normal; }
+.pf-app .ef-savebar { flex:none; margin:0 -1.5rem -1.5rem; padding:.7rem 1.5rem; background:var(--surface-card); border-top:1px solid var(--border-default); z-index:5; }
+.ef-savebar .ef-save-status { flex:1; }
+.ef-savebar .btn { width:auto; margin:0; }
+@media(max-width:650px) { .ef-savebar .ef-save-status { flex-basis:100%; } }
+/* The legacy theme fixes a desktop sidebar width even on phones: scope its repair to this experiment. */
+@media(max-width:950px) {
+  .pf-app .r1b-layout:has(.etudes-fiches) { grid-template-columns:minmax(0,1fr)!important; grid-template-rows:auto minmax(0,1fr); }
+  .pf-app .r1b-layout:has(.etudes-fiches) > .r1b-sidebar { position:static; display:flex; width:100%; min-width:0; min-height:0; max-height:4rem; padding:.3rem; overflow:auto; }
+  .pf-app .r1b-layout:has(.etudes-fiches) .r1b-nav { display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; min-width:0; margin:0; overflow:auto; }
+  .pf-app .r1b-layout:has(.etudes-fiches) .r1b-menu-row { flex:none; width:auto; }
+  .pf-app .r1b-layout:has(.etudes-fiches) .r1b-nav a { width:auto; white-space:nowrap; margin:.2rem; }
+  .pf-app .r1b-layout:has(.etudes-fiches) :is(.r1b-sidebar-title,.r1b-sidebar-foot,.r1b-context-meta) { display:none; }
+}
+.etudes-fiches #st-structure-tree summary { white-space:normal; overflow-wrap:anywhere; }
