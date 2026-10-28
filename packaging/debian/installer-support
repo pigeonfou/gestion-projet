@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Copied verbatim into DEBIAN/preinst and installed for postinst recovery/finish.
+set -Eeuo pipefail
+STATE=/var/lib/oddworks-installer
+DATA=/var/lib/oddworks
+TTY_OPEN=0
+say(){ printf '%s\n' "$*"; }
+open_tty(){
+  [[ ${DEBIAN_FRONTEND:-} != noninteractive ]] || return 1
+  if { exec 3<>/dev/tty; } 2>/dev/null; then TTY_OPEN=1;return 0;fi
+  return 1
+}
+restore_pools(){
+  [[ -f "$STATE/pools" ]] || return 0
+  local pool version
+  while IFS= read -r pool; do
+    [[ "$pool" =~ ^/etc/php/[0-9]+\.[0-9]+/fpm/pool.d/oddworks.conf$ ]] || return 1
+    if [[ -f "$pool.oddworks-maintenance" ]];then mv -- "$pool.oddworks-maintenance" "$pool";fi
+    version=${pool#/etc/php/};version=${version%%/*}
+    if command -v systemctl >/dev/null && systemctl is-active --quiet "php$version-fpm";then systemctl reload "php$version-fpm";fi
+  done < "$STATE/pools"
+}
+prepare(){
+  [[ $EUID -eq 0 ]] || { say 'Root requis.';exit 1; }
+  local existing=0 mode=${ODDWORKS_INSTALL_MODE:-auto} answer backup pool version
+  [[ -e "$DATA/database.sqlite" || -d /usr/share/oddworks || -f /etc/nginx/sites-available/oddworks.conf ]] && existing=1
+  [[ "$mode" =~ ^(auto|update|fresh|cancel)$ ]] || { say 'Mode invalide.';exit 1; }
+  if [[ "$mode" == auto ]];then
+    if open_tty;then
+      printf '\nOddWorks : installation existante %s.\n' "$([[ $existing == 1 ]] && echo détectée || echo absente)" >&3
+      if [[ $existing == 1 ]];then
+        printf '1) Mettre à jour (conserver données et comptes) [défaut]\n2) Installation neuve (archiver les données actuelles)\n3) Annuler\nChoix [1] : ' >&3
+        IFS= read -r answer <&3 || exit 1
+        case "$answer" in ''|1)mode=update;;2)mode=fresh;;*)say 'Installation annulée avant modification.';exit 1;;esac
+      else
+        printf '1) Installation neuve [défaut]\n2) Annuler\nChoix [1] : ' >&3
+        IFS= read -r answer <&3 || exit 1
+        case "$answer" in ''|1)mode=fresh;;*)say 'Installation annulée avant modification.';exit 1;;esac
+      fi
+    else
+      [[ $existing == 1 ]] && mode=update || mode=fresh
+      say "Installation non interactive : mode $mode."
+    fi
+  fi
+  [[ "$mode" != cancel ]] || { say 'Installation annulée avant modification.';exit 1; }
+  if [[ "$mode" == update && ! -f "$DATA/database.sqlite" ]];then
+    say 'Base existante introuvable : mise à jour refusée. Vérifier les chemins avant une installation neuve.';exit 1
+  fi
+  if [[ "$mode" == fresh && $existing == 1 ]];then
+    if [[ $TTY_OPEN == 1 ]] || open_tty;then
+      printf 'Les données seront archivées et une base vide sera créée. Tapez NOUVELLE pour confirmer : ' >&3
+      IFS= read -r answer <&3 || exit 1
+      [[ "$answer" == NOUVELLE ]] || { say 'Réinstallation annulée.';exit 1; }
+    elif [[ ${ODDWORKS_CONFIRM_FRESH:-} != YES ]];then
+      say 'Réinstallation neuve refusée sans confirmation explicite.';exit 1
+    fi
+  fi
+  install -d -o root -g root -m 700 "$STATE"
+  # Do not silently overwrite state left by an interrupted installation.
+  if [[ -f "$STATE/pending" ]];then
+    say 'Une installation précédente est interrompue. Reprendre avec sudo dpkg --configure oddworks ou consulter /var/lib/oddworks-installer.';exit 1
+  fi
+  umask 077
+  printf '%s\n' "$mode" > "$STATE/mode"
+  : > "$STATE/pools"
+  # Disable only the dedicated OddWorks pool. Other PHP applications stay available.
+  trap 'restore_pools; say "Préparation interrompue ; aucune nouvelle version dépaquetée."' ERR
+  shopt -s nullglob
+  for pool in /etc/php/*/fpm/pool.d/oddworks.conf; do
+    version=${pool#/etc/php/};version=${version%%/*}
+    if command -v systemctl >/dev/null && systemctl is-active --quiet "php$version-fpm";then
+      printf '%s\n' "$pool" >> "$STATE/pools"
+      mv -- "$pool" "$pool.oddworks-maintenance"
+      if ! systemctl reload "php$version-fpm";then restore_pools;exit 1;fi
+    fi
+  done
+  for attempt in {1..30};do
+    if ! pgrep -f '^php-fpm: pool oddworks$' >/dev/null;then break;fi
+    sleep 1
+    [[ $attempt -lt 30 ]] || { restore_pools;say 'Requêtes OddWorks encore actives : installation refusée.';exit 1; }
+  done
+  if [[ $existing == 1 ]];then
+    command -v python3 >/dev/null || { restore_pools;say 'Python3 requis pour sauvegarder SQLite.';exit 1; }
+    backup=$(mktemp -d /var/backups/oddworks-install-XXXXXXXX)
+    chmod 700 "$backup"
+    printf '%s\n' "$backup" > "$STATE/backup"
+    if [[ -f "$DATA/database.sqlite" ]];then
+      python3 - "$DATA/database.sqlite" "$backup/database.sqlite" <<'PY'
+import sqlite3,sys
+with sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True,timeout=30) as source, sqlite3.connect(sys.argv[2]) as target:
+    source.backup(target)
+    if target.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise RuntimeError('Sauvegarde SQLite invalide')
+PY
+    fi
+    local -a paths=()
+    for path in usr/share/oddworks usr/lib/oddworks var/lib/oddworks etc/nginx;do [[ ! -e "/$path" ]] || paths+=("$path");done
+    for pool in /etc/php/*/fpm/pool.d/oddworks.conf*;do [[ ! -f "$pool" ]] || paths+=("${pool#/}");done
+    if [[ ${#paths[@]} -gt 0 ]];then tar --acls --xattrs --transform='s/\.oddworks-maintenance$//' -czf "$backup/existing.tar.gz" -C / "${paths[@]}";tar -tzf "$backup/existing.tar.gz" >/dev/null;fi
+    dpkg-query -W -f='${Package} ${Version}\n' oddworks > "$backup/previous-version.txt" 2>/dev/null || true
+    say "Sauvegarde vérifiée avant remplacement : $backup"
+    if [[ "$mode" == fresh && -d "$DATA" ]];then
+      mv -- "$DATA" "$backup/previous-data"
+      say "Anciennes données conservées dans $backup/previous-data."
+    fi
+  else
+    : > "$STATE/backup"
+  fi
+  [[ -f "$DATA/database.sqlite" ]] && printf '0\n' > "$STATE/new-database" || printf '1\n' > "$STATE/new-database"
+  : > "$STATE/pending"
+  trap - ERR
+}
+finish(){
+  local backup='' fresh=0 secret=/var/lib/oddworks/initial-admin-password
+  [[ ! -f "$STATE/backup" ]] || backup=$(cat "$STATE/backup")
+  [[ ! -f "$STATE/new-database" ]] || fresh=$(cat "$STATE/new-database")
+  # On normal completion postinst has already restored the pool before web setup.
+  if [[ "$fresh" == 1 && -s "$secret" ]];then
+    if open_tty;then
+      printf '\n=== Nouveau compte OddWorks ===\nIdentifiant : admin\nMot de passe initial : ' >&3
+      cat "$secret" >&3
+      printf 'Changez ce mot de passe à la première connexion.\n\n' >&3
+    else
+      say 'Compte initial : admin. Mot de passe masqué dans les journaux.'
+      say 'Pour le lire localement : sudo cat /var/lib/oddworks/initial-admin-password'
+    fi
+  else
+    say 'Mise à jour terminée : comptes et mots de passe existants conservés.'
+  fi
+  [[ -z "$backup" ]] || say "Sauvegarde conservée : $backup"
+  if [[ -f "$STATE/pending" ]];then mv "$STATE/pending" "$STATE/completed";fi
+}
+# dpkg invokes the previous package's postrm during upgrades as well.
+case "${0##*/}" in
+  postrm|*.postrm)
+    case "${1:-}" in abort-upgrade|abort-install)restore_pools;; esac
+    exit 0
+    ;;
+esac
+case "${1:-}" in
+  install|upgrade)prepare;;
+  restore-pools)restore_pools;;
+  finish)finish;;
+  abort-upgrade|abort-install)restore_pools;;
+  remove|purge|disappear) :;;
+  *)say 'Action installateur inconnue.';exit 1;;
+esac

@@ -16,6 +16,9 @@ git -C "$ROOT" archive "$GITHUB_SHA" | tar -C "$PKG/usr/share/oddworks" --exclud
 install -m 755 "$ROOT/packaging/debian/oddworks-configure" "$PKG/usr/lib/oddworks/oddworks-configure"
 install -m 755 "$ROOT/packaging/debian/oddworks-web-setup" "$PKG/usr/lib/oddworks/oddworks-web-setup"
 install -m 644 "$ROOT/packaging/debian/README.md" "$PKG/usr/share/doc/oddworks/README.md"
+install -m 755 "$ROOT/packaging/debian/installer-support" "$PKG/DEBIAN/preinst"
+install -m 755 "$ROOT/packaging/debian/installer-support" "$PKG/DEBIAN/postrm"
+install -m 755 "$ROOT/packaging/debian/installer-support" "$PKG/usr/lib/oddworks/installer-support"
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: oddworks
 Version: $VERSION
@@ -38,10 +41,11 @@ if [ ! -x /opt/oddworks/shared/cdc-msg-venv/bin/python3 ]; then
     python3 -m venv /opt/oddworks/shared/cdc-msg-venv
 fi
 /opt/oddworks/shared/cdc-msg-venv/bin/python3 -m pip install --disable-pip-version-check --upgrade -r /usr/share/oddworks/requirements-cdc-msg.txt
+/usr/lib/oddworks/installer-support restore-pools
 /usr/lib/oddworks/oddworks-web-setup
+/usr/lib/oddworks/installer-support finish
 echo "OddWorks ready at http://127.0.0.1/login.php"
-echo "Admin user: admin"
-echo "Read initial password with: sudo cat /var/lib/oddworks/initial-admin-password"
+
 EOF
 chmod 755 "$PKG/DEBIAN/postinst"
 mkdir -p "$PKG/usr/sbin"

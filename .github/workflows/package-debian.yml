@@ -41,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup
+          bash -n packaging/debian/build.sh packaging/debian/install-ubuntu.sh packaging/debian/oddworks-configure packaging/debian/oddworks-web-setup packaging/debian/installer-support
           bash packaging/debian/build.sh "$ODDWORKS_PACKAGE_VERSION"
           echo "Working directory: $PWD"
           ls -lah dist/
@@ -63,6 +63,15 @@ jobs:
           sudo sqlite3 /var/lib/oddworks/database.sqlite "INSERT INTO parametres(cle,valeur) VALUES('upgrade_keep_test','preserved');"
           sudo sh -c 'echo "# upgrade-preserved" >> /etc/nginx/sites-available/oddworks.conf'
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "./dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb"
+          sudo test -f /var/lib/oddworks-installer/completed
+          backup=$(sudo cat /var/lib/oddworks-installer/backup)
+          sudo test -s "$backup/database.sqlite"
+          sudo test -s "$backup/existing.tar.gz"
+          sudo sqlite3 "$backup/database.sqlite" "SELECT valeur FROM parametres WHERE cle='upgrade_keep_test';" | grep -Fx preserved
+          # A fresh reinstall must never be selected silently over existing data.
+          if sudo env DEBIAN_FRONTEND=noninteractive ODDWORKS_INSTALL_MODE=fresh /usr/lib/oddworks/installer-support upgrade; then exit 1; fi
+          # Exercise the real interactive cancellation without touching the installation.
+          if printf '3\n' | sudo env DEBIAN_FRONTEND=readline script -qec '/usr/lib/oddworks/installer-support upgrade' /dev/null; then exit 1; fi
           sudo grep -F '# upgrade-preserved' /etc/nginx/sites-available/oddworks.conf
           sudo sqlite3 /var/lib/oddworks/database.sqlite "SELECT valeur FROM parametres WHERE cle='upgrade_keep_test';" | grep -Fx preserved
           sudo test -f /usr/share/oddworks/inventaire.php
@@ -88,6 +97,34 @@ jobs:
           export INVENTORY_TEST_ROOT=http://127.0.0.1
           export INVENTORY_TEST_PASSWORD="$(sudo cat /var/lib/oddworks/initial-admin-password)"
           node tests/inventory_browser.cjs
+      - name: Tester la réinstallation neuve et les identifiants initiaux
+        shell: bash
+        run: |
+          set -euo pipefail
+          old_hash=$(sudo sha256sum /var/lib/oddworks/initial-admin-password | cut -d ' ' -f 1)
+          sudo env DEBIAN_FRONTEND=noninteractive ODDWORKS_INSTALL_MODE=fresh ODDWORKS_CONFIRM_FRESH=YES dpkg -i "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" > /tmp/oddworks-fresh.log 2>&1
+          sudo test -s /var/lib/oddworks/initial-admin-password
+          new_hash=$(sudo sha256sum /var/lib/oddworks/initial-admin-password | cut -d ' ' -f 1)
+          test "$old_hash" != "$new_hash"
+          backup=$(sudo cat /var/lib/oddworks-installer/backup)
+          sudo test -s "$backup/previous-data/database.sqlite"
+          sudo sqlite3 /var/lib/oddworks/database.sqlite 'SELECT COUNT(*) FROM stock_articles;' | grep -Fx 0
+          grep -F 'Compte initial : admin' /tmp/oddworks-fresh.log
+          sudo python3 - <<'PYTHON'
+          from pathlib import Path
+          secret=Path('/var/lib/oddworks/initial-admin-password').read_text().strip()
+          assert secret not in Path('/tmp/oddworks-fresh.log').read_text()
+          print('Mot de passe absent des journaux non interactifs : OK')
+          PYTHON
+          # Capture the controlling-terminal output privately, never in Actions logs.
+          sudo env DEBIAN_FRONTEND=readline script -qec '/usr/lib/oddworks/installer-support finish' /var/lib/oddworks-installer/tty-display-test.log > /dev/null
+          sudo python3 - <<'PYTHON'
+          from pathlib import Path
+          secret=Path('/var/lib/oddworks/initial-admin-password').read_text().strip()
+          log=Path('/var/lib/oddworks-installer/tty-display-test.log').read_text()
+          assert 'Identifiant : admin' in log and secret in log
+          print('Affichage sur le terminal initial : OK')
+          PYTHON
       - name: Enregistrer la provenance et les empreintes
         shell: bash
         run: |
