@@ -6,7 +6,9 @@ module.exports = async ({github, context, core}) => {
   const filename = 'oddworks_'+version+'_all.deb';
   const provenance = JSON.parse(fs.readFileSync('dist/PROVENANCE.json', 'utf8'));
   if (provenance.commit !== context.sha || provenance.tag !== tag) throw new Error('Provenance incohérente');
-  const body = 'Construit et testé par GitHub Actions sur Ubuntu 24.04. **Recette sur majiflow à effectuer ; non validé en production.**\n\nCommit : `'+context.sha+'`\n\n[Exécution officielle]('+provenance.run_url+')\n\nLe fichier Debian ci-dessous est identique à celui de l’artefact `oddworks-deb-ubuntu-24.04`. Les empreintes et la provenance sont jointes.';
+  const baseline = provenance.dev_baseline;
+  if (!baseline?.commit || !baseline.workflow_run_url) throw new Error('Référence DEV absente');
+  const body = 'DEV de référence : `'+baseline.commit+'` — [déploiement vérifié]('+baseline.workflow_run_url+').\n\nConstruit et testé par GitHub Actions sur Ubuntu 24.04. **Recette sur majiflow à effectuer ; non validé en production.**\n\nCommit : `'+context.sha+'`\n\n[Exécution officielle]('+provenance.run_url+')\n\nLe fichier Debian ci-dessous est identique à celui de l’artefact `oddworks-deb-ubuntu-24.04`. Les empreintes et la provenance sont jointes.';
   const {data:release} = await github.rest.repos.createRelease({...context.repo, tag_name:tag, name:'OddWorks '+version+' — recette majiflow à effectuer', body, draft:true, prerelease:true, make_latest:'false'});
   let download;
   for (const name of [filename, 'PROVENANCE.json', 'SHA256SUMS']) {
@@ -16,5 +18,10 @@ module.exports = async ({github, context, core}) => {
   }
   const {data:published} = await github.rest.repos.updateRelease({...context.repo, release_id:release.id, draft:false, prerelease:true, make_latest:'false'});
   await core.summary.addHeading('OddWorks '+version).addLink('Télécharger directement '+filename, download).addRaw('\n\nCommit : `'+context.sha+'`\n\nRecette majiflow à effectuer.\n\n').addLink('Provenance et empreintes', published.html_url).write();
+  if (version !== '1.0.3') {
+    const {data:old} = await github.rest.repos.getReleaseByTag({...context.repo, tag:'oddworks-deb-v1.0.3'});
+    const warning = '**Version dépassée : la 1.0.3 ne contient pas le module inventaire validé sur DEV. Utiliser [la version synchronisée]('+published.html_url+').**\n\n';
+    if (!old.body?.includes('Version dépassée')) await github.rest.repos.updateRelease({...context.repo, release_id:old.id, name:'OddWorks 1.0.3 — ancienne base applicative', body:warning+(old.body||'')});
+  }
   core.info('Téléchargement direct : '+download);
 };

@@ -48,3 +48,14 @@ mêmes fichiers (.deb, provenance, empreintes) dans une GitHub Release marquée 
 avec le statut « recette majiflow à effectuer ». Le résumé Actions fournit un lien direct
 vers le .deb, sans ZIP. Cette publication n’est pas une validation sur majiflow. Ne jamais
 remplacer les fichiers d’une version existante : corriger dans Git et produire la suivante.
+
+## Correspondance obligatoire avec DEV
+
+Avant toute livraison, `packaging/debian/dev-baseline.json` doit désigner le commit
+réellement déployé avec succès par le workflow DEV et son exécution. Le workflow Debian
+vérifie ce déploiement et compare tous les fichiers applicatifs au commit référencé.
+Les seules différences admises sont des adaptations autonomes explicitement justifiées
+et identifiées par leurs empreintes dans ce fichier. Toute autre différence bloque le
+paquet. Mettre à jour cette référence et reporter les changements DEV dans Git avant une
+nouvelle livraison ; une branche de packaging ancienne n’est pas une version DEV validée.
+La provenance du paquet contient aussi cette référence DEV.

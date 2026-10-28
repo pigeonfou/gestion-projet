@@ -1,0 +1,12 @@
+{
+  "commit": "2da34f8fa0fd5e4887fdd93690734063710cb667",
+  "workflow_run_id": 40610959424,
+  "workflow_run_url": "https://github.com/pigeonfou/gestion-projet/actions/runs/40610959424",
+  "adaptations": {
+    "includes/cdc_validation.php": {
+      "dev_sha256": "df21d05f0685aaa55de06ff5a7f5bb7e5f4e355b6030bbd6b83dbf7b1fb34013",
+      "packaging_sha256": "c84f05de95ff8fbbae5ad17e17100b61253dcafdaef7a874b37d5938c842841b",
+      "reason": "Runtime MSG autonome configurable ; aucun chemin OneForAll en PROD."
+    }
+  }
+}

@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: oddworks-debian-production
   cancel-in-progress: false
@@ -17,8 +18,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Vérifier la procédure PROD
         run: bash packaging/debian/check-production-source.sh
+      - name: Vérifier le déploiement DEV de référence
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./packaging/debian/check-dev-run.cjs')({github, context, core});
+      - name: Comparer le code applicatif à DEV
+        run: python3 packaging/debian/check-dev-parity.py
       - name: Vérifier le calcul de version
         run: node packaging/debian/test-version.cjs
       - name: Réserver une nouvelle version
@@ -46,7 +56,17 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
+          # Exercise a real 1.0.3 -> new version upgrade on this disposable CI machine.
+          curl -fL --retry 3 https://github.com/pigeonfou/gestion-projet/releases/download/oddworks-deb-v1.0.3/oddworks_1.0.3_all.deb -o /tmp/oddworks_1.0.3_all.deb
+          echo '10dad8d6c2d7c8e047fe47babb8d4c24f687d6e37760f7b6a717281d628c1478  /tmp/oddworks_1.0.3_all.deb' | sha256sum -c -
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y /tmp/oddworks_1.0.3_all.deb
+          sudo sqlite3 /var/lib/oddworks/database.sqlite "INSERT INTO parametres(cle,valeur) VALUES('upgrade_keep_test','preserved');"
+          sudo sh -c 'echo "# upgrade-preserved" >> /etc/nginx/sites-available/oddworks.conf'
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "./dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb"
+          sudo grep -F '# upgrade-preserved' /etc/nginx/sites-available/oddworks.conf
+          sudo sqlite3 /var/lib/oddworks/database.sqlite "SELECT valeur FROM parametres WHERE cle='upgrade_keep_test';" | grep -Fx preserved
+          sudo test -f /usr/share/oddworks/inventaire.php
+          php tests/inventory_catalogue.php
           sudo test -s /var/lib/oddworks/database.sqlite
           sudo test -s /var/lib/oddworks/initial-admin-password
           sudo nginx -t
@@ -56,13 +76,26 @@ jobs:
           php -v
           curl -fsS -o /tmp/oddworks-login.html -w '%{http_code}\n' http://127.0.0.1/login.php | grep -Fx 200
           sudo sqlite3 /var/lib/oddworks/database.sqlite "SELECT identifiant FROM utilisateurs WHERE role='admin';" | grep -Fx admin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Tester le module installé dans le navigateur
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          export INVENTORY_TEST_ROOT=http://127.0.0.1
+          export INVENTORY_TEST_PASSWORD="$(sudo cat /var/lib/oddworks/initial-admin-password)"
+          node tests/inventory_browser.cjs
       - name: Enregistrer la provenance et les empreintes
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PYTHON'
           import json, os, pathlib, subprocess
-          payload = {"repository": os.environ["GITHUB_REPOSITORY"], "branch": os.environ["GITHUB_REF_NAME"], "commit": os.environ["GITHUB_SHA"], "tag": os.environ["ODDWORKS_PACKAGE_TAG"], "workflow": os.environ["GITHUB_WORKFLOW"], "runner": "ubuntu-24.04", "run_url": os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"], "validation": "CI uniquement ; recette majiflow à effectuer", "packages": [{"file": p.name, "version": subprocess.check_output(["dpkg-deb", "--field", str(p), "Version"], text=True).strip()} for p in sorted(pathlib.Path("dist").glob("*.deb"))]}
+          baseline = json.loads(pathlib.Path("packaging/debian/dev-baseline.json").read_text())
+          payload = {"dev_baseline": baseline, "repository": os.environ["GITHUB_REPOSITORY"], "branch": os.environ["GITHUB_REF_NAME"], "commit": os.environ["GITHUB_SHA"], "tag": os.environ["ODDWORKS_PACKAGE_TAG"], "workflow": os.environ["GITHUB_WORKFLOW"], "runner": "ubuntu-24.04", "run_url": os.environ["GITHUB_SERVER_URL"]+"/"+os.environ["GITHUB_REPOSITORY"]+"/actions/runs/"+os.environ["GITHUB_RUN_ID"], "validation": "CI uniquement ; recette majiflow à effectuer", "packages": [{"file": p.name, "version": subprocess.check_output(["dpkg-deb", "--field", str(p), "Version"], text=True).strip()} for p in sorted(pathlib.Path("dist").glob("*.deb"))]}
           pathlib.Path("dist/PROVENANCE.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2)+"\n")
           PYTHON
           source_line=$(dpkg-deb --fsys-tarfile "dist/oddworks_${ODDWORKS_PACKAGE_VERSION}_all.deb" | tar -xOf - ./usr/share/doc/oddworks/source-commit)
