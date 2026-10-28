@@ -410,6 +410,10 @@ if ($historyEmbedded) {
     <link rel="stylesheet" href="<?= url('assets/css/style.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projet-r1b.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/decision-history.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>"><link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>"></head><body class="pf-app history-embedded"><main>
     <?php require __DIR__ . '/includes/views/decision_history.php'; ?>
     </main><script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
+<?php if ($view === 'processus' && $currentStep === 2): ?>
+<link rel="stylesheet" href="<?=url('assets/css/etudes-fiches.css?v=1')?>">
+<script src="<?=url('assets/js/etudes-fiches.js?v=1')?>"></script>
+<?php endif; ?>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body></html>
     <?php
@@ -1287,6 +1291,10 @@ function stepClass(int $n, int $displayed, array $validated): string
 </footer>
 <script src="<?= url('assets/js/st-references.js?v=2') ?>"></script>
 <script src="<?= url('assets/js/st-hierarchy.js?v=3') ?>"></script>
+<?php if ($view === 'processus' && $currentStep === 2): ?>
+<link rel="stylesheet" href="<?=url('assets/css/etudes-fiches.css?v=1')?>">
+<script src="<?=url('assets/js/etudes-fiches.js?v=1')?>"></script>
+<?php endif; ?>
 <script src="<?=url('assets/js/projectflow-ui.js?v=1')?>" defer></script>
 </body>
 </html>

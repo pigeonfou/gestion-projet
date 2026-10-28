@@ -1,0 +1,67 @@
+/* Scoped experiment: native theme tokens and existing estimate form. */
+#formSpecsTech.etudes-fiches { --ef-space:1rem; color:var(--text-primary); }
+body[data-density="compact"] #formSpecsTech.etudes-fiches { --ef-space:.7rem; }
+.etudes-fiches .ef-intro { margin:0 0 var(--ef-space); color:var(--text-secondary); font-size:.85rem; }
+.etudes-fiches .ef-overview { display:flex; flex-wrap:wrap; align-items:center; gap:.7rem 1.2rem; padding:var(--ef-space); margin-bottom:1.3rem; background:var(--surface-raised); border:1px solid var(--border-default); border-radius:.7rem; font-size:.85rem; }
+.etudes-fiches .ef-overview-total { font-size:1.15rem; color:var(--text-primary); }
+.etudes-fiches .ef-missing { margin-left:auto; font-size:.8rem; color:var(--text-secondary); }
+.pf-app #formSpecsTech.etudes-fiches .st-sf-block { padding:var(--ef-space); margin-bottom:1.3rem; box-shadow:none!important; background:var(--surface-card)!important; }
+.etudes-fiches .st-sf-head { display:block; padding:0; margin:0 0 var(--ef-space); background:transparent; border:0; }
+.etudes-fiches .ef-section-toggle { display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; width:100%; padding:.4rem 0; border:0; background:transparent; color:var(--text-primary); text-align:left; cursor:pointer; font:inherit; }
+.etudes-fiches .ef-section-toggle::after { content:'⌃'; margin-left:auto; }
+.etudes-fiches .ef-folded .ef-section-toggle::after { content:'⌄'; }
+.etudes-fiches .ef-section-toggle .st-sf-desc { flex:1 1 10rem; }
+.etudes-fiches .ef-section-toggle .sf-cost-badge { font-size:.75rem; font-weight:400; color:var(--text-secondary); background:transparent; }
+.etudes-fiches .ef-folded :is(.sf-table-wrap,.btn-st-add) { display:none; }
+.etudes-fiches .ef-folded .st-sf-head { margin-bottom:0; }
+.etudes-fiches .sf-table-wrap { overflow:visible; }
+.etudes-fiches :is(.st-table,.st-table tbody) { display:block; width:100%; min-width:0; }
+.etudes-fiches .st-table thead { display:none; }
+#formSpecsTech.etudes-fiches .st-table .st-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.85rem; padding:0 var(--ef-space); margin:0 0 .7rem calc(var(--ef-depth,0) * .8rem); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:.65rem; color:var(--text-primary); }
+#formSpecsTech.etudes-fiches .st-row > td { display:block; border:0; padding:0; width:auto!important; min-width:0; background:transparent; box-shadow:none; }
+#formSpecsTech.etudes-fiches .st-row:not(.ef-open) > :is(.ef-field,.ef-card-footer),
+#formSpecsTech.etudes-fiches .st-row > .ef-inapplicable { display:none; }
+.etudes-fiches .ef-card-head, .etudes-fiches .ef-card-footer, .etudes-fiches .ef-field-1 { grid-column:1/-1; }
+.etudes-fiches .ef-toggle { display:flex; align-items:center; gap:1rem; width:100%; padding:var(--ef-space) 0; background:transparent; border:0; text-align:left; color:var(--text-primary); font:inherit; cursor:pointer; }
+.etudes-fiches .ef-icon { flex:none; color:var(--action-link); font-size:1.35rem; width:1.6rem; text-align:center; }
+.etudes-fiches .ef-card-text { flex:1; min-width:0; display:grid; gap:.3rem; overflow-wrap:anywhere; }
+.etudes-fiches .ef-card-meta, .etudes-fiches .ef-card-detail, .etudes-fiches .ef-card-delay { font-size:.75rem; color:var(--text-secondary); }
+.etudes-fiches .ef-card-title { font-size:.95rem; font-weight:600; }
+.etudes-fiches .ef-card-numbers { display:grid; gap:.35rem; text-align:right; font-size:.95rem; }
+.etudes-fiches .ef-edit { flex:none; color:var(--action-link); font-size:.75rem; }
+.etudes-fiches .ef-open .ef-card-head { border-bottom:1px solid var(--border-default)!important; }
+.etudes-fiches .ef-field-label { display:block; margin:0 0 .4rem; font-size:.75rem; font-weight:600; color:var(--text-secondary); }
+#formSpecsTech.etudes-fiches .st-row :is(input.form-control,select.form-control) { width:100%; max-width:100%; min-width:0; height:auto; min-height:2.4rem; font-size:.85rem; padding:.5rem .6rem; }
+.etudes-fiches .cp-cost-cell { display:flex; gap:.4rem; width:100%; }
+.etudes-fiches .cp-cost-cell :is(.cp-unit,.cp-total) { flex:1; width:0!important; }
+.etudes-fiches .cp-cost-cell :is(.cp-taxe,.cp-total-taxe) { position:static; flex:0 0 4rem; width:4rem!important; }
+.etudes-fiches .ef-unknown { display:flex; align-items:center; gap:.4rem; font-size:.75rem; margin-top:.5rem; color:var(--text-secondary); }
+.etudes-fiches [hidden] { display:none!important; }
+.etudes-fiches .ef-unknown input { accent-color:var(--accent); }
+.etudes-fiches .st-parent-control label { flex-wrap:wrap; }
+.etudes-fiches .st-parent-meta { font-size:.7rem; }
+.etudes-fiches .ef-field-0 { grid-column:1/-1; font-size:.75rem; }
+.etudes-fiches .ef-field-0 .ef-field-label { display:none; }
+.etudes-fiches .ef-field-8 { align-self:end; }
+.etudes-fiches .ef-field-8 .btn-st-del { color:var(--text-secondary); }
+#formSpecsTech.etudes-fiches .st-row > .ef-card-footer { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; padding:.8rem 0; border-top:1px solid var(--border-default); }
+.etudes-fiches .ef-local-hint { flex:1; font-size:.7rem; color:var(--text-secondary); }
+.etudes-fiches .btn-st-add { width:100%; background:transparent!important; border-style:dashed!important; padding:.6rem; box-shadow:none!important; }
+.ef-save-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; }
+.ef-save-status { flex:1 1 100%; font-size:.75rem; color:var(--text-secondary); }
+.etudes-fiches .ef-needs-info,.ef-save-status.ef-needs-info { color:var(--status-warning-text,var(--text-secondary)); }
+.etudes-fiches :is(button,input,select):focus-visible { outline:2px solid var(--action-link); outline-offset:3px; }
+.etudes-fiches .ef-child { border-left:3px solid var(--border-default)!important; }
+@media(min-width:951px) {
+  .pf-app .ef-workspace { grid-template-columns:minmax(0,1fr)!important; }
+  .ef-workspace .r1b-step-tools { position:static!important; transform:none!important; width:auto; }
+  .ef-workspace .r1b-tools-resize-handle { display:none; }
+}
+@media(max-width:650px) {
+  #formSpecsTech.etudes-fiches .st-table .st-row { grid-template-columns:minmax(0,1fr); gap:.7rem; margin-left:calc(var(--ef-depth,0) * .3rem); }
+  .etudes-fiches .ef-toggle { flex-wrap:wrap; gap:.6rem; }
+  .etudes-fiches .ef-card-text { flex-basis:calc(100% - 3rem); }
+  .etudes-fiches .ef-card-numbers { flex:1; text-align:left; margin-left:2.6rem; }
+  .etudes-fiches .ef-section-toggle .sf-cost-badge { flex-basis:100%; }
+  .etudes-fiches .ef-missing { margin-left:0; }
+}

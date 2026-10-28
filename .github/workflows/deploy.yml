@@ -1,7 +1,7 @@
 name: Déployer OddWorks sur .28
 on:
   push:
-    branches: [main, deployment-oddworks-28]
+    branches: [main, deployment-oddworks-28, experimentation/etudes-fiches]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -53,7 +53,7 @@ jobs:
             http://127.0.0.1:18080/oddworks/login.php | grep -F '<title>Connexion - OddWorks</title>' >/dev/null
           echo 'Runner oddworks-28 et page de connexion locale : OK'
   deploy:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy == true)
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/experimentation/etudes-fiches') && (github.event_name == 'push' || inputs.deploy == true)
     needs: [validate, runner]
     runs-on: [self-hosted, Linux, X64, oddworks-28]
     timeout-minutes: 15
@@ -61,18 +61,23 @@ jobs:
       - name: Déployer le commit exact avec sauvegarde SQLite
         env:
           TARGET_SHA: ${{ github.sha }}
+          TARGET_BRANCH: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
+          helper_name=oddworks-deploy
+          if [[ "$TARGET_BRANCH" == experimentation/etudes-fiches ]]; then
+            helper_name=oddworks-deploy-etudes
+          fi
           helper=$(mktemp)
           trap 'rm -f "$helper"' EXIT
           curl --fail --silent --show-error --location --max-time 30 \
-            "https://raw.githubusercontent.com/pigeonfou/gestion-projet/${TARGET_SHA}/scripts/oddworks-deploy" -o "$helper"
-          if ! cmp -s "$helper" /usr/local/sbin/oddworks-deploy; then
-            echo "::error::Le script administrateur oddworks-deploy doit être actualisé sur le serveur avant le déploiement. Le code actif reste inchangé."
+            "https://raw.githubusercontent.com/pigeonfou/gestion-projet/${TARGET_SHA}/scripts/${helper_name}" -o "$helper"
+          if ! cmp -s "$helper" "/usr/local/sbin/$helper_name"; then
+            echo "::error::Le script administrateur $helper_name doit être installé ou actualisé sur le serveur avant le déploiement. Le code actif reste inchangé."
             exit 1
           fi
-          sudo -n /usr/local/sbin/oddworks-deploy "$TARGET_SHA"
+          sudo -n "/usr/local/sbin/$helper_name" "$TARGET_SHA"
       - name: Vérifier la page publique via Cloudflare
         shell: bash
         run: |

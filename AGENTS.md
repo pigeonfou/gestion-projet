@@ -83,3 +83,12 @@ et identifiées par leurs empreintes dans ce fichier. Toute autre différence bl
 paquet. Mettre à jour cette référence et reporter les changements DEV dans Git avant une
 nouvelle livraison ; une branche de packaging ancienne n’est pas une version DEV validée.
 La provenance du paquet contient aussi cette référence DEV.
+
+## Expérimentation explicitement demandée : études en fiches
+
+Sur la branche `experimentation/etudes-fiches`, la demande utilisateur autorise un
+ déploiement de cette branche sur DEV sans intégration à main. Utiliser le workflow
+historique et le programme administrateur distinct limité à cette branche ; ne pas
+modifier le programme main installé. L’installation de cette permission supplémentaire
+reste un acte administrateur, le runner n’ayant pas les droits correspondants.
+Voir `docs/EXPERIMENTATION_ETUDES_FICHES.md`. Cette exception ne concerne jamais PROD.
