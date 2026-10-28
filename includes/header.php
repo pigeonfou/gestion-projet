@@ -22,6 +22,9 @@ $siteNom = getSetting('site_nom', 'OddWorks');
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="<?= url('assets/css/projectflow-ui.css?v=night-4') ?>">
     <link rel="stylesheet" href="<?= url('assets/css/oddworks-theme.css?v=night-4') ?>">
+    <?php foreach ($pageStyles ?? [] as $stylesheet): ?>
+    <link rel="stylesheet" href="<?=e(url($stylesheet))?>">
+    <?php endforeach; ?>
 </head>
 <body class="pf-app <?= !empty($cdcEmbedded) ? 'cdc-embedded' : '' ?>" data-accent="<?=e(in_array(getSetting('ui_accent','ocean'),['ocean','indigo','slate'],true)?getSetting('ui_accent','ocean'):'ocean')?>" data-density="<?=getSetting('ui_density','comfortable')==='compact'?'compact':'comfortable'?>">
     <header class="header">
@@ -89,5 +92,5 @@ $siteNom = getSetting('site_nom', 'OddWorks');
             <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
         </div>
         <?php endif; ?>
-        <main>
+        <main class="<?=e($mainClass ?? '')?>">
     <?php endif; ?>
