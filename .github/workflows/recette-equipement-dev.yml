@@ -7,23 +7,65 @@ on:
       - 'tests/recette-equipement/**'
 permissions:
   contents: read
-concurrency:
-  group: oddworks-28-deploy
-  cancel-in-progress: false
 jobs:
-  acces:
-    runs-on: [self-hosted, Linux, X64, oddworks-28]
-    timeout-minutes: 3
+  recette-isolee:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - name: Vérifier les accès de recette sans modifier les données
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Préparer les dépendances isolées et le runtime MSG attendu
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y php-cli php-sqlite3 php-curl php-zip fonts-dejavu-core poppler-utils
+          sudo mkdir -p /opt/oneforall/apps/oddworks/shared
+          sudo chown "$USER" /opt/oneforall/apps/oddworks/shared
+          python -m venv /opt/oneforall/apps/oddworks/shared/cdc-msg-venv
+          /opt/oneforall/apps/oddworks/shared/cdc-msg-venv/bin/pip install aspose-email-foss==26.3 reportlab==4.4.5 requests==2.32.5 pypdf==6.1.3
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Générer et contrôler les quarante PDF
+        run: |
+          set -euo pipefail
+          python=/opt/oneforall/apps/oddworks/shared/cdc-msg-venv/bin/python
+          "$python" tests/recette-equipement/build_documents.py /tmp/atlas12-livrables
+          "$python" - <<'PY'
+          from pathlib import Path
+          from pypdf import PdfReader
+          files=list(Path('/tmp/atlas12-livrables').glob('*.pdf'))
+          assert len(files)==40
+          for f in files:
+              r=PdfReader(f)
+              assert len(r.pages)>=1 and all(len(p.extract_text())>100 for p in r.pages),f
+          print('40 PDF lisibles, chaque page contient du texte')
+          PY
+      - name: Exécuter le projet complet sur la base jetable
+        env:
+          PROJECTFLOW_DB_PATH: /tmp/oddworks-atlas12.sqlite
+          PROJECTFLOW_BASE_PATH: ''
+          PROJECTFLOW_ADMIN_PASSWORD: atlas12-fixture-only
         shell: bash
         run: |
           set -euo pipefail
-          ip -4 -o addr show | grep -Eq 'inet 192[.]168[.]6[.]28/'
-          id
-          sudo -n -l
-          for path in /var/lib/oneforall/oddworks/database.sqlite /opt/oneforall/apps/oddworks/current; do
-            test ! -r "$path" || echo "Lecture possible : $path"
-          done
-          test ! -w /var/lib/oneforall/oddworks/database.sqlite || echo 'Écriture base possible par le runner'
-          sudo -n -u ofa-oddworks /usr/bin/id || true
+          php -l tests/recette-equipement/fixture.php
+          php install/init_database.php
+          php tests/recette-equipement/fixture.php init
+          python tests/recette-equipement/webdav_fixture.py /tmp/atlas12-webdav >/tmp/atlas12-webdav.log 2>&1 &
+          webdav_pid=$!
+          php -S 127.0.0.1:8091 >/tmp/atlas12-php.log 2>&1 &
+          php_pid=$!
+          trap 'kill "$webdav_pid" "$php_pid"; tail -40 /tmp/atlas12-php.log' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8091/login.php >/dev/null && break; sleep 1; done
+          /opt/oneforall/apps/oddworks/shared/cdc-msg-venv/bin/python tests/recette-equipement/run_recipe.py /tmp/atlas12-livrables
+          node tests/recette-equipement/screenshots.cjs /tmp/atlas12-livrables
+      - name: Conserver le dossier et les preuves de recette
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ATLAS12-recette-isolee-livrables
+          path: /tmp/atlas12-livrables/
