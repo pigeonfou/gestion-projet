@@ -1,7 +1,7 @@
 <?php
 // php -n tests/document_upload_stream.php : transport cURL simulé, aucun serveur distant.
 require_once __DIR__.'/../includes/NextcloudClient.php';
-foreach (['CURLOPT_UPLOAD','CURLOPT_INFILESIZE_LARGE','CURLOPT_USERPWD','CURLOPT_SSL_VERIFYPEER',
+foreach (['CURLOPT_UPLOAD','CURLOPT_INFILESIZE','CURLOPT_USERPWD','CURLOPT_SSL_VERIFYPEER',
     'CURLOPT_SSL_VERIFYHOST','CURLOPT_CONNECTTIMEOUT','CURLOPT_TIMEOUT','CURLOPT_HTTPHEADER',
     'CURLOPT_READFUNCTION','CURLOPT_WRITEFUNCTION','CURLINFO_HTTP_CODE','CURL_READFUNC_ABORT'] as $i=>$key) define($key,$i+1);
 if (!function_exists('curl_init')) {
@@ -13,8 +13,8 @@ function curl_exec($ch) {
     $ch->code=$GLOBALS['responseCode']??201;
     if ($ch->code===412) return true;
     $ctx=hash_init('sha256'); $bytes=0;
-    while ($bytes<$ch->options[CURLOPT_INFILESIZE_LARGE]) {
-        $data=($ch->options[CURLOPT_READFUNCTION])($ch,null,min(65536,$ch->options[CURLOPT_INFILESIZE_LARGE]-$bytes));
+    while ($bytes<$ch->options[CURLOPT_INFILESIZE]) {
+        $data=($ch->options[CURLOPT_READFUNCTION])($ch,null,min(65536,$ch->options[CURLOPT_INFILESIZE]-$bytes));
         if (!is_string($data) || $data==='') return false;
         $bytes+=strlen($data); hash_update($ctx,$data);
     }

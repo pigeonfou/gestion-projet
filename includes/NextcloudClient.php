@@ -105,8 +105,10 @@ class NextcloudClient {
         $url = $this->baseUrl . '/' . ltrim(implode('/', array_map('rawurlencode', explode('/', $remotePath))), '/');
         $ch = curl_init($url);
         $sent = 0;
+        // CURLOPT_INFILESIZE_LARGE is exposed by PHP 8.5+, while Ubuntu 24.04 uses PHP 8.3.
+        $sizeOption = defined('CURLOPT_INFILESIZE_LARGE') ? constant('CURLOPT_INFILESIZE_LARGE') : CURLOPT_INFILESIZE;
         curl_setopt_array($ch, [
-            CURLOPT_UPLOAD=>true, CURLOPT_INFILESIZE_LARGE=>$size,
+            CURLOPT_UPLOAD=>true, $sizeOption=>$size,
             CURLOPT_USERPWD=>$this->user.':'.$this->password,
             CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2,
             CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>0,
