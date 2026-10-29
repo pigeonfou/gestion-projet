@@ -69,3 +69,67 @@ jobs:
         with:
           name: ATLAS12-recette-isolee-livrables
           path: /tmp/atlas12-livrables/
+  recette-dev-isolee:
+    needs: recette-isolee
+    runs-on: [self-hosted, Linux, X64, oddworks-28]
+    timeout-minutes: 15
+    concurrency:
+      group: oddworks-28-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ATLAS12-recette-isolee-livrables
+          path: ${{ runner.temp }}/atlas12-input-${{ github.run_id }}
+      - name: Recette avec le code actif et le runtime Outlook du serveur DEV
+        shell: bash
+        env:
+          INPUT_DIR: ${{ runner.temp }}/atlas12-input-${{ github.run_id }}
+          PROJECTFLOW_BASE_PATH: ''
+          PROJECTFLOW_ADMIN_PASSWORD: atlas12-fixture-only
+          ATLAS12_HTTP_PORT: '18091'
+          ATLAS12_WEBDAV_PORT: '18092'
+          ATLAS12_RECIPE_SCOPE: 'Serveur DEV .28 - code actif - base et WebDAV de recette séparés'
+        run: |
+          set -euo pipefail
+          umask 077
+          ip -4 -o addr show | grep -Eq 'inet 192[.]168[.]6[.]28/'
+          active=/opt/oneforall/apps/oddworks/current
+          python=/opt/oneforall/apps/oddworks/shared/cdc-msg-venv/bin/python3
+          test -x "$python"
+          # Require parity of all exercised runtime sources with the actual release.
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          active=Path('/opt/oneforall/apps/oddworks/current')
+          paths=list(Path('.').glob('*.php'))
+          for d in ['includes','config']:
+              paths += list(Path(d).rglob('*.php'))
+          for p in paths:
+              assert hashlib.sha256(p.read_bytes()).digest()==hashlib.sha256((active/p).read_bytes()).digest(),p
+          print('Code PHP de recette identique à la version DEV active')
+          PY
+          case_dir=$(mktemp -d /tmp/oddworks-atlas12-XXXXXXXX)
+          echo "ATLAS12_CASE_DIR=$case_dir" >> "$GITHUB_ENV"
+          cp -a "$INPUT_DIR" "$case_dir/livrables"
+          # Dependencies are disposable and separate from the shared application runtime.
+          "$python" -m pip install --quiet --disable-pip-version-check --target "$case_dir/deps" requests==2.32.5
+          export PYTHONPATH="$case_dir/deps"
+          export PROJECTFLOW_DB_PATH="$case_dir/database.sqlite"
+          test ! -e "$PROJECTFLOW_DB_PATH"
+          php "$active/install/init_database.php"
+          php tests/recette-equipement/fixture.php init
+          "$python" tests/recette-equipement/webdav_fixture.py "$case_dir/webdav" 18092 >"$case_dir/webdav.log" 2>&1 &
+          webdav_pid=$!
+          php -S 127.0.0.1:18091 -t "$active" >"$case_dir/php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$webdav_pid" "$php_pid"; tail -30 "$case_dir/php.log"' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18091/login.php >/dev/null && break; sleep 1; done
+          "$python" tests/recette-equipement/run_recipe.py "$case_dir/livrables"
+          echo 'Base de recette privée conservée sur DEV ; base applicative partagée non ouverte.'
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ATLAS12_CASE_DIR != ''
+        with:
+          name: ATLAS12-serveur-DEV-reel-base-isolee
+          path: ${{ env.ATLAS12_CASE_DIR }}/livrables/

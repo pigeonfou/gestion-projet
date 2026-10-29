@@ -1,6 +1,6 @@
 <?php
 // Guard the complete fixture, including all read helpers, against real application databases.
-if (getenv('PROJECTFLOW_DB_PATH') !== '/tmp/oddworks-atlas12.sqlite') throw new RuntimeException('Base jetable obligatoire. Aucune exécution DEV/PROD directe.');
+if (PHP_SAPI!=='cli' || (getenv('PROJECTFLOW_DB_PATH') !== '/tmp/oddworks-atlas12.sqlite' && !preg_match('#^/tmp/oddworks-atlas12-[A-Za-z0-9]+/database[.]sqlite$#D',(string)getenv('PROJECTFLOW_DB_PATH')))) throw new RuntimeException('Base jetable obligatoire. Aucune exécution DEV/PROD directe.');
 require_once __DIR__.'/../../includes/bootstrap.php';
 require_once __DIR__.'/../../includes/stock/catalogue.php';
 require_once __DIR__.'/../../includes/stock/production_workflow.php';
@@ -9,7 +9,7 @@ require_once __DIR__.'/../../includes/cahier_specs.php';
 runSchemaMigrations();$db=getDB();inventorySchema($db);productionSchema($db);cdcValidationEnsureSchema($db);
 $mode=$argv[1]??'state';
 if($mode==='init'){
- foreach(['nextcloud_enabled'=>'1','nextcloud_webdav'=>'http://127.0.0.1:8092','nextcloud_user'=>'fixture','nextcloud_password'=>'fixture-only','nextcloud_root'=>'RECETTE-ATLAS12'] as $k=>$v)setSetting($k,$v);
+ foreach(['nextcloud_enabled'=>'1','nextcloud_webdav'=>'http://127.0.0.1:'.(getenv('ATLAS12_WEBDAV_PORT')?:'8092'),'nextcloud_user'=>'fixture','nextcloud_password'=>'fixture-only','nextcloud_root'=>'RECETTE-ATLAS12'] as $k=>$v)setSetting($k,$v);
  echo "Configuration WebDAV locale isolée prête\n";exit;
 }
 $p=invOne($db,"SELECT * FROM projets WHERE nom='[RECETTE DEV FICTIVE] ATLAS-12 - Banc technique modulaire'");

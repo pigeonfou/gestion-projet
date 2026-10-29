@@ -3,7 +3,7 @@
 import os,re,json,sys,subprocess,hashlib,time,requests
 from pathlib import Path
 from urllib.parse import urlencode,urlsplit,parse_qs
-root=Path(__file__).resolve().parents[2];out=Path(sys.argv[1]).resolve();scenario=json.loads((out/'scenario.json').read_text());session=requests.Session();base='http://127.0.0.1:8091';checks=[]
+root=Path(__file__).resolve().parents[2];out=Path(sys.argv[1]).resolve();scenario=json.loads((out/'scenario.json').read_text());session=requests.Session();base='http://127.0.0.1:'+os.getenv('ATLAS12_HTTP_PORT','8091');checks=[]
 def check(ok,name):
  if not ok:raise AssertionError(name)
  checks.append(name);print('OK - '+name,flush=True)
@@ -12,6 +12,7 @@ def get(path):
  r=session.get(base+path,timeout=30);r.raise_for_status();return r
 r=get('/login.php');token=re.search(r'name="_csrf" value="([^"]+)"',r.text).group(1)
 r=session.post(base+'/verification_connexion.php',data={'_csrf':token,'identifiant':'admin','mot_de_passe':'atlas12-fixture-only'},timeout=30);check('/projets.php' in r.url,'Connexion HTTP normale du compte jetable CI')
+r=get('/projets.php?action=creer')
 csrf=re.search(r'name="_csrf" value="([^"]+)"',r.text).group(1)
 def post(path,data=None,files=None):
  data=data or {}; data={'_csrf':csrf,**data};r=session.post(base+path,data=data,files=files,timeout=90);r.raise_for_status();return r
@@ -138,7 +139,7 @@ s=state();check(all(t['statut']=='terminee' for t in s['tasks']),'Toutes les tâ
 check(s['project']['current_step']==9 and s['project']['status']=='termine','Projet terminé au stade 9 par huit décisions métier réelles du contrôleur isolé')
 # Re-download each project document from the WebDAV fixture and compare its original bytes.
 for d in s['documents']:
- r=requests.get('http://127.0.0.1:8092/'+d['chemin_nextcloud'],timeout=10);r.raise_for_status();check(len(r.content)==d['taille'],'Archive projet relue : '+d['nom_fichier'])
-(out/'resultat_recette.json').write_text(json.dumps({'scope':'CI isolée - PAS exécuté sur les données DEV','project_id':pid,'checks':checks,'summary':{'functions':12,'technical_specs':30,'articles':24,'manufacturers':4,'suppliers':4,'pdfs_authored':40,'project_documents':len(s['documents']),'component_documents':len(s['stock']['documents']),'boms':len(s['boms']),'orders':len(s['orders']),'serials':len(s['units']),'genealogy_links':len(s['genealogy']),'tasks_done':len(s['tasks']),'step':s['project']['current_step'],'status':s['project']['status']},'limitations':['Aucune session authentifiée et aucun accès base applicative sur DEV.','WebDAV est un simulateur local; le Nextcloud DEV ne peut pas être déclaré testé.','En-têtes BOM initialisés par fixture car l’ancien écran de création est redirigé.','ACQ/PWR/BOX reçus assemblés de sous-traitance simulée; seul l’assemblage final passe par OF.','Les décisions et mesures sont fictives; aucun essai physique, achat ou envoi externe.']},ensure_ascii=False,indent=2))
+ r=requests.get('http://127.0.0.1:'+os.getenv('ATLAS12_WEBDAV_PORT','8092')+'/'+d['chemin_nextcloud'],timeout=10);r.raise_for_status();check(len(r.content)==d['taille'],'Archive projet relue : '+d['nom_fichier'])
+(out/'resultat_recette.json').write_text(json.dumps({'scope':os.getenv('ATLAS12_RECIPE_SCOPE','CI isolée - PAS exécuté sur les données DEV'),'project_id':pid,'checks':checks,'summary':{'functions':12,'technical_specs':30,'articles':24,'manufacturers':4,'suppliers':4,'pdfs_authored':40,'project_documents':len(s['documents']),'component_documents':len(s['stock']['documents']),'boms':len(s['boms']),'orders':len(s['orders']),'serials':len(s['units']),'genealogy_links':len(s['genealogy']),'tasks_done':len(s['tasks']),'step':s['project']['current_step'],'status':s['project']['status']},'limitations':['Aucune session authentifiée et aucun accès base applicative sur DEV.','WebDAV est un simulateur local; le Nextcloud DEV ne peut pas être déclaré testé.','En-têtes BOM initialisés par fixture car l’ancien écran de création est redirigé.','ACQ/PWR/BOX reçus assemblés de sous-traitance simulée; seul l’assemblage final passe par OF.','Les décisions et mesures sont fictives; aucun essai physique, achat ou envoi externe.']},ensure_ascii=False,indent=2))
 (out/'snapshot_recette.json').write_text(json.dumps(s,ensure_ascii=False,indent=2))
-print('RECETTE ISOLEE TERMINEE : '+str(len(checks))+' contrôles. Aucune donnée réelle DEV modifiée.')
+print(os.getenv('ATLAS12_RECIPE_SCOPE','RECETTE CI ISOLEE')+' TERMINEE : '+str(len(checks))+' contrôles. Aucune donnée réelle DEV modifiée.')

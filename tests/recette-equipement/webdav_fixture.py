@@ -24,4 +24,4 @@ class Handler(BaseHTTPRequestHandler):
   p=self.pathfile();self.reply(200,p.read_bytes()) if p.is_file() else self.reply(404)
  def do_PROPFIND(self):self.reply(207,b'<?xml version="1.0"?><d:multistatus xmlns:d="DAV:"/>')
  def log_message(self,*args):pass
-ThreadingHTTPServer(('127.0.0.1',8092),Handler).serve_forever()
+ThreadingHTTPServer(('127.0.0.1',int(sys.argv[2]) if len(sys.argv)>2 else 8092),Handler).serve_forever()
