@@ -109,9 +109,9 @@ check(r.status_code==422,'Sur-réservation refusée sans mouvement de stock')
 final=next(a for a in scenario['assemblies'] if a['code']=='SYS')
 for code,qty in final['bom']:command('reserve',article_id=articles[code],projet_id=pid,location_id=loc,quantity=qty*2,comment='Réservation pour deux équipements fictifs')
 decide(5,'DONE')
-# The current UI exposes no BOM creation endpoint after its stock-pilotage redirect.
-# Seed only BOM headers, explicitly report this limitation; exercise composition and production over HTTP.
-subprocess.run(['php',str(root/'tests/recette-equipement/fixture.php'),'boms',str(out/'scenario.json')],check=True,cwd=root)
+# Create BOM headers and their compositions through the real authenticated controllers.
+for a in scenario['assemblies']:
+ post('/stock_bom_create.php?projet_id='+str(pid),{'projet_id':pid,'article_id':articles[a['code']],'reference':'REC-ATLAS12-BOM-'+a['code'],'version':'A'})
 s=state();boms={b['reference'].split('-')[-1]:b['id'] for b in s['boms']}
 for a in scenario['assemblies']:
  bid=boms[a['code']]
@@ -140,6 +140,6 @@ check(s['project']['current_step']==9 and s['project']['status']=='termine','Pro
 # Re-download each project document from the WebDAV fixture and compare its original bytes.
 for d in s['documents']:
  r=requests.get('http://127.0.0.1:'+os.getenv('ATLAS12_WEBDAV_PORT','8092')+'/'+d['chemin_nextcloud'],timeout=10);r.raise_for_status();check(len(r.content)==d['taille'],'Archive projet relue : '+d['nom_fichier'])
-(out/'resultat_recette.json').write_text(json.dumps({'scope':os.getenv('ATLAS12_RECIPE_SCOPE','CI isolée - PAS exécuté sur les données DEV'),'project_id':pid,'checks':checks,'summary':{'functions':12,'technical_specs':30,'articles':24,'manufacturers':4,'suppliers':4,'pdfs_authored':40,'project_documents':len(s['documents']),'component_documents':len(s['stock']['documents']),'boms':len(s['boms']),'orders':len(s['orders']),'serials':len(s['units']),'genealogy_links':len(s['genealogy']),'tasks_done':len(s['tasks']),'step':s['project']['current_step'],'status':s['project']['status']},'limitations':['Aucune session authentifiée et aucun accès base applicative sur DEV.','WebDAV est un simulateur local; le Nextcloud DEV ne peut pas être déclaré testé.','En-têtes BOM initialisés par fixture car l’ancien écran de création est redirigé.','ACQ/PWR/BOX reçus assemblés de sous-traitance simulée; seul l’assemblage final passe par OF.','Les décisions et mesures sont fictives; aucun essai physique, achat ou envoi externe.']},ensure_ascii=False,indent=2))
+(out/'resultat_recette.json').write_text(json.dumps({'scope':os.getenv('ATLAS12_RECIPE_SCOPE','CI isolée - PAS exécuté sur les données DEV'),'project_id':pid,'checks':checks,'summary':{'functions':12,'technical_specs':30,'articles':24,'manufacturers':4,'suppliers':4,'pdfs_authored':40,'project_documents':len(s['documents']),'component_documents':len(s['stock']['documents']),'boms':len(s['boms']),'orders':len(s['orders']),'serials':len(s['units']),'genealogy_links':len(s['genealogy']),'tasks_done':len(s['tasks']),'step':s['project']['current_step'],'status':s['project']['status']},'limitations':['Aucune session authentifiée et aucun accès base applicative sur DEV.','WebDAV est un simulateur local; le Nextcloud DEV ne peut pas être déclaré testé.','ACQ/PWR/BOX reçus assemblés de sous-traitance simulée; seul l’assemblage final passe par OF.','Les décisions et mesures sont fictives; aucun essai physique, achat ou envoi externe.']},ensure_ascii=False,indent=2))
 (out/'snapshot_recette.json').write_text(json.dumps(s,ensure_ascii=False,indent=2))
 print(os.getenv('ATLAS12_RECIPE_SCOPE','RECETTE CI ISOLEE')+' TERMINEE : '+str(len(checks))+' contrôles. Aucune donnée réelle DEV modifiée.')
