@@ -11,7 +11,7 @@ body='CDC Accepté\r\n\r\nCommentaire :\r\nAccord fictif généré pour la recet
 m=MapiMessage.create(subject,body,unicode_strings=True)
 m.set_property(PropertyId.SENDER_NAME,'Validateur fictif - recette automatique')
 m.set_property(PropertyId.SENDER_EMAIL_ADDRESS,'validation-recette@example.invalid')
-m.set_property(0x0039,datetime.now(timezone.utc))
+m.set_property(0x0039,0x0040,datetime.now(timezone.utc))
 m.add_recipient('recette-oddworks@example.invalid')
 m.add_attachment('CDC_ATLAS12_FICTIF.pdf',Path(a.pdf).read_bytes(),mime_type='application/pdf')
 m.set_property(PropertyId.MESSAGE_FLAGS,0x11)
