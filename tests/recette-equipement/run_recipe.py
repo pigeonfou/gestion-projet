@@ -117,8 +117,9 @@ for a in scenario['assemblies']:
  post('/stock_production.php?bom_id='+str(bid),{'action':'composition','statut':'validee','article_id[]':[articles[c] for c,q in a['bom']],'quantite[]':[q for c,q in a['bom']],'position[]':[f'P{i+1}' for i in range(len(a['bom']))],'notes[]':[scenario['warning']]*len(a['bom'])})
 check(all(b['statut']=='validee' for b in state()['boms']),'Quatre compositions BOM validées via le contrôleur de production')
 # An illegal self-component must fail without altering the valid composition.
+valid_items=state()['bom_items']
 post('/stock_production.php?bom_id='+str(boms['ACQ']),{'action':'composition','statut':'validee','article_id[]':[articles['ACQ']],'quantite[]':[1]})
-check(len(state()['boms'])==4,'Refus BOM auto-composée ; en-têtes conservés')
+check(state()['bom_items']==valid_items,'BOM auto-composée refusée sans altérer les compositions validées')
 doc=next(d['id'] for d in s['documents'] if d['nom_fichier']=='09_gamme.pdf')
 post('/stock_production.php?bom_id='+str(boms['SYS']),{'action':'planifier','reference':'REC-AT12-OF-FINAL-001','quantite':2,'date_metier':'2026-10-29','responsable_id':1,'document_id':doc})
 s=state();check(len(s['orders'])==1 and s['orders'][0]['statut']=='planifie','OF final planifié sur instruction PDF du projet')
