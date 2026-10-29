@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/recette-equipement-dev.yml'
       - 'tests/recette-equipement/**'
+      - 'includes/**'
+      - '*.php'
 permissions:
   contents: read
 jobs:
