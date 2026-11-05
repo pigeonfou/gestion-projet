@@ -120,6 +120,21 @@ function generateCahierText(array $s, string $projetNom, array $jalons = []): st
 
 
 
+/** Liste des domaines du CDC, y compris ceux des anciennes fiches. */
+function cdcDomains(array $specs, array $added = []): array {
+    $domains = $specs['domaines_sf'] ?? [];
+    foreach ($specs['fonctions'] ?? [] as $function) {
+        $domains[] = $function['domaine'] ?? '';
+    }
+    $unique = [];
+    foreach (array_merge($domains, $added) as $value) {
+        if (!is_string($value) || trim($value) === '') continue;
+        $value = trim($value);
+        $unique[strtolower($value)] ??= $value;
+    }
+    return array_values($unique);
+}
+
 /**
  * Parse les lignes de spécifications fonctionnelles depuis le POST.
  * @return list<array{id:string,description:string,indicateur:string,domaine?:string,criteres?:string,notes?:string}>

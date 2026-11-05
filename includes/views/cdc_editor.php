@@ -47,6 +47,8 @@
             <div class="card-header"><h2>2. Spécifications fonctionnelles</h2></div>
             <div class="card-body">
                 <p class="text-muted text-sm mb-2">Ajoutez les fonctions attendues. L’ID est généré automatiquement (S.F.1, S.F.2…).</p>
+                <?php $cdcDomains = cdcDomains($s); ?>
+                <div id="sfNewDomains"></div>
                 <div class="cdc-sf-list" id="sfBody">
                     <?php foreach ($s['fonctions'] ?? [] as $fi => $f): ?>
                         <?php require __DIR__.'/cdc_spec_card.php'; ?>
@@ -135,6 +137,19 @@
     <?php endif; ?>
 </form>
 
+<dialog class="cdc-confirm-dialog" id="sfDomainDialog" aria-labelledby="sfDomainTitle">
+    <form method="dialog" class="cdc-confirm-content" id="sfDomainForm">
+        <h2 id="sfDomainTitle">Ajouter un domaine</h2>
+        <label class="form-group">Nom du domaine
+            <input class="form-control" name="domaine" required autofocus>
+        </label>
+        <div class="cdc-confirm-actions">
+            <button type="button" class="btn btn-secondary" id="sfDomainCancel">Annuler</button>
+            <button type="submit" class="btn btn-primary">Ajouter le domaine</button>
+        </div>
+    </form>
+</dialog>
+
 <dialog class="cdc-confirm-dialog" id="cdcGenerateConfirm" aria-labelledby="cdcConfirmTitle">
     <div class="cdc-confirm-content">
         <h2 id="cdcConfirmTitle"><i class="fas fa-file-pdf"></i> Générer le CDC</h2>
@@ -155,4 +170,4 @@
 </dialog>
 <?php endforeach; ?>
 <link rel="stylesheet" href="<?=url('assets/css/cdc-editor.css?v=3')?>">
-<script src="<?=url('assets/js/cdc-editor.js?v=3')?>" defer></script>
+<script src="<?=url('assets/js/cdc-editor.js?v=4')?>" defer></script>

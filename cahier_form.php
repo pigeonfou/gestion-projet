@@ -63,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $specs[$k] = trim($_POST[$k] ?? '');
     }
     // Spécifications fonctionnelles (liste dynamique)
+    $addedDomains = $_POST['sf_nouveau_domaine'] ?? [];
+    $domains = cdcDomains($specs, is_array($addedDomains) ? $addedDomains : []);
+    if ($domains !== []) $specs['domaines_sf'] = $domains;
     $specs['fonctions'] = parseFonctionsFromPost($_POST);
 
     // Conserver les S.T. et composants déjà enregistrés dans le CDC :

@@ -12,7 +12,13 @@ $levels = ['Obligatoire' => 'Impératif', 'Facultative' => 'Facultative', 'Optio
         <span class="cdc-sf-level" data-sf-level><?=e($levels[$level] ?? $levels['Obligatoire'])?></span>
     </summary>
     <div class="cdc-sf-fields">
-        <label>Domaine<input name="sf_domaine[]" class="form-control" value="<?=e($f['domaine'] ?? '')?>" placeholder="Ex. VPN"></label>
+        <label>Domaine<select name="sf_domaine[]" class="form-control">
+            <option value="">Choisir un domaine</option>
+            <?php foreach ($cdcDomains as $domain): ?>
+                <option value="<?=e($domain)?>" <?=strcasecmp($f['domaine'] ?? '', $domain) === 0 ? 'selected' : ''?>><?=e($domain)?></option>
+            <?php endforeach; ?>
+            <option data-add-domain>Ajouter un domaine…</option>
+        </select></label>
         <label>Niveau<select name="sf_indicateur[]" class="form-control">
             <?php foreach ($levels as $value => $label): ?>
                 <option value="<?=e($value)?>" <?=$level === $value ? 'selected' : ''?>><?=e($label)?></option>

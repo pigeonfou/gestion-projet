@@ -92,7 +92,66 @@
     card.querySelector('[data-sf-level]').textContent = field('indicateur').selectedOptions[0].textContent;
   }
 
-  body.addEventListener('input', event => refreshSummary(event.target.closest('.sf-row')));
+  const domainField = '[name="sf_domaine[]"]';
+  const domainDialog = document.getElementById('sfDomainDialog');
+  const domainForm = document.getElementById('sfDomainForm');
+  const domainInput = domainForm.elements.domaine;
+  const newDomains = document.getElementById('sfNewDomains');
+  let activeDomain;
+
+  function updateSummary(event) {
+    const field = event.target;
+    if (field.matches(domainField)) {
+      if (field.selectedOptions[0].hasAttribute('data-add-domain')) {
+        field.value = field.dataset.previousDomain || '';
+        if (!domainDialog.open) {
+          activeDomain = field;
+          domainForm.reset();
+          domainInput.setCustomValidity('');
+          domainDialog.showModal();
+        }
+      } else {
+        field.dataset.previousDomain = field.value;
+      }
+    }
+    refreshSummary(field.closest('.sf-row'));
+  }
+
+  body.querySelectorAll(domainField).forEach(field => { field.dataset.previousDomain = field.value; });
+  body.addEventListener('input', updateSummary);
+  body.addEventListener('change', updateSummary);
+  document.getElementById('sfDomainCancel').addEventListener('click', () => domainDialog.close());
+  domainInput.addEventListener('input', () => domainInput.setCustomValidity(''));
+  domainDialog.addEventListener('close', () => activeDomain?.focus());
+
+  domainForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const name = domainInput.value.trim();
+    if (!name) {
+      domainInput.setCustomValidity('Saisissez un nom de domaine.');
+      domainInput.reportValidity();
+      return;
+    }
+    const templateSelect = template.content.querySelector(domainField);
+    const existing = [...templateSelect.options].find(option =>
+      option.value && !option.hasAttribute('data-add-domain') &&
+      option.value.localeCompare(name, 'fr', {sensitivity:'accent'}) === 0
+    );
+    if (!existing) {
+      for (const select of [templateSelect, ...body.querySelectorAll(domainField)]) {
+        select.querySelector('[data-add-domain]').before(new Option(name, name));
+      }
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'sf_nouveau_domaine[]';
+      hidden.value = name;
+      newDomains.appendChild(hidden);
+    }
+    activeDomain.value = existing ? existing.value : name;
+    activeDomain.dispatchEvent(new Event('input', {bubbles:true}));
+    domainDialog.close();
+  });
+
   body.addEventListener('click', event => {
     const remove = event.target.closest('.cdc-sf-remove');
     if (!remove) return;
@@ -106,7 +165,7 @@
     card.open = true;
     body.appendChild(card);
     renumber();
-    card.querySelector('[name="sf_domaine[]"]').focus();
+    card.querySelector(domainField).focus();
   });
 })();
 

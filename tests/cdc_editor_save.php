@@ -22,7 +22,7 @@ try {
     $initial=loadSpecs(1);
     $payload=['projet_id'=>1,'form_action'=>'save','cdc_ajax'=>'1','_csrf'=>'fixture-csrf','cdc_revision'=>cdcEditorRevision($initial,[]),
         'objectifs'=>'Besoin modifié','sf_description'=>['Mesurer'],'sf_indicateur'=>['Obligatoire'],
-        'sf_domaine'=>['VPN'],'sf_criteres'=>['AES-256 minimum'],'sf_notes'=>['Suites à préciser'],
+        'sf_nouveau_domaine'=>['VPN','Mécanique'],'sf_domaine'=>['VPN'],'sf_criteres'=>['AES-256 minimum'],'sf_notes'=>['Suites à préciser'],
         'jalon_nom'=>['Prototype'],'jalon_date'=>['2026-12-01']];
     $execute=function(array $post)use($root):array{
         $code='session_start();$_SESSION=["user_id"=>1,"identifiant"=>"admin","role"=>"admin","_csrf"=>"fixture-csrf"];$_SERVER["REQUEST_METHOD"]="POST";$_GET=["projet_id"=>1];$_POST=json_decode('.var_export(json_encode($post),true).',true);require '.var_export($root.'/cahier_form.php',true).';';
@@ -36,6 +36,7 @@ try {
     $sf=$stored['fonctions'][0];
     saveCheck($sf['id']==='S.F.1'&&$sf['description']==='Mesurer'&&$sf['indicateur']==='Obligatoire','Existing functional specification preserved');
     saveCheck($sf['domaine']==='VPN'&&$sf['criteres']==='AES-256 minimum'&&$sf['notes']==='Suites à préciser','New fields survive a real save');
+    saveCheck(cdcDomains($stored)===['VPN','Mécanique'],'Domains persist even without a linked requirement');
     $export=generateCahierText($stored,'Fixture CDC');
     foreach (['VPN','AES-256 minimum','Suites à préciser','Impératif'] as $term) {
         saveCheck(str_contains($export,$term),'CDC export includes '.$term);
