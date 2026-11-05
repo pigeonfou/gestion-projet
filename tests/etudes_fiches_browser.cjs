@@ -87,6 +87,28 @@ const assert = require('node:assert/strict');
   assert.equal(await rows.first().locator('.ef-field-4').isVisible(),false);
   await Promise.all([page.waitForNavigation(),page.locator('[type=submit][form=formSpecsTech]').click()]);
   assert.equal(await rows.first().locator('[name="st_type[]"]').inputValue(),'S.T.x.x');
+  // The first-stage cards share the existing CDC save flow.
+  const cdcUrl=root+'/projet.php?id=1&view=processus&step=1&onglet=2';
+  await page.goto(cdcUrl);
+  const cards=page.locator('#sfBody .cdc-sf-card');
+  assert.equal(await cards.count(),2);
+  assert.match(await cards.first().locator('summary').innerText(),/S.F.1.*Piloter/s);
+  await page.locator('#sfAddRow').click();
+  const card=cards.last();
+  await card.getByLabel('Domaine').fill('VPN');
+  await card.getByLabel('Exigence').fill('Chiffrement AES-256');
+  await card.getByLabel('Détail / critères').fill('Exigence minimale de sécurité.');
+  await card.getByLabel('Niveau').selectOption('Obligatoire');
+  await card.getByLabel('À préciser / notes').fill('Préciser les suites cryptographiques.');
+  assert.match(await card.locator('summary').innerText(),/VPN.*AES-256.*Impératif/s);
+  await page.screenshot({path:'/tmp/etudes-cdc-specifications.png',fullPage:true});
+  const saved=page.waitForResponse(r=>r.url().includes('/cahier_form.php?')&&r.request().method()==='POST');
+  await page.locator('#saveCdcDraft').click();
+  assert.equal((await (await saved).json()).ok,true);
+  await page.goto(cdcUrl);
+  assert.equal(await cards.count(),3);
+  await cards.last().locator('summary').click();
+  assert.equal(await cards.last().getByLabel('À préciser / notes').inputValue(),'Préciser les suites cryptographiques.');
   assert.deepEqual(errors,[]);
   // Without JavaScript, the original server-rendered table remains usable.
   const fallback=await browser.newContext({javaScriptEnabled:false,storageState:await page.context().storageState()});

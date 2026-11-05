@@ -87,13 +87,17 @@ function generateCahierText(array $s, string $projetNom, array $jalons = []): st
     if (empty($fonctions)) {
         $lines[] = "—";
     } else {
-        $lines[] = str_pad("ID", 8) . " | " . str_pad("Indicateur", 12) . " | Description";
+        $lines[] = str_pad("ID", 8) . " | " . str_pad("Niveau", 12) . " | Exigence";
         $lines[] = str_repeat('-', 72);
         foreach ($fonctions as $f) {
             $id = $f['id'] ?? '';
             $ind = $f['indicateur'] ?? '';
+            if ($ind === 'Obligatoire') $ind = 'Impératif';
             $desc = trim(preg_replace('/\s+/', ' ', $f['description'] ?? ''));
             $lines[] = str_pad($id, 8) . " | " . str_pad($ind, 12) . " | " . $desc;
+            foreach (['domaine' => 'Domaine', 'criteres' => 'Détail / critères', 'notes' => 'À préciser / notes'] as $key => $label) {
+                if (($f[$key] ?? '') !== '') $lines[] = "  $label : " . $f[$key];
+            }
         }
     }
 
@@ -118,7 +122,7 @@ function generateCahierText(array $s, string $projetNom, array $jalons = []): st
 
 /**
  * Parse les lignes de spécifications fonctionnelles depuis le POST.
- * @return list<array{id:string,description:string,indicateur:string,materiel:bool,logiciel:bool}>
+ * @return list<array{id:string,description:string,indicateur:string,domaine?:string,criteres?:string,notes?:string}>
  */
 function parseFonctionsFromPost(array $post): array {
     $descs = $post['sf_description'] ?? [];
@@ -138,11 +142,17 @@ function parseFonctionsFromPost(array $post): array {
             continue;
         }
         $n++;
-        $out[] = [
+        $function = [
             'id' => 'S.F.' . $n,
             'description' => $desc,
             'indicateur' => $ind,
         ];
+        foreach (['domaine', 'criteres', 'notes'] as $key) {
+            $values = $post['sf_'.$key] ?? null;
+            $value = is_array($values) ? ($values[$i] ?? '') : '';
+            if (is_string($value) && trim($value) !== '') $function[$key] = trim($value);
+        }
+        $out[] = $function;
     }
     return $out;
 }

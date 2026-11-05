@@ -47,42 +47,15 @@
             <div class="card-header"><h2>2. Spécifications fonctionnelles</h2></div>
             <div class="card-body">
                 <p class="text-muted text-sm mb-2">Ajoutez les fonctions attendues. L’ID est généré automatiquement (S.F.1, S.F.2…).</p>
-                <div class="sf-table-wrap">
-                    <table class="sf-table" id="sfTable">
-                        <thead>
-                            <tr>
-                                <th style="width:5.5rem">ID</th>
-                                <th>Description</th>
-                                <th style="width:9rem">Indicateur</th>
-                                <th style="width:2.5rem"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="sfBody">
-                            <?php
-                            $fonctions = $s['fonctions'] ?? [];
-                            if (empty($fonctions)) {
-                                $fonctions = [['id' => 'S.F.1', 'description' => '', 'indicateur' => 'Obligatoire']];
-                            }
-                            foreach ($fonctions as $fi => $f):
-                                $ind = $f['indicateur'] ?? 'Obligatoire';
-                            ?>
-                            <tr class="sf-row">
-                                <td><span class="sf-id"><?= e($f['id'] ?? ('S.F.' . ($fi + 1))) ?></span></td>
-                                <td><input type="text" name="sf_description[]" class="form-control" value="<?= e($f['description'] ?? '') ?>" placeholder="Description de la fonction…"></td>
-                                <td>
-                                    <select name="sf_indicateur[]" class="form-control">
-                                        <option value="Obligatoire" <?= ($ind === 'Obligatoire') ? 'selected' : '' ?>>Obligatoire</option>
-                                        <option value="Facultative" <?= ($ind === 'Facultative') ? 'selected' : '' ?>>Facultative</option>
-                                        <option value="Optionnel" <?= ($ind === 'Optionnel') ? 'selected' : '' ?>>Optionnel</option>
-                                    </select>
-                                </td>
-                                <td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <div class="cdc-sf-list" id="sfBody">
+                    <?php foreach ($s['fonctions'] ?? [] as $fi => $f): ?>
+                        <?php require __DIR__.'/cdc_spec_card.php'; ?>
+                    <?php endforeach; ?>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm mt-2" id="sfAddRow"><i class="fas fa-plus"></i> Ajouter une fonction</button>
+                <template id="sfTemplate">
+                    <?php $f = []; $fi = 0; require __DIR__.'/cdc_spec_card.php'; ?>
+                </template>
+                <button type="button" class="btn btn-secondary btn-sm mt-2 cdc-sf-add" id="sfAddRow"><i class="fas fa-plus"></i> Ajouter une exigence</button>
             </div>
         </div>
     </div>
@@ -181,5 +154,5 @@
  <iframe title="<?=e($cdcModalTitle)?>" src="about:blank" data-cdc-validation-mode="<?=e($cdcMode)?>"></iframe>
 </dialog>
 <?php endforeach; ?>
-<link rel="stylesheet" href="<?=url('assets/css/cdc-editor.css?v=2')?>">
-<script src="<?=url('assets/js/cdc-editor.js?v=2')?>" defer></script>
+<link rel="stylesheet" href="<?=url('assets/css/cdc-editor.css?v=3')?>">
+<script src="<?=url('assets/js/cdc-editor.js?v=3')?>" defer></script>

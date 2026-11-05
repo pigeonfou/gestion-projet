@@ -22,7 +22,7 @@
  const initial=new URLSearchParams(location.search);
  show(Number(initial.get('onglet')||(form.dataset.inline==='1'?'1':initial.get('step'))||1));
  form.addEventListener('input',()=>dirty=true);form.addEventListener('change',()=>dirty=true);
- form.addEventListener('click',e=>{if(e.target.closest('#sfAddRow,.btn-sf-del,#jalonAddRow,.btn-jalon-del'))dirty=true;});
+ form.addEventListener('click',e=>{if(e.target.closest('#sfAddRow,.btn-sf-del,#jalonAddRow,.btn-jalon-del'))dirty=true;},true);
  form.addEventListener('invalid',e=>{const panel=e.target.closest('[data-panel]');if(panel)show(Number(panel.dataset.panel));},true);
  function openValidation(mode){
   const dialog=document.getElementById('cdcValidation-'+mode),frame=dialog.querySelector('iframe');
@@ -75,54 +75,40 @@
 })();
 (function() {
   const body = document.getElementById('sfBody');
-  const addBtn = document.getElementById('sfAddRow');
-  if (!body || !addBtn) return;
+  const add = document.getElementById('sfAddRow');
+  const template = document.getElementById('sfTemplate');
+  if (!body || !add || !template) return;
 
   function renumber() {
-    body.querySelectorAll('.sf-row').forEach((row, i) => {
-      const idSpan = row.querySelector('.sf-id');
-      if (idSpan) idSpan.textContent = 'S.F.' + (i + 1);
+    body.querySelectorAll('.sf-id').forEach((id, i) => {
+      id.textContent = 'S.F.' + (i + 1);
     });
   }
 
-  function bindDel(btn) {
-    btn.addEventListener('click', () => {
-      const rows = body.querySelectorAll('.sf-row');
-      if (rows.length <= 1) {
-        // clear last row instead of removing
-        const row = rows[0];
-        row.querySelector('input[type="text"]').value = '';
-        row.querySelector('select').value = 'Obligatoire';
-        renumber();
-        return;
-      }
-      btn.closest('.sf-row').remove();
-      renumber();
-    });
+  function refreshSummary(card) {
+    const field = name => card.querySelector('[name="sf_' + name + '[]"]');
+    card.querySelector('[data-sf-title]').textContent = field('description').value.trim() || 'Nouvelle exigence';
+    card.querySelector('[data-sf-domain]').textContent = field('domaine').value.trim();
+    card.querySelector('[data-sf-level]').textContent = field('indicateur').selectedOptions[0].textContent;
   }
 
-  body.querySelectorAll('.btn-sf-del').forEach(bindDel);
-
-  addBtn.addEventListener('click', () => {
-    const i = body.querySelectorAll('.sf-row').length;
-    const tr = document.createElement('tr');
-    tr.className = 'sf-row';
-    tr.innerHTML =
-      '<td><span class="sf-id">S.F.' + (i + 1) + '</span></td>' +
-      '<td><input type="text" name="sf_description[]" class="form-control" value="" placeholder="Description de la fonction…"></td>' +
-      '<td><select name="sf_indicateur[]" class="form-control">' +
-        '<option value="Obligatoire" selected>Obligatoire</option>' +
-        '<option value="Facultative">Facultative</option>' +
-        '<option value="Optionnel">Optionnel</option>' +
-      '</select></td>' +
-      '<td><button type="button" class="btn-sf-del" title="Supprimer" aria-label="Supprimer">&times;</button></td>';
-    body.appendChild(tr);
-    bindDel(tr.querySelector('.btn-sf-del'));
+  body.addEventListener('input', event => refreshSummary(event.target.closest('.sf-row')));
+  body.addEventListener('click', event => {
+    const remove = event.target.closest('.cdc-sf-remove');
+    if (!remove) return;
+    remove.closest('.sf-row').remove();
     renumber();
+    add.focus();
+  });
+
+  add.addEventListener('click', () => {
+    const card = template.content.firstElementChild.cloneNode(true);
+    card.open = true;
+    body.appendChild(card);
+    renumber();
+    card.querySelector('[name="sf_domaine[]"]').focus();
   });
 })();
-
-
 
 (function() {
   const body = document.getElementById('jalonBody');

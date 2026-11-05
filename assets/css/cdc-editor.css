@@ -65,3 +65,30 @@
 @media(max-width:640px){.cdc-stepper .step{font-size:.75rem;min-width:calc(50% - .35rem)}.cdc-validation-dialog{width:calc(100vw - 1rem);max-width:calc(100vw - 1rem);max-height:calc(100dvh - 1rem)}}
 
 .cdc-confirm-dialog{position:fixed;inset:0;margin:auto;max-height:calc(100dvh - 2rem);overflow:auto}
+
+/* Functional specifications follow the collapsible cards used in the studies. */
+.cdc-sf-list { display:grid; gap:.75rem; }
+.cdc-sf-card { min-width:0; background:var(--surface-raised); border:1px solid var(--border-default); border-radius:.65rem; color:var(--text-primary); }
+.cdc-sf-card > summary { display:flex; align-items:center; gap:.85rem; padding:1rem; cursor:pointer; list-style:none; }
+.cdc-sf-card > summary::-webkit-details-marker { display:none; }
+.cdc-sf-card > summary::after { content:'⌄'; color:var(--action-link); }
+.cdc-sf-card[open] > summary::after { content:'⌃'; }
+.cdc-sf-card[open] > summary { border-bottom:1px solid var(--border-default); }
+.cdc-sf-icon { color:var(--action-link); }
+.cdc-sf-summary { flex:1; display:grid; gap:.3rem; min-width:0; overflow-wrap:anywhere; }
+.cdc-sf-meta { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; color:var(--text-secondary); font-size:.8rem; }
+.cdc-sf-level { font-size:.8rem; color:var(--text-secondary); }
+.cdc-sf-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem; padding:1rem; }
+.cdc-sf-fields label { min-width:0; display:grid; gap:.35rem; align-content:start; font-size:.85rem; }
+.cdc-sf-fields .form-control { width:100%; min-width:0; }
+.cdc-sf-fields textarea { resize:vertical; }
+.cdc-sf-wide { grid-column:1/-1; }
+.cdc-sf-fields .cdc-sf-remove { grid-column:1/-1; justify-self:start; width:auto; height:auto; padding:.4rem .65rem; }
+.cdc-sf-add { width:100%; border-style:dashed; }
+@media(max-width:650px) {
+  .cdc-sf-fields { grid-template-columns:minmax(0,1fr); }
+  .cdc-sf-card > summary { flex-wrap:wrap; gap:.5rem; }
+  .cdc-sf-summary { flex-basis:calc(100% - 2rem); }
+  .cdc-sf-level { margin-left:1.5rem; }
+  .cdc-sf-card > summary::after { margin-left:auto; }
+}
